@@ -1,2 +1,2 @@
-# 466
+# ECE466
 Compilers
