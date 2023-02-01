@@ -1,11 +1,10 @@
 %option noyywrap
 %{
-#define TEST 1
+#include "tokens-manual.h"
 
 int yylval;
 char * file_name;
 int line_num = 1;
-
 char * token_name;
 char * semantic_meaning;
 
@@ -32,11 +31,14 @@ void file_start(char* yytext){
 
 %}
 %%
-#[ \t][0-9]+[ \t]\"[a-zA-Z0-9\/]+.c\"   {
-                                            file_start(yytext);
-                                            return TEST;
-                                        }
-.                                       {fprintf(stderr,"Error: unknown token %s\n",yytext);}
+#[ \t][0-9]+[ \t]\"[a-zA-Z0-9\/\-<>.]+\"[ \t]*[0-9]*\n      {file_start(yytext);}
+[()\[\]{},\.;:\?'"!\|\/\^&\*\+\-><~_\$%#=]                  {
+                                                                char* tmp_special = strdup(yytext);
+                                                                return *tmp_special;
+                                                            }
+auto                                        {return AUTO;}
+\n                                          {line_num++;}
+.                                           {fprintf(stderr,"Error: unknown token %s\n",yytext);}
 %%
 
 
@@ -45,7 +47,14 @@ int main() {
     while((t=yylex()))
         {
         switch(t) {
-            case TEST: printf("%s \t %d\n", file_name, line_num); break;
+                // case TEST: printf("***%s \t %d\n***", file_name, line_num); break;
+                case '=': {
+                    printf("%s\t%d\t%c\n", file_name, line_num, t); break;
+                }
+                case AUTO: {
+                    printf("%s\t%d\t%s\n", file_name, line_num, "AUTO"); break;
+                }
+                // case AUTO
             }
         }
         printf("EOF\n");
