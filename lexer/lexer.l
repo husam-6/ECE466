@@ -1,12 +1,9 @@
 %option noyywrap
 %{
 #include "tokens-manual.h"
+#include "lexer.h"
 
-int yylval;
-char * file_name;
-int line_num = 1;
-char * ident;
-
+YYSTYPE yylval;
 
 void file_start(char* yytext){
     // Extract line number and file name
@@ -72,12 +69,9 @@ _Bool                   {return _BOOL;}
 _Complex                {return _COMPLEX;}
 _Imaginary              {return _IMAGINARY;}
 
-[_A-Za-z]+[A-Za-z_0-9]*                                     {ident = strdup(yytext); return IDENT;}
+[_A-Za-z]+[A-Za-z_0-9]*                                     {yylval.string_literal = strdup(yytext); return IDENT;}
 
-[()\[\]{},\.;:\?'"!\|\/\^&\*\+\-><~_\$%#=]                  {
-                                                                char* tmp_special = strdup(yytext);
-                                                                return *tmp_special;
-                                                            }
+[()\[\]{},\.;:\?'"!\|\/\^&\*\+\-><~_\$%#=]                  {char* single = strdup(yytext); return *single;}
 
 \n                      {line_num++;}
 .                       {fprintf(stderr,"Error: unknown token %s\n",yytext);}
@@ -129,7 +123,7 @@ int main() {
                 case _IMAGINARY: {printf("%s\t%d\t%s\n", file_name, line_num, "_IMAGINARY"); break;}
 
                 // Identifiers
-                case IDENT:      {printf("%s\t%d\t%s\t%s\n", file_name, line_num, "IDENT", ident); break;}
+                case IDENT:      {printf("%s\t%d\t%s\t%s\n", file_name, line_num, "IDENT", yylval.string_literal); break;}
 
                 // Int
                 // If its a single character, this should be the default
