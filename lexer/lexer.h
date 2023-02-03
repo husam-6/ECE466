@@ -1,6 +1,7 @@
 // yylval
 typedef union {
           char *string_literal;
+          char *ident;
           int integer;
 } YYSTYPE;
 

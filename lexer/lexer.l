@@ -69,7 +69,9 @@ _Bool                   {return _BOOL;}
 _Complex                {return _COMPLEX;}
 _Imaginary              {return _IMAGINARY;}
 
-[_A-Za-z]+[A-Za-z_0-9]*                                     {yylval.string_literal = strdup(yytext); return IDENT;}
+[_A-Za-z]+[A-Za-z_0-9]*                                     {yylval.ident = strdup(yytext); return IDENT;}
+
+[L]?["]([^"\\\n]|\\.|\\\n)*["]                              {yylval.string_literal = strdup(yytext); return STRING;}
 
 [()\[\]{},\.;:\?'"!\|\/\^&\*\+\-><~_\$%#=]                  {char* single = strdup(yytext); return *single;}
 
@@ -123,9 +125,11 @@ int main() {
                 case _IMAGINARY: {printf("%s\t%d\t%s\n", file_name, line_num, "_IMAGINARY"); break;}
 
                 // Identifiers
-                case IDENT:      {printf("%s\t%d\t%s\t%s\n", file_name, line_num, "IDENT", yylval.string_literal); break;}
+                case IDENT:   {printf("%s\t%d\t%s\t%s\n", file_name, line_num, "IDENT", yylval.ident); break;}
 
-                // Int
+                // Strings
+                case STRING: {printf("%s\t%d\t%s\t%s\n", file_name, line_num, "STRING", yylval.string_literal); break;}
+
                 // If its a single character, this should be the default
                 // default: {printf("%s\t%d\t%c\n", file_name, line_num, t); break;}
                 // case AUTO
