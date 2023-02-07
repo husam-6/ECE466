@@ -31,7 +31,6 @@ typedef union {
           char *charlit;
           char *ident;
           struct number num; 
-          double frac;
 } YYSTYPE;
 
 extern YYSTYPE yylval;
@@ -75,4 +74,12 @@ long long octal_to_dec(int octalNumber) {
     i = 1;
 
     return decimalNumber;
+}
+
+// Function to handle hex fractions (with p-2 at the end for example)
+long double hex_frac(char *yytext){
+    char *hex_p; 
+    long double hex_base  = strtoull(yytext, &hex_p, 16); 
+    int tmp = atoi(hex_p + 1);
+    return hex_base * pow(2, tmp);
 }

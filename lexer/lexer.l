@@ -50,38 +50,42 @@ _Imaginary              {return _IMAGINARY;}
 [_A-Za-z]+[A-Za-z_0-9]*                                     {yylval.ident = strdup(yytext); return IDENT;}
 
 [L]?["]([^"\\\n]|\\.|\\\n)*["]                              {yylval.string_literal = strdup(yytext); return STRING;}
-['](\\.|.)[']                   {yylval.charlit = strdup(yytext); return CHARLIT;}
+['](\\.|.)[']                  {yylval.charlit = strdup(yytext); return CHARLIT;}
 
-[0][0-7]+                      {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = I; return NUMBER;}
-[0][0-7]+[uU]                  {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = U; return NUMBER;}
-[0][0-7]+[uU][lL]              {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = UL; return NUMBER;}
-[0][0-7]+[uU][lL][lL]          {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = ULL; return NUMBER;}
-[0][0-7]+[lL]                  {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = L; return NUMBER;}
-[0][0-7]+[lL][lL]              {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = LL; return NUMBER;}
+[0][0-7]*                                          {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = I; return NUMBER;}
+[0][0-7]*[uU]                                      {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = U; return NUMBER;}
+[0][0-7]*[uU][lL]|[0][0-7]*[lL][uU]                {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = UL; return NUMBER;}
+[0][0-7]*[uU][lL][lL]|[0][0-7]*[lL][lL][uU]        {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = ULL; return NUMBER;}
+[0][0-7]*[lL]                                      {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = L; return NUMBER;}
+[0][0-7]*[lL][lL]                                  {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = LL; return NUMBER;}
 
-[1-9][0-9]+                                  {yylval.num.integer = atoi(yytext); yylval.num.type = I; return NUMBER;}
-[1-9][0-9]+[uU]                              {yylval.num.integer = atoi(yytext); yylval.num.type = U; return NUMBER;}
-[1-9][0-9]+[uU][lL]                          {yylval.num.integer = atoi(yytext); yylval.num.type = UL; return NUMBER;}
-[1-9][0-9]+[uU][lL][lL]                      {yylval.num.integer = atoi(yytext); yylval.num.type = ULL; return NUMBER;}
-[1-9][0-9]+[lL]                              {yylval.num.integer = atoi(yytext); yylval.num.type = L; return NUMBER;}
-[1-9][0-9]+[lL][lL]                          {yylval.num.integer = atoi(yytext); yylval.num.type = LL; return NUMBER;}
+[1-9][0-9]*                                        {yylval.num.integer = atoi(yytext); yylval.num.type = I; return NUMBER;}
+[1-9][0-9]*[uU]                                    {yylval.num.integer = atoi(yytext); yylval.num.type = U; return NUMBER;}
+[1-9][0-9]*[uU][lL]|[1-9][0-9]*[lL][uU]                        {yylval.num.integer = atoi(yytext); yylval.num.type = UL; return NUMBER;}
+[1-9][0-9]*[uU][lL][lL]|[1-9][0-9]*[lL][lL][uU]                      {yylval.num.integer = atoi(yytext); yylval.num.type = ULL; return NUMBER;}
+[1-9][0-9]*[lL]                                    {yylval.num.integer = atoi(yytext); yylval.num.type = L; return NUMBER;}
+[1-9][0-9]*[lL][lL]                                {yylval.num.integer = atoi(yytext); yylval.num.type = LL; return NUMBER;}
 
-[0-9]+[.][0-9]*|[0-9]*[.][0-9]+                                     {yylval.num.frac = atoi(yytext); yylval.num.type = D; return NUMBER;}
-[0-9]+[.][0-9]*[lL]|[0-9]*[.][0-9]+[lL]                             {yylval.num.frac = atoi(yytext); yylval.num.type = LD; return NUMBER;}
-[0-9]+[.][0-9]*[fF]|[0-9]+[.][0-9]*[fF]                             {yylval.num.frac = atoi(yytext); yylval.num.type = F; return NUMBER;}
-([0-9]+[.][0-9]*|[0-9]+[.][0-9]*|[0-9]+)[eE][+-]?[0-9]+             {yylval.num.frac = atoi(yytext); yylval.num.type = D; return NUMBER;}
-([0-9]+[.][0-9]*|[0-9]+[.][0-9]*|[0-9]+)[eE][+-]?[0-9]+[fF]         {yylval.num.frac = atoi(yytext); yylval.num.type = F; return NUMBER;}
-([0-9]+[.][0-9]*|[0-9]+[.][0-9]*|[0-9]+)[eE][+-]?[0-9]+[LD]         {yylval.num.frac = atoi(yytext); yylval.num.type = LD; return NUMBER;}
+[0-9]+[.][0-9]*|[0-9]*[.][0-9]+                                     {yylval.num.frac = strtod(yytext, NULL); yylval.num.type = D; return NUMBER;}
+[0-9]+[.][0-9]*[lL]|[0-9]*[.][0-9]+[lL]                             {yylval.num.frac = strtod(yytext, NULL); yylval.num.type = LD; return NUMBER;}
+[0-9]+[.][0-9]*[fF]|[0-9]+[.][0-9]*[fF]                             {yylval.num.frac = strtod(yytext, NULL); yylval.num.type = F; return NUMBER;}
+([0-9]+[.][0-9]*|[0-9]+[.][0-9]*|[0-9]+)[eE][+-]?[0-9]+             {yylval.num.frac = strtod(yytext, NULL); yylval.num.type = D; return NUMBER;}
+([0-9]+[.][0-9]*|[0-9]+[.][0-9]*|[0-9]+)[eE][+-]?[0-9]+[fF]         {yylval.num.frac = strtod(yytext, NULL); yylval.num.type = F; return NUMBER;}
+([0-9]+[.][0-9]*|[0-9]+[.][0-9]*|[0-9]+)[eE][+-]?[0-9]+[LD]         {yylval.num.frac = strtod(yytext, NULL); yylval.num.type = LD; return NUMBER;}
 
-0[xX][0-9a-fA-F]+                           {yylval.num.frac = atoi(yytext); yylval.num.type = I; return NUMBER;}
-0[xX][0-9a-fA-F]+[uU]                       {yylval.num.frac = atoi(yytext); yylval.num.type = U; return NUMBER;}
-0[xX][0-9a-fA-F]+[uU][lL]                   {yylval.num.frac = atoi(yytext); yylval.num.type = UL; return NUMBER;}
-0[xX][0-9a-fA-F]+[lL]                       {yylval.num.frac = atoi(yytext); yylval.num.type = L; return NUMBER;}
-0[xX][0-9a-fA-F]+[lL][lL]                   {yylval.num.frac = atoi(yytext); yylval.num.type = LL; return NUMBER;}
+0[xX][0-9a-fA-F]+                                                   {yylval.num.integer = strtoull(yytext, NULL, 16); yylval.num.type = I; return NUMBER;}
+0[xX][0-9a-fA-F]+[uU]                                               {yylval.num.integer = strtoull(yytext, NULL, 16); yylval.num.type = U; return NUMBER;}
+0[xX][0-9a-fA-F]+[uU][lL]|0[xX][0-9a-fA-F]+[lL][uU]                 {yylval.num.integer = strtoull(yytext, NULL, 16); yylval.num.type = UL; return NUMBER;}
+0[xX][0-9a-fA-F]+[lL]                                               {yylval.num.integer = strtoull(yytext, NULL, 16); yylval.num.type = L; return NUMBER;}
+0[xX][0-9a-fA-F]+[lL][lL]                                           {yylval.num.integer = strtoull(yytext, NULL, 16); yylval.num.type = LL; return NUMBER;}
+0[xX][0-9a-fA-F]+[uU][lL][lL]|0[xX][0-9a-fA-F]+[lL][lL][uU]         {yylval.num.integer = strtoull(yytext, NULL, 16); yylval.num.type = ULL; return NUMBER;}
 
-0[xX][0-9a-fA-F]+[pP][+-]?[0-9]+            {yylval.num.frac = atoi(yytext); yylval.num.type = D; return NUMBER;}
-0[xX][0-9a-fA-F]+[pP][+-]?[0-9]+[lL]        {yylval.num.frac = atoi(yytext); yylval.num.type = LD; return NUMBER;}
-0[xX][0-9a-fA-F]+[pP][+-]?[0-9]+[fF]        {yylval.num.frac = atoi(yytext); yylval.num.type = F; return NUMBER;}
+0[xX][0-9a-fA-F]+[pP][+-]?[0-9]+            {yylval.num.frac = hex_frac(yytext); yylval.num.type = D; return NUMBER;}
+0[xX][0-9a-fA-F]+[pP][+-]?[0-9]+[lL]        {yylval.num.frac = hex_frac(yytext);yylval.num.type = LD; return NUMBER;}
+0[xX][0-9a-fA-F]+[pP][+-]?[0-9]+[fF]        {yylval.num.frac = hex_frac(yytext);yylval.num.type = F; return NUMBER;}
+
+
+[()\[\]{},\.;:\?'"!\|\/\^&\*\+\-><~_\$%#=]  {return yytext[0];}
 
 \n                      {line_num++;}
 .                       {fprintf(stderr,"Error: unknown token %s\n",yytext);}
@@ -149,7 +153,7 @@ int main() {
                     printf("%s\t%d\t%s\t", file_name, line_num, "NUMBER");
                     switch (yylval.num.type){
                         case I: {printf("%s\t%llu\t%s\n", "INTEGER", yylval.num.integer, "INT"); break;}
-                        case U: {printf("%s\t%llu\t%s\n", "INTEGER", yylval.num.integer, "UNSIGNED"); break;}
+                        case U: {printf("%s\t%llu\t%s\n", "INTEGER", yylval.num.integer, "UNSIGNED,INT"); break;}
                         case UL: {printf("%s\t%llu\t%s\n", "INTEGER", yylval.num.integer, "UNSIGNED,LONG"); break;}
                         case ULL: {printf("%s\t%llu\t%s\n", "INTEGER", yylval.num.integer, "UNSIGNED,LONGLONG"); break;}
                         case L: {printf("%s\t%llu\t%s\n", "INTEGER", yylval.num.integer, "LONG"); break;}
@@ -157,8 +161,11 @@ int main() {
                         case F: {printf("%s\t%Lf\t%s\n", "REAL", yylval.num.frac, "FLOAT"); break;}
                         case D: {printf("%s\t%Lf\t%s\n", "REAL", yylval.num.frac, "DOUBLE"); break;}
                         case LD: {printf("%s\t%Lf\t%s\n", "REAL", yylval.num.frac, "LONGDOUBLE"); break;}
-                    }                    
+                        default: break; 
+                    } break;                     
                 }
+                case 0 ... 255: {printf("%s\t%d\t%c\n", file_name, line_num, t); break;}
+                default: exit(2); 
             }
         }
         // printf("EOF\n");
