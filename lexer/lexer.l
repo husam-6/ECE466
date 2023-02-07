@@ -50,7 +50,10 @@ _Imaginary              {return _IMAGINARY;}
 [_A-Za-z]+[A-Za-z_0-9]*                                     {yylval.ident = strdup(yytext); return IDENT;}
 
 [L]?["]([^"\\\n]|\\.|\\\n)*["]                              {yylval.string_literal = strdup(yytext); return STRING;}
-['](\\.|.)[']                  {yylval.charlit = strdup(yytext); return CHARLIT;}
+
+
+[L]?['](\\[\\\'\"\?abfnrtv]|[^\\]|\\[0-7][0-7]?[0-7]?|\\x[0-9a-fA-F][0-9a-fA-F]?)[']                 {yylval.charlit = strdup(yytext); return CHARLIT;}
+[L]?['].+[']                                                                                       {fprintf(stderr, "Warning: Invalid Char Sequence");}
 
 [0][0-7]*                                          {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = I; return NUMBER;}
 [0][0-7]*[uU]                                      {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = U; return NUMBER;}
@@ -83,6 +86,29 @@ _Imaginary              {return _IMAGINARY;}
 0[xX][0-9a-fA-F]+[pP][+-]?[0-9]+            {yylval.num.frac = hex_frac(yytext); yylval.num.type = D; return NUMBER;}
 0[xX][0-9a-fA-F]+[pP][+-]?[0-9]+[lL]        {yylval.num.frac = hex_frac(yytext);yylval.num.type = LD; return NUMBER;}
 0[xX][0-9a-fA-F]+[pP][+-]?[0-9]+[fF]        {yylval.num.frac = hex_frac(yytext);yylval.num.type = F; return NUMBER;}
+
+-\>         {return INDSEL;}
+\+\+        {return PLUSPLUS;}
+--          {return MINUSMINUS;}
+\<\<=       {return SHLEQ;}
+\>\>=       {return SHREQ;}
+\<\<        {return SHL;}
+\>\>        {return SHR;}
+\>=         {return LTEQ;}
+\<=         {return GTEQ;}
+==          {return EQEQ;}
+!=          {return NOTEQ;}
+&&          {return LOGAND;}
+\|\|        {return LOGOR;}
+\.\.\.         {return ELLIPSIS;}
+\*=         {return TIMESEQ;}
+\/=         {return DIVEQ;}
+%=          {return MODEQ;}
+\+=         {return PLUSEQ;}
+-=          {return MINUSEQ;}
+&=          {return ANDEQ;}
+\|=         {return OREQ;}
+\^=         {return XOREQ;}
 
 
 [()\[\]{},\.;:\?'"!\|\/\^&\*\+\-><~_\$%#=]  {return yytext[0];}
@@ -148,6 +174,30 @@ int main() {
                 // Char Literal
                 case CHARLIT: {printf("%s\t%d\t%s\t%s\n", file_name, line_num, "CHARLIT", yylval.charlit); break;}
 
+                // Special multi-byte chars
+                case INDSEL:        {printf("%s\t%d\t%s\n", file_name, line_num, "INDSEL"); break;}
+                case PLUSPLUS:      {printf("%s\t%d\t%s\n", file_name, line_num, "PLUSPLUS"); break;}
+                case MINUSMINUS:    {printf("%s\t%d\t%s\n", file_name, line_num, "MINUSMINUS"); break;}
+                case SHL:           {printf("%s\t%d\t%s\n", file_name, line_num, "SHL"); break;}
+                case SHR:           {printf("%s\t%d\t%s\n", file_name, line_num, "SHR"); break;}
+                case LTEQ:          {printf("%s\t%d\t%s\n", file_name, line_num, "LTEQ"); break;}
+                case GTEQ:          {printf("%s\t%d\t%s\n", file_name, line_num, "GTEQ"); break;}
+                case EQEQ:          {printf("%s\t%d\t%s\n", file_name, line_num, "EQEQ"); break;}
+                case NOTEQ:         {printf("%s\t%d\t%s\n", file_name, line_num, "NOTEQ"); break;}
+                case LOGAND:        {printf("%s\t%d\t%s\n", file_name, line_num, "LOGAND"); break;}
+                case LOGOR:         {printf("%s\t%d\t%s\n", file_name, line_num, "LOGOR"); break;}
+                case ELLIPSIS:      {printf("%s\t%d\t%s\n", file_name, line_num, "ELLIPSIS"); break;}
+                case TIMESEQ:       {printf("%s\t%d\t%s\n", file_name, line_num, "TIMESEQ"); break;}
+                case DIVEQ:         {printf("%s\t%d\t%s\n", file_name, line_num, "DIVEQ"); break;}
+                case MODEQ:         {printf("%s\t%d\t%s\n", file_name, line_num, "MODEQ"); break;}
+                case PLUSEQ:        {printf("%s\t%d\t%s\n", file_name, line_num, "PLUSEQ"); break;}
+                case MINUSEQ:       {printf("%s\t%d\t%s\n", file_name, line_num, "MINUSEQ"); break;}
+                case SHLEQ:         {printf("%s\t%d\t%s\n", file_name, line_num, "SHLEQ"); break;}
+                case SHREQ:         {printf("%s\t%d\t%s\n", file_name, line_num, "SHREQ"); break;}
+                case ANDEQ:         {printf("%s\t%d\t%s\n", file_name, line_num, "ANDEQ"); break;}
+                case OREQ:          {printf("%s\t%d\t%s\n", file_name, line_num, "OREQ"); break;}
+                case XOREQ:         {printf("%s\t%d\t%s\n", file_name, line_num, "XOREQ"); break;}
+
                 // Number constants
                 case NUMBER: {
                     printf("%s\t%d\t%s\t", file_name, line_num, "NUMBER");
@@ -158,9 +208,9 @@ int main() {
                         case ULL: {printf("%s\t%llu\t%s\n", "INTEGER", yylval.num.integer, "UNSIGNED,LONGLONG"); break;}
                         case L: {printf("%s\t%llu\t%s\n", "INTEGER", yylval.num.integer, "LONG"); break;}
                         case LL: {printf("%s\t%llu\t%s\n", "INTEGER", yylval.num.integer, "LONGLONG"); break;}
-                        case F: {printf("%s\t%Lf\t%s\n", "REAL", yylval.num.frac, "FLOAT"); break;}
-                        case D: {printf("%s\t%Lf\t%s\n", "REAL", yylval.num.frac, "DOUBLE"); break;}
-                        case LD: {printf("%s\t%Lf\t%s\n", "REAL", yylval.num.frac, "LONGDOUBLE"); break;}
+                        case F: {printf("%s\t%.1Lf\t%s\n", "REAL", yylval.num.frac, "FLOAT"); break;}
+                        case D: {printf("%s\t%.1Lf\t%s\n", "REAL", yylval.num.frac, "DOUBLE"); break;}
+                        case LD: {printf("%s\t%.1Lf\t%s\n", "REAL", yylval.num.frac, "LONGDOUBLE"); break;}
                         default: break; 
                     } break;                     
                 }
