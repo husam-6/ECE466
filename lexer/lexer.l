@@ -40,7 +40,7 @@ switch                  {return SWITCH;}
 typedef                 {return TYPEDEF;}
 union                   {return UNION;}
 unsigned                {return UNSIGNED;}
-void                    {return VOID;}
+void                    {return VOID;} 
 volatile                {return VOLATILE;}
 while                   {return WHILE;}
 _Bool                   {return _BOOL;}
@@ -49,11 +49,18 @@ _Imaginary              {return _IMAGINARY;}
 
 [_A-Za-z]+[A-Za-z_0-9]*                                     {yylval.ident = strdup(yytext); return IDENT;}
 
-[L]?["]([^"\\\n]|\\.|\\\n)*["]                              {yylval.string_literal = strdup(yytext); return STRING;}
+[L]?["].*\\x[^0-9a-fA-F].*["]|[L]?["].*\\x[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F].*["]|[L]?["].*\\x["]     {fprintf(stderr, "Warning: Invalid Hex Sequence\n");}
+[L]?["]([^"\\\n]|\\[\\\'\"\?abfnrtvx0-7]|\\\n)*["]                                      {
+                                                                                            yytext = yytext + 1; yytext[strlen(yytext)-1] = '\0';
+                                                                                            yylval.string_literal = strdup(yytext); return STRING;
+                                                                                        }
 
 
-[L]?['](\\[\\\'\"\?abfnrtv]|[^\\]|\\[0-7][0-7]?[0-7]?|\\x[0-9a-fA-F][0-9a-fA-F]?)[']                 {yylval.charlit = strdup(yytext); return CHARLIT;}
-[L]?['].+[']                                                                                       {fprintf(stderr, "Warning: Invalid Char Sequence");}
+[L]?['](\\[\\\'\"\?abfnrtv]|[^\\]+|\\[0-7][0-7]?[0-7]?|\\x[0-9a-fA-F][0-9a-fA-F]?)[']   {
+                                                                                            yytext = yytext + 1; yytext[strlen(yytext)-1] = '\0'; 
+                                                                                            yylval.charlit = strdup(yytext); return CHARLIT;
+                                                                                        }
+[L]?['].+[']                                       {fprintf(stderr, "Error: Invalid Char Sequence\n"); exit(2);}
 
 [0][0-7]*                                          {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = I; return NUMBER;}
 [0][0-7]*[uU]                                      {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = U; return NUMBER;}
@@ -64,7 +71,7 @@ _Imaginary              {return _IMAGINARY;}
 
 [1-9][0-9]*                                        {yylval.num.integer = atoi(yytext); yylval.num.type = I; return NUMBER;}
 [1-9][0-9]*[uU]                                    {yylval.num.integer = atoi(yytext); yylval.num.type = U; return NUMBER;}
-[1-9][0-9]*[uU][lL]|[1-9][0-9]*[lL][uU]                        {yylval.num.integer = atoi(yytext); yylval.num.type = UL; return NUMBER;}
+[1-9][0-9]*[uU][lL]|[1-9][0-9]*[lL][uU]                              {yylval.num.integer = atoi(yytext); yylval.num.type = UL; return NUMBER;}
 [1-9][0-9]*[uU][lL][lL]|[1-9][0-9]*[lL][lL][uU]                      {yylval.num.integer = atoi(yytext); yylval.num.type = ULL; return NUMBER;}
 [1-9][0-9]*[lL]                                    {yylval.num.integer = atoi(yytext); yylval.num.type = L; return NUMBER;}
 [1-9][0-9]*[lL][lL]                                {yylval.num.integer = atoi(yytext); yylval.num.type = LL; return NUMBER;}
@@ -100,7 +107,7 @@ _Imaginary              {return _IMAGINARY;}
 !=          {return NOTEQ;}
 &&          {return LOGAND;}
 \|\|        {return LOGOR;}
-\.\.\.         {return ELLIPSIS;}
+\.\.\.      {return ELLIPSIS;}
 \*=         {return TIMESEQ;}
 \/=         {return DIVEQ;}
 %=          {return MODEQ;}
@@ -114,7 +121,7 @@ _Imaginary              {return _IMAGINARY;}
 [()\[\]{},\.;:\?'"!\|\/\^&\*\+\-><~_\$%#=]  {return yytext[0];}
 
 \n                      {line_num++;}
-.                       {fprintf(stderr,"Error: unknown token %s\n",yytext);}
+.                       {fprintf(stderr,"%s\t%d\tError: unknown token %s\n",file_name, line_num, yytext);}
 
 
 %%
