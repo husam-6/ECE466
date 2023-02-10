@@ -2,8 +2,42 @@
 %{
 #include "tokens-manual.h"
 #include "lexer.h"
+#include "stdio.h"
+#include "stdlib.h"
+#include "math.h"
 
 YYSTYPE yylval;
+
+void file_start(char* yytext){
+    // Extract line number and file name
+    char* str_mod = strdup(yytext);
+    char* token = strtok(str_mod, " ");
+    
+    // Split file and loop through each element
+    int i = 0; 
+    while( token != NULL ) {
+        // Save line number
+        if (i == 1){
+            line_num = atoi(token);
+        }
+        // Save file name
+        else if (i == 2){
+            file_name = token+1;
+            file_name[strlen(file_name)-1] = '\0'; 
+        }
+        token = strtok(NULL, " ");
+        i++; 
+    }
+}
+
+// Function to handle hex fractions (with p-2 at the end for example)
+long double hex_frac(char *yytext){
+    char *hex_p; 
+    long double hex_base  = strtoull(yytext, &hex_p, 16); 
+    int tmp = atoi(hex_p + 1);
+    return hex_base * pow(2, tmp);
+}
+
 
 %}
 %%
@@ -52,29 +86,33 @@ _Imaginary              {return _IMAGINARY;}
 [L]?["].*\\x[^0-9a-fA-F].*["]|[L]?["].*\\x[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F].*["]|[L]?["].*\\x["]     {fprintf(stderr, "Warning: Invalid Hex Sequence\n");}
 [L]?["]([^"\\\n]|\\[\\\'\"\?abfnrtvx0-7]|\\\n)*["]                                      {
                                                                                             yytext = yytext + 1; yytext[strlen(yytext)-1] = '\0';
-                                                                                            yylval.string_literal = strdup(yytext); return STRING;
+                                                                                            yylval.str.content = strdup(yytext);
+                                                                                            // yylval.str.content = unescape_str(yytext); 
+                                                                                            yylval.str.length = strlen(yytext);
+                                                                                            return STRING;
                                                                                         }
 
 
 [L]?['](\\[\\\'\"\?abfnrtv]|[^\\]+|\\[0-7][0-7]?[0-7]?|\\x[0-9a-fA-F][0-9a-fA-F]?)[']   {
                                                                                             yytext = yytext + 1; yytext[strlen(yytext)-1] = '\0'; 
-                                                                                            yylval.charlit = strdup(yytext); return CHARLIT;
+                                                                                            yylval.charlit = strdup(yytext);
+                                                                                            return CHARLIT;
                                                                                         }
 [L]?['].+[']                                       {fprintf(stderr, "Error: Invalid Char Sequence\n"); exit(2);}
 
-[0][0-7]*                                          {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = I; return NUMBER;}
-[0][0-7]*[uU]                                      {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = U; return NUMBER;}
-[0][0-7]*[uU][lL]|[0][0-7]*[lL][uU]                {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = UL; return NUMBER;}
-[0][0-7]*[uU][lL][lL]|[0][0-7]*[lL][lL][uU]        {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = ULL; return NUMBER;}
-[0][0-7]*[lL]                                      {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = L; return NUMBER;}
-[0][0-7]*[lL][lL]                                  {yylval.num.integer = octal_to_dec(atoi(yytext)); yylval.num.type = LL; return NUMBER;}
+[0][0-7]*                                          {yylval.num.integer = strtoull(yytext, NULL, 8); yylval.num.type = I; return NUMBER;}
+[0][0-7]*[uU]                                      {yylval.num.integer = strtoull(yytext, NULL, 8); yylval.num.type = U; return NUMBER;}
+[0][0-7]*[uU][lL]|[0][0-7]*[lL][uU]                {yylval.num.integer = strtoull(yytext, NULL, 8); yylval.num.type = UL; return NUMBER;}
+[0][0-7]*[uU][lL][lL]|[0][0-7]*[lL][lL][uU]        {yylval.num.integer = strtoull(yytext, NULL, 8); yylval.num.type = ULL; return NUMBER;}
+[0][0-7]*[lL]                                      {yylval.num.integer = strtoull(yytext, NULL, 8); yylval.num.type = L; return NUMBER;}
+[0][0-7]*[lL][lL]                                  {yylval.num.integer = strtoull(yytext, NULL, 8); yylval.num.type = LL; return NUMBER;}
 
-[1-9][0-9]*                                        {yylval.num.integer = atoi(yytext); yylval.num.type = I; return NUMBER;}
-[1-9][0-9]*[uU]                                    {yylval.num.integer = atoi(yytext); yylval.num.type = U; return NUMBER;}
-[1-9][0-9]*[uU][lL]|[1-9][0-9]*[lL][uU]                              {yylval.num.integer = atoi(yytext); yylval.num.type = UL; return NUMBER;}
-[1-9][0-9]*[uU][lL][lL]|[1-9][0-9]*[lL][lL][uU]                      {yylval.num.integer = atoi(yytext); yylval.num.type = ULL; return NUMBER;}
-[1-9][0-9]*[lL]                                    {yylval.num.integer = atoi(yytext); yylval.num.type = L; return NUMBER;}
-[1-9][0-9]*[lL][lL]                                {yylval.num.integer = atoi(yytext); yylval.num.type = LL; return NUMBER;}
+[1-9][0-9]*                                                         {yylval.num.integer = atoi(yytext); yylval.num.type = I; return NUMBER;}
+[1-9][0-9]*[uU]                                                     {yylval.num.integer = atoi(yytext); yylval.num.type = U; return NUMBER;}
+[1-9][0-9]*[uU][lL]|[1-9][0-9]*[lL][uU]                             {yylval.num.integer = atoi(yytext); yylval.num.type = UL; return NUMBER;}
+[1-9][0-9]*[uU][lL][lL]|[1-9][0-9]*[lL][lL][uU]                     {yylval.num.integer = atoi(yytext); yylval.num.type = ULL; return NUMBER;}
+[1-9][0-9]*[lL]                                                     {yylval.num.integer = atoi(yytext); yylval.num.type = L; return NUMBER;}
+[1-9][0-9]*[lL][lL]                                                 {yylval.num.integer = atoi(yytext); yylval.num.type = LL; return NUMBER;}
 
 [0-9]+[.][0-9]*|[0-9]*[.][0-9]+                                     {yylval.num.frac = strtod(yytext, NULL); yylval.num.type = D; return NUMBER;}
 [0-9]+[.][0-9]*[lL]|[0-9]*[.][0-9]+[lL]                             {yylval.num.frac = strtod(yytext, NULL); yylval.num.type = LD; return NUMBER;}
@@ -176,7 +214,7 @@ int main() {
                 case IDENT:   {printf("%s\t%d\t%s\t%s\n", file_name, line_num, "IDENT", yylval.ident); break;}
 
                 // Strings
-                case STRING: {printf("%s\t%d\t%s\t%s\n", file_name, line_num, "STRING", yylval.string_literal); break;}
+                case STRING: {printf("%s\t%d\t%s\t%s\n", file_name, line_num, "STRING", yylval.str.content); break;}
 
                 // Char Literal
                 case CHARLIT: {printf("%s\t%d\t%s\t%s\n", file_name, line_num, "CHARLIT", yylval.charlit); break;}
@@ -209,19 +247,19 @@ int main() {
                 case NUMBER: {
                     printf("%s\t%d\t%s\t", file_name, line_num, "NUMBER");
                     switch (yylval.num.type){
-                        case I: {printf("%s\t%llu\t%s\n", "INTEGER", yylval.num.integer, "INT"); break;}
-                        case U: {printf("%s\t%llu\t%s\n", "INTEGER", yylval.num.integer, "UNSIGNED,INT"); break;}
-                        case UL: {printf("%s\t%llu\t%s\n", "INTEGER", yylval.num.integer, "UNSIGNED,LONG"); break;}
-                        case ULL: {printf("%s\t%llu\t%s\n", "INTEGER", yylval.num.integer, "UNSIGNED,LONGLONG"); break;}
-                        case L: {printf("%s\t%llu\t%s\n", "INTEGER", yylval.num.integer, "LONG"); break;}
-                        case LL: {printf("%s\t%llu\t%s\n", "INTEGER", yylval.num.integer, "LONGLONG"); break;}
-                        case F: {printf("%s\t%.1Lf\t%s\n", "REAL", yylval.num.frac, "FLOAT"); break;}
-                        case D: {printf("%s\t%.1Lf\t%s\n", "REAL", yylval.num.frac, "DOUBLE"); break;}
-                        case LD: {printf("%s\t%.1Lf\t%s\n", "REAL", yylval.num.frac, "LONGDOUBLE"); break;}
+                        case I:     {printf("%s\t%lld\t%s\n", "INTEGER", yylval.num.integer, "INT"); break;}
+                        case U:     {printf("%s\t%lld\t%s\n", "INTEGER", yylval.num.integer, "UNSIGNED,INT"); break;}
+                        case UL:    {printf("%s\t%lld\t%s\n", "INTEGER", yylval.num.integer, "UNSIGNED,LONG"); break;}
+                        case ULL:   {printf("%s\t%lld\t%s\n", "INTEGER", yylval.num.integer, "UNSIGNED,LONGLONG"); break;}
+                        case L:     {printf("%s\t%lld\t%s\n", "INTEGER", yylval.num.integer, "LONG"); break;}
+                        case LL:    {printf("%s\t%lld\t%s\n", "INTEGER", yylval.num.integer, "LONGLONG"); break;}
+                        case F:     {printf("%s\t%Lg\t%s\n", "REAL", yylval.num.frac, "FLOAT"); break;}
+                        case D:     {printf("%s\t%Lg\t%s\n", "REAL", yylval.num.frac, "DOUBLE"); break;}
+                        case LD:    {printf("%s\t%Lg\t%s\n", "REAL", yylval.num.frac, "LONGDOUBLE"); break;}
                         default: break; 
                     } break;                     
                 }
-                case 0 ... 255: {printf("%s\t%d\t%c\n", file_name, line_num, t); break;}
+                case 0 ... 255:     {printf("%s\t%d\t%c\n", file_name, line_num, t); break;}
                 default: exit(2); 
             }
         }
