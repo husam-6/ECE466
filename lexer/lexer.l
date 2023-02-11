@@ -4,40 +4,19 @@
 #include "lexer.h"
 #include "stdio.h"
 #include "stdlib.h"
+#include "ctype.h"
 #include "math.h"
 
 YYSTYPE yylval;
 
-void file_start(char* yytext){
-    // Extract line number and file name
-    char* str_mod = strdup(yytext);
-    char* token = strtok(str_mod, " ");
-    
-    // Split file and loop through each element
-    int i = 0; 
-    while( token != NULL ) {
-        // Save line number
-        if (i == 1){
-            line_num = atoi(token);
-        }
-        // Save file name
-        else if (i == 2){
-            file_name = token+1;
-            file_name[strlen(file_name)-1] = '\0'; 
-        }
-        token = strtok(NULL, " ");
-        i++; 
-    }
-}
+// Function to parse a directive indicating a new file 
+void file_start(char* yytext);
 
 // Function to handle hex fractions (with p-2 at the end for example)
-long double hex_frac(char *yytext){
-    char *hex_p; 
-    long double hex_base  = strtoull(yytext, &hex_p, 16); 
-    int tmp = atoi(hex_p + 1);
-    return hex_base * pow(2, tmp);
-}
+long double hex_frac(char *yytext);
 
+// Convert inputted string for storage
+int to_bytes(char * inp);
 
 %}
 %%
@@ -83,19 +62,24 @@ _Imaginary              {return _IMAGINARY;}
 
 [_A-Za-z]+[A-Za-z_0-9]*                                     {yylval.ident = strdup(yytext); return IDENT;}
 
-[L]?["].*\\x[^0-9a-fA-F].*["]|[L]?["].*\\x[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F].*["]|[L]?["].*\\x["]     {fprintf(stderr, "Warning: Invalid Hex Sequence\n");}
-[L]?["]([^"\\\n]|\\[\\\'\"\?abfnrtvx0-7]|\\\n)*["]                                      {
-                                                                                            yytext = yytext + 1; yytext[strlen(yytext)-1] = '\0';
-                                                                                            yylval.str.content = strdup(yytext);
-                                                                                            // yylval.str.content = unescape_str(yytext); 
-                                                                                            yylval.str.length = strlen(yytext);
-                                                                                            return STRING;
-                                                                                        }
+
+[L]?["].*\\x[^0-9a-fA-F].*["]|[L]?["].*\\x["]                   {fprintf(stderr, "Error: Invalid Hex Sequence\n");}
+[L]?["].*\\x[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F].*["]              {fprintf(stderr, "Warning: Invalid Hex Sequence Out of Bounds\n");}
+[L]?["].*\\[^\\\'\"\?abfnrtvx0-7].*["]                          {fprintf(stderr, "Error: Invalid String\n");}
+[L]?["](\\\"|[^"\n]|\\\n)*["]                                      {
+                                                                    yytext = yytext + 1; yytext[strlen(yytext)-1] = '\0';
+                                                                    char output[strlen(yytext)]; 
+                                                                    // str_to_bytes(yytext, output);
+                                                                    // yylval.str.content = output;
+                                                                    yylval.str.content = yytext;
+                                                                    yylval.str.length = strlen(output);
+                                                                    return STRING;
+                                                                }
 
 
 [L]?['](\\[\\\'\"\?abfnrtv]|[^\\]+|\\[0-7][0-7]?[0-7]?|\\x[0-9a-fA-F][0-9a-fA-F]?)[']   {
                                                                                             yytext = yytext + 1; yytext[strlen(yytext)-1] = '\0'; 
-                                                                                            yylval.charlit = strdup(yytext);
+                                                                                            yylval.charlit = to_bytes(yytext);
                                                                                             return CHARLIT;
                                                                                         }
 [L]?['].+[']                                       {fprintf(stderr, "Error: Invalid Char Sequence\n"); exit(2);}
@@ -165,6 +149,106 @@ _Imaginary              {return _IMAGINARY;}
 %%
 
 
+void file_start(char* yytext){
+    // Extract line number and file name
+    char* str_mod = strdup(yytext);
+    char* token = strtok(str_mod, " ");
+    
+    // Split file and loop through each element
+    int i = 0; 
+    while( token != NULL ) {
+        // Save line number
+        if (i == 1){
+            line_num = atoi(token);
+        }
+        // Save file name
+        else if (i == 2){
+            file_name = token+1;
+            file_name[strlen(file_name)-1] = '\0'; 
+        }
+        token = strtok(NULL, " ");
+        i++; 
+    }
+}
+
+// Function to handle hex fractions (with p-2 at the end for example)
+long double hex_frac(char *yytext){
+    char *hex_p; 
+    long double hex_base  = strtoull(yytext, &hex_p, 16); 
+    int tmp = atoi(hex_p + 1);
+    return hex_base * pow(2, tmp);
+}
+
+void slice(const char *str, char *result, size_t start, size_t end){
+        strncpy(result, str + start, end - start);
+        result[end-start + 1] = '\0';
+    }
+
+// Convert inputted string for storage
+int to_bytes(char * inp){ 
+    // If escape sequence...
+    if (inp[0] == '\\'){
+        inp += 1;
+        // Hex sequences
+        if ((1 < strlen(inp)) && (inp[0] == 'x' || inp[0] == 'X')){
+                int tmp;
+                sscanf(inp, "%2x", &tmp);
+                return tmp;
+            }
+        // Octal first digit
+        else if ((1 < strlen(inp)) && inp[0] <= 7 && inp[0] >= 0){
+                int tmp;
+                sscanf(inp, "%3o", &tmp);
+                return tmp;
+            }
+        // Otherwise store escape character code
+        else  {
+            switch (inp[0]){
+                case 'a':    {return '\a';}
+                case 'b':    {return '\b';}
+                case 'f':    {return '\f';}
+                case 'n':    {return '\n';}
+                case 'r':    {return '\r';}
+                case 't':    {return '\t';}
+                case 'v':    {return '\v';}
+                case 0:      {return '\0';}
+                case '\'':   {return '\'';}
+                case '\\':   {return '\\';}
+                case '\"':   {return '\"';}
+                default:     {fprintf(stderr, "BAD: INVALID ESCAPED CHAR"); exit(2);}
+            }
+        }
+    }
+
+    // Regular char
+    return (int) inp[0];
+}
+
+char * to_char(char inp){
+    int j = 0; 
+    char * o; 
+    switch (inp){
+        case '\a':    {return "\\a";}
+        case '\b':    {return "\\b";}
+        case '\f':    {return "\\f";}
+        case '\n':    {return "\\n";}
+        case '\r':    {return "\\r";}
+        case '\t':    {return "\\t";}
+        case '\v':    {return "\\v";}
+        case '\0':    {return "\\0";}
+        case '\'':    {return "\\'";}
+        case '\\':    {return "\\\\";}
+        case '\"':    {return "\\\"";}
+    }
+    if (inp >= 33 && inp <= 126){
+        asprintf(&o, "%c", inp);
+        return o; 
+    }
+    asprintf(&o, "\\%03o", inp);
+    return o; 
+}
+
+
 
 int main() {
     int t;
@@ -217,7 +301,7 @@ int main() {
                 case STRING: {printf("%s\t%d\t%s\t%s\n", file_name, line_num, "STRING", yylval.str.content); break;}
 
                 // Char Literal
-                case CHARLIT: {printf("%s\t%d\t%s\t%s\n", file_name, line_num, "CHARLIT", yylval.charlit); break;}
+                case CHARLIT: {printf("%s\t%d\t%s\t%s\n", file_name, line_num, "CHARLIT", to_char(yylval.charlit)); break;}
 
                 // Special multi-byte chars
                 case INDSEL:        {printf("%s\t%d\t%s\n", file_name, line_num, "INDSEL"); break;}

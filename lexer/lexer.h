@@ -30,7 +30,7 @@ struct string_literal {
 // yylval
 typedef union {
           struct string_literal str;
-          char *charlit;
+          char charlit;
           char *ident;
           struct number num; 
 } YYSTYPE;
