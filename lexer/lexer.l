@@ -16,7 +16,10 @@ void file_start(char* yytext);
 long double hex_frac(char *yytext);
 
 // Convert inputted string for storage
-int to_bytes(char * inp);
+char to_bytes(char * inp, int * jump);
+
+// Convert back to string
+char * to_char(unsigned char inp);
 
 %}
 %%
@@ -60,7 +63,7 @@ _Bool                   {return _BOOL;}
 _Complex                {return _COMPLEX;}
 _Imaginary              {return _IMAGINARY;}
 
-[_A-Za-z]+[A-Za-z_0-9]*                                     {yylval.ident = strdup(yytext); return IDENT;}
+[_A-Za-z]+[A-Za-z_0-9]*                             {yylval.ident = strdup(yytext); return IDENT;}
 
 
 [L]?["].*\\x[^0-9a-fA-F].*["]|[L]?["].*\\x["]                   {fprintf(stderr, "Error: Invalid Hex Sequence\n");}
@@ -68,18 +71,32 @@ _Imaginary              {return _IMAGINARY;}
 [L]?["].*\\[^\\\'\"\?abfnrtvx0-7].*["]                          {fprintf(stderr, "Error: Invalid String\n");}
 [L]?["](\\\"|[^"\n]|\\\n)*["]                                      {
                                                                     yytext = yytext + 1; yytext[strlen(yytext)-1] = '\0';
-                                                                    char output[strlen(yytext)]; 
-                                                                    // str_to_bytes(yytext, output);
-                                                                    // yylval.str.content = output;
-                                                                    yylval.str.content = yytext;
-                                                                    yylval.str.length = strlen(output);
+                                                                    char output[strlen(yytext)+1]; 
+                                                                    int j = 0; 
+                                                                    int jump = 0; 
+                                                                    // printf("YYTEXT = %s\n", yytext);
+                                                                    for (size_t i = 0; i < strlen(yytext);){
+                                                                        output[j] = to_bytes(&yytext[i], &jump);
+                                                                        // printf("CHAR = %hhx\n", output[j]);
+                                                                        i+=jump; 
+                                                                        j++;
+                                                                    } 
+                                                                    output[j] = '\0';
+
+                                                                    yylval.str.content = malloc(j+1*sizeof(char));
+                                                                    memcpy(yylval.str.content, output, j+1);
+                                                                    yylval.str.length = j;
+                                                                    
                                                                     return STRING;
                                                                 }
 
 
+
 [L]?['](\\[\\\'\"\?abfnrtv]|[^\\]+|\\[0-7][0-7]?[0-7]?|\\x[0-9a-fA-F][0-9a-fA-F]?)[']   {
                                                                                             yytext = yytext + 1; yytext[strlen(yytext)-1] = '\0'; 
-                                                                                            yylval.charlit = to_bytes(yytext);
+                                                                                            int jump = 0; 
+                                                                                            yylval.charlit = to_bytes(yytext, &jump);
+                                                                                            if ((size_t) jump > strlen(yytext)) {fprintf(stderr, "ERROR: IDK\n"); exit(2);}
                                                                                             return CHARLIT;
                                                                                         }
 [L]?['].+[']                                       {fprintf(stderr, "Error: Invalid Char Sequence\n"); exit(2);}
@@ -185,24 +202,30 @@ void slice(const char *str, char *result, size_t start, size_t end){
     }
 
 // Convert inputted string for storage
-int to_bytes(char * inp){ 
+char to_bytes(char * inp, int * jump){ 
     // If escape sequence...
     if (inp[0] == '\\'){
         inp += 1;
         // Hex sequences
-        if ((1 < strlen(inp)) && (inp[0] == 'x' || inp[0] == 'X')){
+        if ((inp[0] == 'x' || inp[0] == 'X')){
+                inp += 1;
                 int tmp;
-                sscanf(inp, "%2x", &tmp);
-                return tmp;
+                sscanf(inp, "%2x%n", &tmp, jump);
+                (*jump)+=2;
+                return (char) tmp;
             }
         // Octal first digit
-        else if ((1 < strlen(inp)) && inp[0] <= 7 && inp[0] >= 0){
+        else if (inp[0] <= '7' && inp[0] >= '0'){
+                // printf("IM HERE %s\n", inp);
                 int tmp;
-                sscanf(inp, "%3o", &tmp);
-                return tmp;
+                sscanf(inp, "%3o%n", &tmp, jump);
+                (*jump)++;
+                // printf("%d\n", tmp);
+                return (char) tmp;
             }
         // Otherwise store escape character code
         else  {
+            *jump = 2; 
             switch (inp[0]){
                 case 'a':    {return '\a';}
                 case 'b':    {return '\b';}
@@ -211,22 +234,24 @@ int to_bytes(char * inp){
                 case 'r':    {return '\r';}
                 case 't':    {return '\t';}
                 case 'v':    {return '\v';}
-                case 0:      {return '\0';}
+                case '0':    {return '\0';}
                 case '\'':   {return '\'';}
                 case '\\':   {return '\\';}
                 case '\"':   {return '\"';}
+                case '\?':   {return '\?';}
                 default:     {fprintf(stderr, "BAD: INVALID ESCAPED CHAR"); exit(2);}
             }
         }
     }
 
     // Regular char
-    return (int) inp[0];
+    (*jump) = 1; 
+    return inp[0];
 }
 
-char * to_char(char inp){
-    int j = 0; 
-    char * o; 
+char * to_char(unsigned char inp){
+    char * o;
+    o = "bruh";
     switch (inp){
         case '\a':    {return "\\a";}
         case '\b':    {return "\\b";}
@@ -239,12 +264,15 @@ char * to_char(char inp){
         case '\'':    {return "\\'";}
         case '\\':    {return "\\\\";}
         case '\"':    {return "\\\"";}
+        case '\?':    {return "\?";}
     }
     if (inp >= 33 && inp <= 126){
         asprintf(&o, "%c", inp);
         return o; 
     }
+    // printf("YIKES MIKE SUCKS %hhx\n", inp);
     asprintf(&o, "\\%03o", inp);
+    // printf("YIKES MIKE SUCKS %s\n", o);
     return o; 
 }
 
@@ -298,7 +326,16 @@ int main() {
                 case IDENT:   {printf("%s\t%d\t%s\t%s\n", file_name, line_num, "IDENT", yylval.ident); break;}
 
                 // Strings
-                case STRING: {printf("%s\t%d\t%s\t%s\n", file_name, line_num, "STRING", yylval.str.content); break;}
+                case STRING: {
+                    printf("%s\t%d\t%s\t", file_name, line_num, "STRING");
+                    for (int i = 0; i < yylval.str.length; i++){
+                        // printf("%hhx", yylval.str.content[i]);
+                        char * tmp = to_char(yylval.str.content[i]);
+                        printf("%s", tmp);
+                    }
+                    printf("\n");
+                    break;
+                }
 
                 // Char Literal
                 case CHARLIT: {printf("%s\t%d\t%s\t%s\n", file_name, line_num, "CHARLIT", to_char(yylval.charlit)); break;}
