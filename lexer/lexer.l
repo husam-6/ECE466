@@ -270,9 +270,7 @@ char * to_char(unsigned char inp){
         asprintf(&o, "%c", inp);
         return o; 
     }
-    // printf("YIKES MIKE SUCKS %hhx\n", inp);
     asprintf(&o, "\\%03o", inp);
-    // printf("YIKES MIKE SUCKS %s\n", o);
     return o; 
 }
 
