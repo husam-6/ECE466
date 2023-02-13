@@ -40,7 +40,3 @@ extern YYSTYPE yylval;
 // Globals to store file name and line number
 char * file_name;
 int line_num = 1;
-
-// To store running string
-char buf[2048];
-int i = 0;
