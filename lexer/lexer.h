@@ -1,3 +1,5 @@
+#define YYSTYPE_IS_DECLARED 1;
+
 // Number type struct
 enum num_type{
         U = 0,
