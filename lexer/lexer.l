@@ -159,12 +159,17 @@ _Imaginary              {return _IMAGINARY;}
 
 [()\[\]{},\.;:\?'"!\|\/\^&\*\+\-><~_\$%#=]  {return yytext[0];}
 
+[ ]*                    
+
+\/\/.*\n                
+
+\/\*.*\*\/             
+
 \n                      {line_num++;}
 .                       {fprintf(stderr,"%s\t%d\tError: unknown token %s\n",file_name, line_num, yytext);}
 
 
 %%
-
 
 void file_start(char* yytext){
     // Extract line number and file name
