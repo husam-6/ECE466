@@ -16,12 +16,13 @@
 %token INT LONG REGISTER RESTRICT RETURN SHORT SIGNED SIZEOF STATIC
 %token STRUCT SWITCH TYPEDEF UNION UNSIGNED VOID VOLATILE WHILE _BOOL
 %token _COMPLEX _IMAGINARY
-%start expression
+%start expression_list
 %%
 
 primary_expression:   IDENT {printf("FOUND IDENT\n");}
       |               NUMBER {printf("FOUND NUM\n");}
-      |               STRING
+      |               STRING  {printf("FOUND STRING\n");}
+      |               CHARLIT 
       |               '(' expression ')'
 ;
 
@@ -30,19 +31,19 @@ postfix_expression:  primary_expression
       // |              postfix_expression '(' argument_expression_listopt ')'
       |              postfix_expression '.' IDENT
       |              postfix_expression INDSEL IDENT
-      |              postfix_expression PLUSPLUS
+      |              postfix_expression PLUSPLUS {printf("PlusPlus\n");}
       |              postfix_expression MINUSMINUS
       //|              '(' type_name ')' '{' initializer_list '}'
       //|              '(' type_name ')' '{' initializer_list ',' '}'
 ;
 
-// argument_expression_list: assignment_expression
-//       |              argument_expression_list ',' assignment_expression
-// ;
+argument_expression_list: assignment_expression
+      |              argument_expression_list ',' assignment_expression
+;
 
 unary_expression: postfix_expression
       |              PLUSPLUS unary_expression
-      |              MINUSMINUS unary_expression
+      |              MINUSMINUS unary_expression {printf("MinusMinus\n");}
       |              unary_operator cast_expression      
       |              SIZEOF '(' unary_expression ')'
       //|               SIZEOF '(' type_name ')'
@@ -85,7 +86,7 @@ relational_expression: shift_expression
 
 equality_expression: relational_expression
       |              equality_expression EQEQ relational_expression
-      |              equality_expression NOTEQ relational_expression
+      |              equality_expression NOTEQ relational_expression       {printf("NOTEQ\n");}
 ;
 
 AND_expression:      equality_expression
@@ -108,11 +109,11 @@ logical_OR_expression:  logical_AND_expression
       |              logical_OR_expression LOGOR logical_AND_expression
 ;
 
-conditional_expression: logical_OR_expression
-      |              logical_OR_expression '?' expression ':' conditional_expression
+conditional_expression: logical_OR_expression                                        {printf("LOGOR\n");}
+      |              logical_OR_expression '?' expression ':' conditional_expression {printf("Testing ternary\n");}
 ;
 
-assignment_expression:  conditional_expression
+assignment_expression:  conditional_expression 
       |              unary_expression assignment_operator assignment_expression
 ;
 
@@ -130,18 +131,18 @@ assignment_operator: '='
 ;
 
 
-expression:           assignment_expression ';'                 {printf("START RULE REACHED\n");}
-      |               expression ',' assignment_expression ';'  {printf("START RULE REACHED\n");}
+expression:           assignment_expression 
+      |               expression ',' assignment_expression  
 ;
 
+
+expression_list:     expression ';'                                {printf("START RULE REACHED\n");}
+      |              expression_list expression ';'                {printf("START RULE REACHED\n");}
+;
 // constant_expression: conditional_expression
 //;
 %%
 
 int main(int argc, char **argv){
-   int t; 
-   while((t=yyparse())){
-      printf("Parsing line...\n");
-   }
-   // yyparse();
+   yyparse();
 }
