@@ -140,8 +140,8 @@ _Imaginary              {return _IMAGINARY;}
 \>\>=       {return SHREQ;}
 \<\<        {return SHL;}
 \>\>        {return SHR;}
-\>=         {return LTEQ;}
-\<=         {return GTEQ;}
+\<=         {return LTEQ;}
+\>=         {return GTEQ;}
 ==          {return EQEQ;}
 !=          {return NOTEQ;}
 &&          {return LOGAND;}
@@ -161,7 +161,7 @@ _Imaginary              {return _IMAGINARY;}
 
 [ ]*                    
 
-\/\/.*\n                
+\/\/.*\n                {line_num++;}
 
 \/\*.*\*\/             
 
