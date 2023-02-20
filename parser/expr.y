@@ -17,12 +17,13 @@
 %token STRUCT SWITCH TYPEDEF UNION UNSIGNED VOID VOLATILE WHILE _BOOL
 %token _COMPLEX _IMAGINARY
 %start expression_list
+
 %%
 
-primary_expression:   IDENT {printf("FOUND IDENT\n");}
-      |               NUMBER {printf("FOUND NUM\n");}
-      |               STRING  {printf("FOUND STRING\n");}
-      |               CHARLIT 
+primary_expression:   IDENT         //{Make new identifier node}
+      |               NUMBER        {printf("FOUND NUM\n");}
+      |               STRING        {printf("FOUND STRING\n");}
+      |               CHARLIT       
       |               '(' expression ')'
 ;
 
@@ -37,11 +38,12 @@ postfix_expression:  primary_expression
       //|              '(' type_name ')' '{' initializer_list ',' '}'
 ;
 
-argument_expression_list: assignment_expression
-      |              argument_expression_list ',' assignment_expression
-;
+// argument_expression_list: assignment_expression
+//       |              argument_expression_list ',' assignment_expression
+// ;
 
 unary_expression: postfix_expression
+      |              function_call
       |              PLUSPLUS unary_expression
       |              MINUSMINUS unary_expression {printf("MinusMinus\n");}
       |              unary_operator cast_expression      
@@ -114,7 +116,7 @@ conditional_expression: logical_OR_expression                                   
 ;
 
 assignment_expression:  conditional_expression 
-      |              unary_expression assignment_operator assignment_expression
+      |              unary_expression assignment_operator assignment_expression //{make new binary opp node left pointer = $1, $3 = right}
 ;
 
 assignment_operator: '='
@@ -131,10 +133,14 @@ assignment_operator: '='
 ;
 
 
-expression:           assignment_expression 
+expression:           assignment_expression
       |               expression ',' assignment_expression  
 ;
 
+function_call:       postfix_expression '(' arguments ')'
+
+arguments:           //EMPTY
+      |              expression
 
 expression_list:     expression ';'                                {printf("START RULE REACHED\n");}
       |              expression_list expression ';'                {printf("START RULE REACHED\n");}
