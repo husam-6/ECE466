@@ -1,4 +1,11 @@
-#define YYSTYPE_IS_DECLARED 1;
+#pragma once 
+#ifndef LEXER_H
+#define LEXER_H
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <math.h>
 
 // Number type struct
 enum num_type{
@@ -29,16 +36,17 @@ struct string_literal {
     int length; 
 };
 
-// yylval
-typedef union {
-          struct string_literal str;
-          char charlit;
-          char *ident;
-          struct number num; 
-} YYSTYPE;
+// // yylval
+// typedef union {
+//           struct string_literal str;
+//           char charlit;
+//           char *ident;
+//           struct number num; 
+// } YYSTYPE;
 
-extern YYSTYPE yylval;
+// extern YYSTYPE yylval;
 
-// Globals to store file name and line number
+// Global to store file name
 char * file_name;
-int line_num = 1;
+
+#endif /* LEXER_H */

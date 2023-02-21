@@ -1,15 +1,15 @@
-all: expr.tab.c lex.yy.c 
-	gcc expr.tab.c lex.yy.c -ll
+all: parser.tab.c lex.yy.c 
+	gcc lex.yy.c parser.tab.c -ll
 
-expr.tab.c: ./parser/expr.y
-	bison -d --report=all ./parser/expr.y
+parser.tab.c: ./parser/parser.y
+	bison -d --report=all ./parser/parser.y
 
-lex.yy.c: ./lexer/lexer.l expr.tab.c
+lex.yy.c: ./lexer/lexer.l parser.tab.c
 	flex ./lexer/lexer.l
 
 
 clean: 
 	rm lex.yy.c
-	rm expr.tab.c
-	rm expr.tab.h
+	rm parser.tab.c
+	rm parser.tab.h
 	rm a.out

@@ -1,11 +1,8 @@
 %option noinput nounput noyywrap nodefault
 %{
-#include "lexer/lexer.h"
-#include "expr.tab.h"
-#include "stdio.h"
-#include "stdlib.h"
-#include "ctype.h"
-#include "math.h"
+// #include "lexer/lexer.h"
+#include "parser.tab.h"
+
 
 YYSTYPE yylval;
 
@@ -20,6 +17,9 @@ char to_bytes(char * inp, int * jump);
 
 // Convert back to string
 char * to_char(unsigned char inp);
+
+// Global for line number
+int line_num = 1;
 
 %}
 %%
