@@ -1,15 +1,21 @@
+vpath %.tab.h build
+vpath %.tab.c build
+vpath %.yy.c build
+vpath %.h include
+vpath %.c src
+vpath %.y src
+vpath %.l src
+CXXFLAGS=-I./include -I./build
+BUILD = build
+
 all: parser.tab.c lex.yy.c 
-	gcc lex.yy.c parser.tab.c -ll
+	gcc $(CXXFLAGS) $^ -ll -o build/a.out
 
-parser.tab.c: ./parser/parser.y
-	bison -d --report=all ./parser/parser.y
+$(BUILD)/parser.tab.c: parser.y
+	bison -d --report=all --file-prefix=build/parser $^
 
-lex.yy.c: ./lexer/lexer.l parser.tab.c
-	flex ./lexer/lexer.l
-
+$(BUILD)/lex.yy.c: lexer.l parser.tab.c
+	flex --outfile=build/lex.yy.c $<
 
 clean: 
-	rm lex.yy.c
-	rm parser.tab.c
-	rm parser.tab.h
-	rm a.out
+	rm build/*

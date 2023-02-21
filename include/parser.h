@@ -20,8 +20,8 @@ enum op_type{
 enum node_type{
     FN_CALL = 0,
     UNARY_NODE,
-    BINOP_NODE,
-    TERNOP_NODE,
+    BINARY_NODE,
+    TERNARY_NODE,
     NUM,
     IDENT_NODE,
     CHAR_LIT,
@@ -60,30 +60,30 @@ struct astnode_fncall {
     struct astnode *p[100];
 };
 
-// Numbers
-struct astnode_num {
-    enum num_type type; 
-    union {
-        unsigned long long integer; 
-        long double frac; 
-    };
-};
+// // Numbers
+// struct astnode_num {
+//     enum num_type type; 
+//     union {
+//         unsigned long long integer; 
+//         long double frac; 
+//     };
+// };
 
-// Identifiers 
-struct astnode_ident {
-    char * ident; 
-};
+// // Identifiers 
+// struct astnode_ident {
+//     char * ident; 
+// };
 
-// Char Literal
-struct astnode_char_lit {
-    char c; 
-};
+// // Char Literal
+// struct astnode_char_lit {
+//     char c; 
+// };
 
-// String
-struct astnode_str_lit {
-    char * str; 
-    int len;
-};
+// // String
+// struct astnode_str_lit {
+//     char * str; 
+//     int len;
+// };
 
 
 // Node struct
@@ -91,12 +91,12 @@ struct astnode {
     enum node_type type;
     union {
             struct astnode_unary unary;
-            struct astnode_binary binop;
-            struct astnode_ternary ternop;
-            struct astnode_num num;
-            struct astnode_ident ident;
-            struct astnode_char_lit char_lit;
-            struct astnode_str_lit str_lit;
+            struct astnode_binary binary;
+            struct astnode_ternary ternary;
+            struct number num;
+            char *ident;
+            char char_lit;
+            struct string_literal str_lit;
             struct astnode_fncall fncall;
             // struct astnode_logop logop;
             // struct astnode_assigncomp assigncomp;
