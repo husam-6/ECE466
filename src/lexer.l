@@ -7,7 +7,7 @@
 YYSTYPE yylval;
 
 // Global for line number
-line_num = 1;
+int line_num = 1;
 
 %}
 %%
