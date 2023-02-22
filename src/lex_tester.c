@@ -1,5 +1,10 @@
+// Testing file for lexer - only to be used to verify that lexical analysis
+// captures information accurately 
+
 #include "lexer.h"
 #include "parser.tab.h"
+
+
 
 int main() {
     int t;

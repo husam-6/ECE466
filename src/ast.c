@@ -1,4 +1,6 @@
+// Helper file for functions related to bison parser
 #include "parser.h"
+
 
 // ast node helper function
 struct astnode * make_ast_node(int type) {

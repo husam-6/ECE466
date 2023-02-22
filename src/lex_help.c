@@ -1,3 +1,5 @@
+// Helper file for functions related to flex lexer
+
 #include "lexer.h"
 #include <string.h>
 
