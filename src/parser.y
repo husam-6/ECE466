@@ -5,8 +5,6 @@
 
    // Function prototypes
    void yyerror(const char* msg);
-   void create_unary(struct astnode *node, int op_type, int operator);
-   void create_binary(struct astnode *node, int op_type, int operator);
    int yylex();
 }
 
@@ -21,6 +19,7 @@
 %start expression_list
 
 %union {
+      int op_type; 
       struct string_literal str;
       char charlit;
       char *ident;
@@ -29,13 +28,11 @@
 };
 
 
-/* %union {
-}; */
-
+%type <ident> IDENT
 %type <astnode_p> primary_expression
 %type <astnode_p> postfix_expression
 %type <astnode_p> unary_expression
-%type <charlit> unary_operator
+%type <op_type> unary_operator
 %type <astnode_p> cast_expression
 %type <astnode_p> multiplicative_expression
 %type <astnode_p> additive_expression
@@ -60,30 +57,26 @@
 // **** Preorder Traversal ****
 primary_expression:   IDENT                        {
                                                       // Identifier node
-                                                      struct astnode *node = (struct astnode *)malloc(sizeof(struct astnode));
-                                                      node->type = IDENT_NODE; 
+                                                      struct astnode *node = make_ast_node(IDENT_NODE);
                                                       node->ident = yylval.ident;
                                                       $$ = node; 
                                                    }       
       |               NUMBER                       {
                                                       // Number node (struct stays the same)
-                                                      struct astnode *node = (struct astnode *)malloc(sizeof(struct astnode));
-                                                      node->type = NUM; 
+                                                      struct astnode *node = make_ast_node(NUM);
                                                       node->num = yylval.num;
                                                       $$ = node; 
                                                    } 
       |               STRING                       {
                                                       // String node
-                                                      struct astnode *node = (struct astnode *)malloc(sizeof(struct astnode));
-                                                      node->type = STR_LIT; 
+                                                      struct astnode *node = make_ast_node(STR_LIT);
                                                       node->str_lit.content = yylval.str.content;
                                                       node->str_lit.length = yylval.str.length;
                                                       $$ = node; 
                                                    } 
       |               CHARLIT                      {
                                                       // Charlit node
-                                                      struct astnode *node = (struct astnode *)malloc(sizeof(struct astnode));
-                                                      node->type = CHAR_LIT; 
+                                                      struct astnode *node = make_ast_node(CHAR_LIT);
                                                       node->char_lit = yylval.charlit;
                                                       $$ = node; 
                                                    } 
@@ -94,61 +87,41 @@ primary_expression:   IDENT                        {
 
 postfix_expression:  primary_expression
       |              postfix_expression '[' expression ']'  {
+                                                                  // Addition node
+                                                                  struct astnode *add = create_binary(BINOP,'+', $1, $3);
                                                                   //Deref node
-                                                                  struct astnode *deref = (struct astnode *)malloc(sizeof(struct astnode));
-                                                                  create_unary(deref, DEREF,'*');
-                                                                  
-                                                                  //Add node after
-                                                                  struct astnode *add = (struct astnode *)malloc(sizeof(struct astnode));
-                                                                  deref->unary.expr = add;
-                                                                  create_binary(add, BINOP,'+');
-
-                                                                  // Assign addition node children
-                                                                  add->binary.left = $1;
-                                                                  add->binary.right = $3;
-
+                                                                  struct astnode *deref = create_unary(DEREF, '*', add);
                                                                   $$ = deref;
                                                             }
 
       // |              postfix_expression '(' argument_expression_listopt ')'
       |              postfix_expression '.' IDENT           {
-                                                                  //MIGHT HAVE TO FIX BASED ON OUTPUT FILE
-                                                                  //BINARY but on same line
-                                                                  // struct astnode *select = (struct astnode *)malloc(sizeof(struct astnode));  
-                                                                  // create_binary(select, SELECT, '.')
-                                                                  // select->binary.left = $1;
-                                                                  // select->binary.right = $3;
-                                                                  // $$ = select;
+                                                                  // Ident node
+                                                                  struct astnode *ident = make_ast_node(IDENT_NODE);
+                                                                  ident->ident = $3;
+
+                                                                  struct astnode *select = create_binary(SELECT, '.', $1, ident);
+                                                                  $$ = select;
                                                             
                                                             }
       |              postfix_expression INDSEL IDENT        {
-                                                                  //MIGHT HAVE TO FIX BASED ON OUTPUT FILE
-                                                                  //BINARY but on same line
-                                                                  // struct astnode *indselect = (struct astnode *)malloc(sizeof(struct astnode));  
-                                                                  // indselect->type = BINARY_NODE; 
-                                                                  // indselect->binary.op_type = INDIRECT_SELECT; 
-                                                                  // indselect->binary.operator = INDSEL;
-                                                                  // indselect->binary.left = $1;
-                                                                  // indselect->binary.right = $3;
-                                                                  // $$ = indselect;
+                                                                  struct astnode *indselect = (struct astnode *)malloc(sizeof(struct astnode));  
+
+                                                                  // Ident node
+                                                                  struct astnode *ident = make_ast_node(IDENT_NODE);
+                                                                  ident->ident = $3;
+
+                                                                  create_binary(INDIRECT_SELECT, INDSEL, $1, ident);
+                                                                  $$ = indselect;
                                                             }
       |              postfix_expression PLUSPLUS            {
-                                                                  struct astnode *plusplus = (struct astnode *)malloc(sizeof(struct astnode)); 
-                                                                  // plusplus->type = UNARY_NODE; 
-                                                                  // plusplus->unary.op_type = UNARY_OP; 
-                                                                  // plusplus->unary.operator = PLUSPLUS;
-                                                                  create_unary(plusplus, UNARY_OP, PLUSPLUS);
-                                                                  plusplus->unary.expr = $1;
+                                                                  // Create node for post plus plus operation
+                                                                  struct astnode *plusplus = create_unary(UNARY_OP, PLUSPLUS, $1);
                                                                   $$ = plusplus;
                                                             }
       |              postfix_expression MINUSMINUS          {
-
-                                                                  struct astnode *minusminus = (struct astnode *)malloc(sizeof(struct astnode)); 
-                                                                  // minusminus->type = UNARY_NODE; 
-                                                                  // minusminus->unary.op_type = UNARY_OP; 
-                                                                  // minusminus->unary.operator = MINUSMINUS;
-                                                                  create_unary(minusminus, UNARY_OP, MINUSMINUS);
-                                                                  minusminus->unary.expr = $1;
+                                                                  // Create node for minus minus post operation
+                                                                  struct astnode *minusminus = create_unary(UNARY_OP, MINUSMINUS, $1);
                                                                   $$ = minusminus;
                                                             }
       //|              '(' type_name ')' '{' initializer_list '}'
@@ -162,62 +135,52 @@ postfix_expression:  primary_expression
 unary_expression:    postfix_expression
       |              function_call                          
       |              PLUSPLUS unary_expression              {
-                                                                  struct astnode *plus_eq_1 = (struct astnode *)malloc(sizeof(struct astnode)); 
-                                                                  create_binary(plus_eq_1, ASSIGNMENT_COMPOUND, PLUSEQ);
-
-                                                                  plus_eq_1->binary.left = $2;
-
-
                                                                   //Make dummy node with the number 1 in it
-                                                                  struct astnode *one = (struct astnode *)malloc(sizeof(struct astnode)); 
-                                                                  one->type = NUM; 
+                                                                  struct astnode *one = make_ast_node(NUM);
                                                                   one->num.type = I; 
                                                                   one->num.integer = 1;
 
+                                                                  // Set up binary node for ++expr
+                                                                  struct astnode *plus_eq_1 = create_binary(ASSIGNMENT_COMPOUND, PLUSEQ, $2, one);
 
-                                                                  plus_eq_1->binary.right = one;
                                                                   $$ = plus_eq_1;
                                                             }
       |              MINUSMINUS unary_expression            {
-                                                                  struct astnode *minus_eq_1 = (struct astnode *)malloc(sizeof(struct astnode)); 
-                                                                  create_binary(minus_eq_1, ASSIGNMENT_COMPOUND, MINUSEQ);
-                                                                  minus_eq_1->binary.left = $2;
-
+                                                                  // Set up unary node for --expr
 
                                                                   //Make dummy node with the number 1 in it
-                                                                  struct astnode *one = (struct astnode *)malloc(sizeof(struct astnode)); 
-                                                                  one->type = NUM; 
+                                                                  struct astnode *one = make_ast_node(NUM); 
                                                                   one->num.type = I; 
                                                                   one->num.integer = 1;
 
-
-                                                                  minus_eq_1->binary.right = one;
+                                                                  struct astnode *minus_eq_1 = create_binary(ASSIGNMENT_COMPOUND, MINUSEQ, $2, one);; 
                                                                   $$ = minus_eq_1;
                                                             }
                                                             
       |              unary_operator cast_expression         {
-                                                                  //Special Case For Deref???
-                                                                  struct astnode *un_op = (struct astnode *)malloc(sizeof(struct astnode)); 
-                                                                  create_unary(un_op, UNARY_OP, $1);
-                                                                  un_op->unary.expr = $2;
-                                                                  $$ = un_op;               
+                                                                  struct astnode *un_op;
+                                                                  //Special Case For Deref
+                                                                  if ($1 == '*')
+                                                                        un_op = create_unary(DEREF, $1, $2);
+                                                                  else
+                                                                        un_op = create_unary(UNARY_OP, $1, $2);
+                                                                  
+                                                                  $$ = un_op;            
 
                                                             }    
       |              SIZEOF '(' unary_expression ')'        {
-                                                                  struct astnode *size_of = (struct astnode *)malloc(sizeof(struct astnode)); 
-                                                                  create_unary(size_of, SIZEOF_OP, SIZEOF);
-                                                                  size_of->unary.expr = $3;
+                                                                  struct astnode *size_of = create_unary(SIZEOF_OP, SIZEOF, $3);
                                                                   $$ = size_of;         
                                                             }
       //|               SIZEOF '(' type_name ')'
 ;
 
-unary_operator:      '&'
-      |              '*'
-      |              '+'
-      |              '-'
-      |              '~'
-      |              '!'                    
+unary_operator:      '&'            {$$ = '&';}
+      |              '*'            {$$ = '*';}
+      |              '+'            {$$ = '+';}
+      |              '-'            {$$ = '-';}
+      |              '~'            {$$ = '~';}
+      |              '!'            {$$ = '!';}        
 ;
 
 cast_expression:  unary_expression
@@ -226,41 +189,26 @@ cast_expression:  unary_expression
 
 multiplicative_expression: cast_expression
       |              multiplicative_expression '*' cast_expression      {
-                                                                              struct astnode *mult = (struct astnode *)malloc(sizeof(struct astnode)); 
-                                                                              create_binary(mult, BINOP, '*');
-                                                                              mult->binary.left = $1;
-                                                                              mult->binary.right = $3;
+                                                                              struct astnode *mult = create_binary(BINOP, '*', $1, $3);
                                                                               $$ = mult; 
                                                                         }
       |              multiplicative_expression '/' cast_expression      {
-                                                                              struct astnode *div = (struct astnode *)malloc(sizeof(struct astnode)); 
-                                                                              create_binary(div, BINOP, '/');
-                                                                              div->binary.left = $1;
-                                                                              div->binary.right = $3;
+                                                                              struct astnode *div = create_binary(BINOP, '/', $1, $3);
                                                                               $$ = div; 
                                                                         }
       |              multiplicative_expression '%' cast_expression      {
-                                                                              struct astnode *modulo = (struct astnode *)malloc(sizeof(struct astnode)); 
-                                                                              create_binary(modulo, BINOP, '%');
-                                                                              modulo->binary.left = $1;
-                                                                              modulo->binary.right = $3;
+                                                                              struct astnode *modulo = create_binary(BINOP, '%', $1, $3);
                                                                               $$ = modulo; 
                                                                         }
 ;
 
 additive_expression: multiplicative_expression
       |              additive_expression '+' multiplicative_expression  {
-                                                                              struct astnode *add = (struct astnode *)malloc(sizeof(struct astnode)); 
-                                                                              create_binary(add, BINOP, '+');
-                                                                              add->binary.left = $1;
-                                                                              add->binary.right = $3;
+                                                                              struct astnode *add = create_binary(BINOP, '+', $1, $3);
                                                                               $$ = add; 
                                                                         }    
       |              additive_expression '-' multiplicative_expression  {
-                                                                              struct astnode *sub = (struct astnode *)malloc(sizeof(struct astnode)); 
-                                                                              create_binary(sub, BINOP, '-');
-                                                                              sub->binary.left = $1;
-                                                                              sub->binary.right = $3;
+                                                                              struct astnode *sub = create_binary(BINOP, '-', $1, $3);
                                                                               $$ = sub; 
                                                                         }
 ;
@@ -340,31 +288,12 @@ expression_list:     expression ';'                                {printf("STAR
 //;
 %%
 
-// Helper function to create unary node
-void create_unary(struct astnode *node, int op_type, int operator){
-      node->type = UNARY_NODE; 
-      node->unary.operator_type = op_type; 
-      node->unary.operator = operator;
-}
-
-// Helper function to create binary node
-void create_binary(struct astnode *node, int op_type, int operator){
-      node->type = BINARY_NODE; 
-      node->binary.operator_type = op_type;
-      node->binary.operator = operator;
-}
-
-// Helper function to create ternary node
-void create_ternary(){
-      
-}
-
 
 void yyerror(const char* msg) {
       fprintf(stderr, "%s\n", msg);
 }
 
 
-int main(int argc, char **argv){
+int main(){
    yyparse();
 }

@@ -2,6 +2,13 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include "lexer.h"
+
+// Function prototypes
+struct astnode * make_ast_node(int type);
+struct astnode * create_unary(int op_type, int op, struct astnode *expr);
+struct astnode * create_binary(int op_type, int op, struct astnode *left, struct astnode *right);
+
 // #include "../lexer/lexer.h"
 enum op_type{
     BINOP = 0,
