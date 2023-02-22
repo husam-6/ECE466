@@ -35,6 +35,11 @@ struct astnode * create_binary(int op_type, int op, struct astnode *left, struct
 }
 
 // Helper function to create ternary node
-void create_ternary(){
+struct astnode * create_ternary(){
+    struct astnode * tern = make_ast_node(TERNARY_NODE);
+
+
+
+    return tern;
       
 }

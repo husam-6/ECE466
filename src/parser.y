@@ -19,6 +19,7 @@
 %start expression_list
 
 %union {
+      int token;
       int op_type; 
       struct string_literal str;
       char charlit;
@@ -29,6 +30,12 @@
 
 
 %type <ident> IDENT
+%type <token> LTEQ
+%type <token> GTEQ
+%type <token> EQEQ
+%type <token> NOTEQ
+%type <token> LOGAND
+%type <token> LOGOR
 %type <astnode_p> primary_expression
 %type <astnode_p> postfix_expression
 %type <astnode_p> unary_expression
@@ -36,15 +43,15 @@
 %type <astnode_p> cast_expression
 %type <astnode_p> multiplicative_expression
 %type <astnode_p> additive_expression
-// %type <astnode_p> shift_expression
-// %type <astnode_p> relational_expression
-// %type <astnode_p> equality_expression
-// %type <astnode_p> AND_expression
-// %type <astnode_p> exclusive_OR_expression
-// %type <astnode_p> inclusive_OR_expression
-// %type <astnode_p> logical_AND_expression
-// %type <astnode_p> logical_OR_expression
-// %type <astnode_p> conditional_expression
+%type <astnode_p> shift_expression
+%type <astnode_p> relational_expression
+%type <astnode_p> equality_expression
+%type <astnode_p> AND_expression
+%type <astnode_p> exclusive_OR_expression
+%type <astnode_p> inclusive_OR_expression
+%type <astnode_p> logical_AND_expression
+%type <astnode_p> logical_OR_expression
+%type <astnode_p> conditional_expression
 // %type <astnode_p> assignment_expression
 // %type <astnode_p> assignment_operator
 %type <astnode_p> expression
@@ -89,6 +96,7 @@ postfix_expression:  primary_expression
       |              postfix_expression '[' expression ']'  {
                                                                   // Addition node
                                                                   struct astnode *add = create_binary(BINOP,'+', $1, $3);
+                                                                  
                                                                   //Deref node
                                                                   struct astnode *deref = create_unary(DEREF, '*', add);
                                                                   $$ = deref;
@@ -115,16 +123,9 @@ postfix_expression:  primary_expression
                                                                   struct astnode *deref = create_unary(DEREF, '*', add);
                                                                   $$ = deref;
                                                             }
-      |              postfix_expression PLUSPLUS            {
-                                                                  // Create node for post plus plus operation
-                                                                  struct astnode *plusplus = create_unary(UNARY_OP, PLUSPLUS, $1);
-                                                                  $$ = plusplus;
-                                                            }
-      |              postfix_expression MINUSMINUS          {
-                                                                  // Create node for minus minus post operation
-                                                                  struct astnode *minusminus = create_unary(UNARY_OP, MINUSMINUS, $1);
-                                                                  $$ = minusminus;
-                                                            }
+      |              postfix_expression PLUSPLUS            {$$ = create_unary(UNARY_OP, PLUSPLUS, $1);}
+      |              postfix_expression MINUSMINUS          {$$ = create_unary(UNARY_OP, MINUSMINUS, $1);}
+      
       //|              '(' type_name ')' '{' initializer_list '}'
       //|              '(' type_name ')' '{' initializer_list ',' '}'
 ;
@@ -169,10 +170,7 @@ unary_expression:    postfix_expression
                                                                   $$ = un_op;            
 
                                                             }    
-      |              SIZEOF '(' unary_expression ')'        {
-                                                                  struct astnode *size_of = create_unary(SIZEOF_OP, SIZEOF, $3);
-                                                                  $$ = size_of;         
-                                                            }
+      |              SIZEOF '(' unary_expression ')'        {$$= create_unary(SIZEOF_OP, SIZEOF, $3);}
       //|               SIZEOF '(' type_name ')'
 ;
 
@@ -189,66 +187,51 @@ cast_expression:  unary_expression
 ;
 
 multiplicative_expression: cast_expression
-      |              multiplicative_expression '*' cast_expression      {
-                                                                              struct astnode *mult = create_binary(BINOP, '*', $1, $3);
-                                                                              $$ = mult; 
-                                                                        }
-      |              multiplicative_expression '/' cast_expression      {
-                                                                              struct astnode *div = create_binary(BINOP, '/', $1, $3);
-                                                                              $$ = div; 
-                                                                        }
-      |              multiplicative_expression '%' cast_expression      {
-                                                                              struct astnode *modulo = create_binary(BINOP, '%', $1, $3);
-                                                                              $$ = modulo; 
-                                                                        }
+      |              multiplicative_expression '*' cast_expression      {$$ = create_binary(BINOP, '*', $1, $3);}
+      |              multiplicative_expression '/' cast_expression      {$$ = create_binary(BINOP, '/', $1, $3);}
+      |              multiplicative_expression '%' cast_expression      {$$ = create_binary(BINOP, '%', $1, $3);}
 ;
 
 additive_expression: multiplicative_expression
-      |              additive_expression '+' multiplicative_expression  {
-                                                                              struct astnode *add = create_binary(BINOP, '+', $1, $3);
-                                                                              $$ = add; 
-                                                                        }    
-      |              additive_expression '-' multiplicative_expression  {
-                                                                              struct astnode *sub = create_binary(BINOP, '-', $1, $3);
-                                                                              $$ = sub; 
-                                                                        }
+      |              additive_expression '+' multiplicative_expression  {$$ = create_binary(BINOP, '+', $1, $3);}    
+      |              additive_expression '-' multiplicative_expression  {$$ = create_binary(BINOP, '-', $1, $3);}
 ;
 
 shift_expression:    additive_expression
-      |              shift_expression SHL additive_expression
-      |              shift_expression SHR additive_expression
+      |              shift_expression SHL additive_expression           {$$ = create_binary(ASSIGNMENT_COMPOUND, SHL, $1, $3);}
+      |              shift_expression SHR additive_expression           {$$ = create_binary(ASSIGNMENT_COMPOUND, SHR, $1, $3);}
 ;
 
 relational_expression: shift_expression
-      |              relational_expression '<' shift_expression
-      |              relational_expression '>' shift_expression
-      |              relational_expression LTEQ shift_expression 
-      |              relational_expression GTEQ shift_expression
+      |              relational_expression '<' shift_expression         {$$ = create_binary(COMP_OP, '<', $1, $3);}
+      |              relational_expression '>' shift_expression         {$$ = create_binary(COMP_OP, '>', $1, $3);}
+      |              relational_expression LTEQ shift_expression        {$$ = create_binary(COMP_OP, $2, $1, $3);}
+      |              relational_expression GTEQ shift_expression        {$$ = create_binary(COMP_OP, $2, $1, $3);}
 ;  
 
 equality_expression: relational_expression
-      |              equality_expression EQEQ relational_expression
-      |              equality_expression NOTEQ relational_expression       
+      |              equality_expression EQEQ relational_expression     {$$ = create_binary(COMP_OP, $2, $1, $3);}
+      |              equality_expression NOTEQ relational_expression    {$$ = create_binary(COMP_OP, $2, $1, $3);}   
 ;
 
 AND_expression:      equality_expression
-      |              AND_expression '&' equality_expression
+      |              AND_expression '&' equality_expression                         {$$ = create_binary(AND, '&', $1, $3);}
 ;
 
 exclusive_OR_expression: AND_expression
-      |              exclusive_OR_expression '^' AND_expression
+      |              exclusive_OR_expression '^' AND_expression                     {$$ = create_binary(XOR, '^', $1, $3);}
 ;
 
 inclusive_OR_expression: exclusive_OR_expression
-      |              inclusive_OR_expression '|' exclusive_OR_expression
+      |              inclusive_OR_expression '|' exclusive_OR_expression            {$$ = create_binary(OR, '|', $1, $3);}
 ;
 
 logical_AND_expression: inclusive_OR_expression
-      |              logical_AND_expression LOGAND inclusive_OR_expression
+      |              logical_AND_expression LOGAND inclusive_OR_expression          {$$ = create_binary(LOGICAL_AND, $2, $1, $3);}
 ;
 
 logical_OR_expression:  logical_AND_expression
-      |              logical_OR_expression LOGOR logical_AND_expression
+      |              logical_OR_expression LOGOR logical_AND_expression             {$$ = create_binary(LOGICAL_OR, $2, $1, $3);}
 ;
 
 conditional_expression: logical_OR_expression                                        
