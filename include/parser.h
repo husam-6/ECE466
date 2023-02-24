@@ -7,7 +7,8 @@
 struct astnode * make_ast_node(int type);
 struct astnode * create_unary(int op_type, int op, struct astnode *expr);
 struct astnode * create_binary(int op_type, int op, struct astnode *left, struct astnode *right);
-struct astnode * create_ternary();
+struct astnode * create_ternary(int op_type, struct astnode *left, struct astnode *middle, struct astnode *right);
+void print_ast(struct astnode * node, int depth);
 
 // #include "../lexer/lexer.h"
 enum op_type{
@@ -21,13 +22,8 @@ enum op_type{
     COMP_OP, 
     SELECT,
     LOGICAL_OP,
-    AND,
-    XOR,
-    OR,
-    LOGICAL_AND,
-    LOGICAL_OR,
-
-
+    TERNARY_OP,
+    FUNC
 };
 
 enum node_type{
@@ -60,7 +56,6 @@ struct astnode_binary {
 
 // Ternary operators
 struct astnode_ternary {
-    int operator; 
     enum op_type operator_type;
     struct astnode *left;
     struct astnode *middle;

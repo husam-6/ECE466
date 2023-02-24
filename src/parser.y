@@ -36,6 +36,16 @@
 %type <token> NOTEQ
 %type <token> LOGAND
 %type <token> LOGOR
+%type <token> TIMESEQ
+%type <token> DIVEQ
+%type <token> MODEQ
+%type <token> PLUSEQ
+%type <token> MINUSEQ
+%type <token> SHLEQ
+%type <token> SHREQ
+%type <token> ANDEQ
+%type <token> XOREQ
+%type <token> OREQ
 %type <astnode_p> primary_expression
 %type <astnode_p> postfix_expression
 %type <astnode_p> unary_expression
@@ -52,12 +62,12 @@
 %type <astnode_p> logical_AND_expression
 %type <astnode_p> logical_OR_expression
 %type <astnode_p> conditional_expression
-// %type <astnode_p> assignment_expression
-// %type <astnode_p> assignment_operator
+%type <astnode_p> assignment_expression
+%type <token> assignment_operator
 %type <astnode_p> expression
-// %type <astnode_p> function_call
-// %type <astnode_p> function_arguments
-// %type <astnode_p> expression_list
+%type <astnode_p> function_call
+%type <astnode_p> function_arguments
+%type <astnode_p> expression_list
 
 
 %%
@@ -120,8 +130,7 @@ postfix_expression:  primary_expression
                                                                   struct astnode *add = create_binary(BINOP,'+', $1, ident);
                                                                   
                                                                   //Deref node
-                                                                  struct astnode *deref = create_unary(DEREF, '*', add);
-                                                                  $$ = deref;
+                                                                  $$ = create_unary(DEREF, '*', add);
                                                             }
       |              postfix_expression PLUSPLUS            {$$ = create_unary(UNARY_OP, PLUSPLUS, $1);}
       |              postfix_expression MINUSMINUS          {$$ = create_unary(UNARY_OP, MINUSMINUS, $1);}
@@ -143,9 +152,7 @@ unary_expression:    postfix_expression
                                                                   one->num.integer = 1;
 
                                                                   // Set up binary node for ++expr
-                                                                  struct astnode *plus_eq_1 = create_binary(ASSIGNMENT_COMPOUND, PLUSEQ, $2, one);
-
-                                                                  $$ = plus_eq_1;
+                                                                  $$ = create_binary(ASSIGNMENT_COMPOUND, PLUSEQ, $2, one);
                                                             }
       |              MINUSMINUS unary_expression            {
                                                                   // Set up unary node for --expr
@@ -155,8 +162,7 @@ unary_expression:    postfix_expression
                                                                   one->num.type = I; 
                                                                   one->num.integer = 1;
 
-                                                                  struct astnode *minus_eq_1 = create_binary(ASSIGNMENT_COMPOUND, MINUSEQ, $2, one);; 
-                                                                  $$ = minus_eq_1;
+                                                                  $$ = create_binary(ASSIGNMENT_COMPOUND, MINUSEQ, $2, one); 
                                                             }
                                                             
       |              unary_operator cast_expression         {
@@ -205,68 +211,74 @@ shift_expression:    additive_expression
 relational_expression: shift_expression
       |              relational_expression '<' shift_expression         {$$ = create_binary(COMP_OP, '<', $1, $3);}
       |              relational_expression '>' shift_expression         {$$ = create_binary(COMP_OP, '>', $1, $3);}
-      |              relational_expression LTEQ shift_expression        {$$ = create_binary(COMP_OP, $2, $1, $3);}
-      |              relational_expression GTEQ shift_expression        {$$ = create_binary(COMP_OP, $2, $1, $3);}
+      |              relational_expression LTEQ shift_expression        {$$ = create_binary(COMP_OP, LTEQ, $1, $3);}
+      |              relational_expression GTEQ shift_expression        {$$ = create_binary(COMP_OP, GTEQ, $1, $3);}
 ;  
 
 equality_expression: relational_expression
-      |              equality_expression EQEQ relational_expression     {$$ = create_binary(COMP_OP, $2, $1, $3);}
-      |              equality_expression NOTEQ relational_expression    {$$ = create_binary(COMP_OP, $2, $1, $3);}   
+      |              equality_expression EQEQ relational_expression     {$$ = create_binary(COMP_OP, EQEQ, $1, $3);}
+      |              equality_expression NOTEQ relational_expression    {$$ = create_binary(COMP_OP, NOTEQ, $1, $3);}   
 ;
 
 AND_expression:      equality_expression
-      |              AND_expression '&' equality_expression                         {$$ = create_binary(AND, '&', $1, $3);}
+      |              AND_expression '&' equality_expression                                     {$$ = create_binary(LOGICAL_OP, '&', $1, $3);}
 ;
 
 exclusive_OR_expression: AND_expression
-      |              exclusive_OR_expression '^' AND_expression                     {$$ = create_binary(XOR, '^', $1, $3);}
+      |              exclusive_OR_expression '^' AND_expression                                 {$$ = create_binary(LOGICAL_OP, '^', $1, $3);}
 ;
 
 inclusive_OR_expression: exclusive_OR_expression
-      |              inclusive_OR_expression '|' exclusive_OR_expression            {$$ = create_binary(OR, '|', $1, $3);}
+      |              inclusive_OR_expression '|' exclusive_OR_expression                        {$$ = create_binary(LOGICAL_OP, '|', $1, $3);}
 ;
 
 logical_AND_expression: inclusive_OR_expression
-      |              logical_AND_expression LOGAND inclusive_OR_expression          {$$ = create_binary(LOGICAL_AND, $2, $1, $3);}
+      |              logical_AND_expression LOGAND inclusive_OR_expression                      {$$ = create_binary(LOGICAL_OP, LOGAND, $1, $3);}
 ;
 
 logical_OR_expression:  logical_AND_expression
-      |              logical_OR_expression LOGOR logical_AND_expression             {$$ = create_binary(LOGICAL_OR, $2, $1, $3);}
+      |              logical_OR_expression LOGOR logical_AND_expression                         {$$ = create_binary(LOGICAL_OP, LOGOR, $1, $3);}
 ;
 
 conditional_expression: logical_OR_expression                                        
-      |              logical_OR_expression '?' expression ':' conditional_expression 
+      |              logical_OR_expression '?' expression ':' conditional_expression            {$$ = create_ternary(TERNARY_OP, $1, $3, $5);}
 ;
 
 assignment_expression:  conditional_expression 
-      |              unary_expression assignment_operator assignment_expression //{make new binary opp node left pointer = $1, $3 = right}
+      |              unary_expression assignment_operator assignment_expression                 {
+                                                                                                      if ($2 == '=')
+                                                                                                            $$ = create_binary(ASSIGNMENT, '=', $1, $3);
+                                                                                                      else
+                                                                                                            $$ = create_binary(ASSIGNMENT_COMPOUND, $2, $1, $3);
+
+                                                                                                }
 ;
 
-assignment_operator: '='
-      |              TIMESEQ
-      |              DIVEQ
-      |              MODEQ 
-      |              PLUSEQ
-      |              MINUSEQ
-      |              SHLEQ
-      |              SHREQ
-      |              ANDEQ
-      |              XOREQ
-      |              OREQ
+assignment_operator: '='             {$$ = '=';}
+      |              TIMESEQ         {$$ = TIMESEQ;}
+      |              DIVEQ           {$$ = DIVEQ;}
+      |              MODEQ           {$$ = MODEQ;}
+      |              PLUSEQ          {$$ = PLUSEQ;}
+      |              MINUSEQ         {$$ = MINUSEQ;}
+      |              SHLEQ           {$$ = SHLEQ;}
+      |              SHREQ           {$$ = SHREQ;}
+      |              ANDEQ           {$$ = ANDEQ;}
+      |              XOREQ           {$$ = XOREQ;}
+      |              OREQ            {$$ = OREQ;}
 ;
 
 
 expression:           assignment_expression
-      |               expression ',' assignment_expression  
+      |               expression ',' assignment_expression              {$$ = create_binary(BINOP, ',', $1, $3);}
 ;
 
-function_call:       postfix_expression '(' function_arguments ')'
+function_call:       postfix_expression '(' function_arguments ')'      {$$ = create_binary(FUNC, '(', $1, $3);}
 
 function_arguments:  //EMPTY
       |              expression
 
-expression_list:     expression ';'                                {printf("START RULE REACHED\n");}
-      |              expression_list expression ';'                {printf("START RULE REACHED\n");}
+expression_list:     expression ';'                                     {print_ast($1, 0);}
+      |              expression_list expression ';'                     {print_ast($2, 0);}
 ;
 // constant_expression: conditional_expression
 //;

@@ -31,10 +31,10 @@ enum num_type{
         ULL, 
         L,
         LL,
+        I,
         D,
         F,
-        LD,
-        I
+        LD
 };
 
 // Number struct

@@ -1,5 +1,7 @@
 // Helper file for functions related to bison parser
 #include "parser.h"
+#include "parser.tab.h"
+
 
 
 // ast node helper function
@@ -35,11 +37,178 @@ struct astnode * create_binary(int op_type, int op, struct astnode *left, struct
 }
 
 // Helper function to create ternary node
-struct astnode * create_ternary(){
-    struct astnode * tern = make_ast_node(TERNARY_NODE);
+struct astnode * create_ternary(int op_type, struct astnode *left, struct astnode *middle, struct astnode *right){
+    struct astnode * node = make_ast_node(TERNARY_NODE);
+    // Node and op type
+    node->ternary.operator_type = op_type;
 
+    // Children pointers
+    node->ternary.left = left;
+    node->ternary.middle = middle;
+    node->ternary.right = right;
 
-
-    return tern;
+    return node;
       
+}
+
+
+// Helper function for tabs 
+void n_tabs(int n){
+    for (int i = 0; i<n; i++){
+        printf("\t");
+    }
+}
+
+
+// operator helper function
+void print_operator(int operator) {
+    switch(operator){
+        case INDSEL:        {printf("(->)\n"); break;}
+        case PLUSPLUS:      {printf("(++)\n"); break;}
+        case MINUSMINUS:    {printf("(--)\n"); break;}
+        case SHL:           {printf("(<<)\n"); break;}
+        case SHR:           {printf("(>>)\n"); break;}
+        case LTEQ:          {printf("(<=)\n"); break;}
+        case GTEQ:          {printf("(>=)\n"); break;}
+        case EQEQ:          {printf("(==)\n"); break;}
+        case NOTEQ:         {printf("(!=)\n"); break;}
+        case LOGAND:        {printf("(&&)\n"); break;}
+        case LOGOR:         {printf("(||)\n"); break;}
+        case ELLIPSIS:      {printf("(...)\n"); break;}
+        case TIMESEQ:       {printf("(*=)\n"); break;}
+        case DIVEQ:         {printf("(/=)\n"); break;}
+        case MODEQ:         {printf("(%%=)\n"); break;}
+        case PLUSEQ:        {printf("(+=)\n"); break;}
+        case MINUSEQ:       {printf("(-=)\n"); break;}
+        case SHLEQ:         {printf("(<<=)\n"); break;}
+        case SHREQ:         {printf("(>>=)\n"); break;}
+        case ANDEQ:         {printf("(&=)\n"); break;}
+        case OREQ:          {printf("(|=)\n"); break;}
+        case XOREQ:         {printf("(^=)\n"); break;}
+        case '+':           {printf("(+)\n"); break;}
+        case '-':           {printf("(-)\n"); break;}
+        case '*':           {printf("(*)\n"); break;}
+        case '/':           {printf("(/)\n"); break;}
+        case '&':           {printf("(&)\n"); break;}
+        case '^':           {printf("(^)\n"); break;}
+        case '|':           {printf("(|)\n"); break;}
+        case '~':           {printf("(~)\n"); break;}
+        case '!':           {printf("(!)\n"); break;}
+        case ',':           {printf("(,)\n"); break;}
+        case '=':           {printf("\n"); break;}
+        case '.':           {printf("\n"); break;}
+        default:            {fprintf(stderr, "Operator unknown...\n"); break;}
+    }
+
+}
+
+
+// Operator type helper function
+void print_op_type(int op_type) {
+    switch (op_type) {
+        case BINOP:                 {printf("BINARY OP "); break;}
+        case ASSIGNMENT:            {printf("ASSIGNMENT "); break;}
+        case ASSIGNMENT_COMPOUND:   {printf("ASSIGNMENT COMPOUND "); break;}
+        case DEREF:                 {printf("DEREF "); break;}
+        case ADDR_OF:               {printf("ADDRESSOF "); break;}
+        case UNARY_OP:              {printf("UNARY OP "); break;}
+        case SIZEOF_OP:             {printf("SIZEOF\n"); break;}
+        case COMP_OP:               {printf("COMPARISON OP "); break;}
+        case SELECT:                {printf("SELECT "); break;}
+        case LOGICAL_OP:            {printf("LOGICAL OP "); break;}
+        case TERNARY_OP:            {printf("TERNARY OP "); break;}
+        case FUNC:                  {printf("FNCALL "); break;}
+        default:                    {fprintf(stderr, "Unknown operator type...\n"); break;}
+    }
+}
+
+char * print_datatype(int type){
+    switch (type) {
+        case U:         {return"int"; break;}
+        case UL:        {return("unsigned long"); break;}
+        case ULL:       {return("unsigned long long"); break;}
+        case L:         {return "long"; break;}
+        case LL:        {return "long long"; break;}
+        case I:         {return "int"; break;}
+        case D:         {return "double"; break;}
+        case F:         {return "float"; break;}
+        case LD:        {return "long"; break;}
+        default:        {fprintf(stderr, "Unknown number type...\n"); break;}
+    }
+}
+
+
+void print_ast(struct astnode * head, int depth){
+    
+    char * node_type;
+    switch (head->type){
+        case FN_CALL: {
+            node_type = "FNCALL";
+            n_tabs(depth);
+            break;
+        }
+        case UNARY_NODE:{
+            n_tabs(depth);
+            print_op_type(head->unary.operator_type);
+            if (head->unary.operator_type != SIZEOF_OP)
+                print_operator(head->unary.operator);
+            print_ast(head->unary.expr, depth + 1);
+            break;
+        }
+        case BINARY_NODE:{
+            // printf("TEST = %d\n", head->binary.operator);
+            n_tabs(depth);
+            print_op_type(head->binary.operator_type);
+            print_operator(head->binary.operator);
+            print_ast(head->binary.left, depth + 1);
+            print_ast(head->binary.right, depth + 1);
+            break;
+        }
+        case TERNARY_NODE:{
+            n_tabs(depth);
+            print_op_type(head->ternary.operator_type);
+            printf("IF:\n");
+            print_ast(head->ternary.left, depth + 1);
+            n_tabs(depth);
+            printf("THEN:\n");
+            print_ast(head->ternary.middle, depth + 1);
+            n_tabs(depth);
+            printf("ELSE:\n");
+            print_ast(head->ternary.right, depth + 1);
+            break;
+        }
+        case NUM:{
+            n_tabs(depth);
+            printf("CONSTANT: (type=%s)", print_datatype(head->num.type));
+            if (head->num.type > 5){
+                printf("%Lf\n", head->num.frac);
+            }
+            else{
+                printf("%llu\n", head->num.integer);
+            }
+            break;
+        }
+        case IDENT_NODE:{
+            n_tabs(depth);
+            printf("IDENT %s\n", head->ident);
+            break;
+        }
+        case CHAR_LIT:{
+            n_tabs(depth);
+            printf("CONSTANT: (type=int)%d\n", head->char_lit);
+            break;
+        }
+        case STR_LIT:{
+            n_tabs(depth);
+            printf("STRING %s\n", head->str_lit.content);
+            break;
+        }
+        default:{
+            fprintf(stderr, "UNKNOWN NODE TYPE\n");
+            break;
+        }
+    }
+    
+      
+
 }
