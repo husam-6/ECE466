@@ -4,8 +4,8 @@
 /* with gcc or clang */
 //f()
 //{
-//int a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,*p,s;
-//struct tag {int m;} *x,q;
+// int a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,*p,s;
+// struct tag {int m;} *x,q;
 
 a=b,c+=-10/d;
 "X"!="Y"?--e:f++;
