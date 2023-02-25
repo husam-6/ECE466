@@ -86,7 +86,7 @@ ASSIGNMENT
 		DEREF (*)
 			BINARY OP (+)
 				IDENT x
-				IDENT (null)
+				IDENT m
 DEREF (*)
 	UNARY OP (++)
 		SELECT 

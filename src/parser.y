@@ -94,6 +94,7 @@ postfix_expression:  primary_expression
       |              postfix_expression INDSEL IDENT        {
                                                                   // Ident node
                                                                   struct astnode *ident = make_ast_node(IDENT_NODE);
+                                                                  ident->ident = $3;
 
                                                                   // Addition node
                                                                   struct astnode *add = create_binary(BINOP,'+', $1, ident);
