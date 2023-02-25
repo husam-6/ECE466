@@ -51,6 +51,38 @@ struct astnode * create_ternary(int op_type, struct astnode *left, struct astnod
       
 }
 
+// Helper function to create ternary node
+struct astnode * create_fn_node(struct astnode *postfix, struct linked_list *head){
+    struct astnode * node = make_ast_node(FN_CALL);
+
+    // Save function identifier and head of linked list
+    node->fncall.postfix = postfix;
+    node->fncall.head = head;
+
+    return node;
+}
+
+// Create linked list
+struct linked_list * create_ll_node(struct astnode *expr){
+    struct linked_list *head = (struct linked_list *)malloc(sizeof(struct linked_list));
+    head->expr = expr; 
+    head->next = NULL;
+    head->num_args = 1;  
+    return head; 
+}
+
+// Append to linked list at end (loop even though its inefficient)
+void push_ll(struct linked_list *head, struct astnode *expr){
+    head->num_args++; 
+    // Loop to end
+    while (head->next != NULL){
+        head = head->next; 
+    }
+
+    // Once at end, add new node 
+    head->next = create_ll_node(expr);
+}
+
 
 // Helper function for tabs 
 void n_tabs(int n){
@@ -58,6 +90,24 @@ void n_tabs(int n){
         printf("\t");
     }
 }
+
+
+void print_fn_args(struct linked_list *head, int depth){
+    int arg_i = 1;
+    while (head->next != NULL){
+        n_tabs(depth);
+        printf("arg %d=\n", arg_i);
+        print_ast(head->expr, depth + 1);
+        head = head->next; 
+        arg_i++;
+    }
+    n_tabs(depth);
+    printf("arg %d=\n", arg_i);
+    print_ast(head->expr, depth + 1);
+}
+
+
+
 
 
 // operator helper function
@@ -145,6 +195,9 @@ void print_ast(struct astnode * head, int depth){
         case FN_CALL: {
             node_type = "FNCALL";
             n_tabs(depth);
+            printf("FNCALL, %d arguments\n", head->fncall.head->num_args);
+            print_ast(head->fncall.postfix, depth + 1);
+            print_fn_args(head->fncall.head, depth);
             break;
         }
         case UNARY_NODE:{
@@ -181,10 +234,10 @@ void print_ast(struct astnode * head, int depth){
             n_tabs(depth);
             printf("CONSTANT: (type=%s)", print_datatype(head->num.type));
             if (head->num.type > 5){
-                printf("%Lf\n", head->num.frac);
+                printf("%Lg\n", head->num.frac);
             }
             else{
-                printf("%llu\n", head->num.integer);
+                printf("%lld\n", head->num.integer);
             }
             break;
         }

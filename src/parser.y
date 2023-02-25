@@ -26,48 +26,18 @@
       char *ident;
       struct number num; 
       struct astnode *astnode_p;
+      struct linked_list *ll_p;
 };
 
 
-%type <ident> IDENT
-%type <token> LTEQ
-%type <token> GTEQ
-%type <token> EQEQ
-%type <token> NOTEQ
-%type <token> LOGAND
-%type <token> LOGOR
-%type <token> TIMESEQ
-%type <token> DIVEQ
-%type <token> MODEQ
-%type <token> PLUSEQ
-%type <token> MINUSEQ
-%type <token> SHLEQ
-%type <token> SHREQ
-%type <token> ANDEQ
-%type <token> XOREQ
-%type <token> OREQ
-%type <astnode_p> primary_expression
-%type <astnode_p> postfix_expression
-%type <astnode_p> unary_expression
+%type <ident> IDENT LTEQ GTEQ EQEQ NOTEQ LOGAND LOGOR TIMESEQ DIVEQ MODEQ PLUSEQ
+%type <token> MINUSEQ SHLEQ SHREQ ANDEQ XOREQ OREQ assignment_operator
 %type <op_type> unary_operator
-%type <astnode_p> cast_expression
-%type <astnode_p> multiplicative_expression
-%type <astnode_p> additive_expression
-%type <astnode_p> shift_expression
-%type <astnode_p> relational_expression
-%type <astnode_p> equality_expression
-%type <astnode_p> AND_expression
-%type <astnode_p> exclusive_OR_expression
-%type <astnode_p> inclusive_OR_expression
-%type <astnode_p> logical_AND_expression
-%type <astnode_p> logical_OR_expression
-%type <astnode_p> conditional_expression
-%type <astnode_p> assignment_expression
-%type <token> assignment_operator
-%type <astnode_p> expression
-%type <astnode_p> function_call
-%type <astnode_p> function_arguments
-%type <astnode_p> expression_list
+%type <astnode_p> primary_expression postfix_expression unary_expression cast_expression multiplicative_expression
+%type <astnode_p> additive_expression shift_expression relational_expression equality_expression AND_expression
+%type <astnode_p> exclusive_OR_expression inclusive_OR_expression logical_AND_expression logical_OR_expression conditional_expression
+%type <astnode_p> assignment_expression expression function_call expression_list
+%type <ll_p> function_arguments
 
 
 %%
@@ -118,8 +88,7 @@ postfix_expression:  primary_expression
                                                                   struct astnode *ident = make_ast_node(IDENT_NODE);
                                                                   ident->ident = $3;
 
-                                                                  struct astnode *select = create_binary(SELECT, '.', $1, ident);
-                                                                  $$ = select;
+                                                                  $$ = create_binary(SELECT, '.', $1, ident);
                                                             
                                                             }
       |              postfix_expression INDSEL IDENT        {
@@ -268,14 +237,16 @@ assignment_operator: '='             {$$ = '=';}
 ;
 
 
-expression:           assignment_expression
-      |               expression ',' assignment_expression              {$$ = create_binary(BINOP, ',', $1, $3);}
+function_call:       postfix_expression '(' function_arguments ')'      {$$ = create_fn_node($1, $3);}
+
+function_arguments:  //EMPTY                                            
+      |              assignment_expression                              {$$ = create_ll_node($1);}//make linked list, return head
+      |              function_arguments ',' assignment_expression       {push_ll($1, $3); $$ = $1;}//add to linked list in front, return head                 
+
+expression:          assignment_expression                              
+      |              expression ',' assignment_expression               {$$ = create_binary(BINOP, ',', $1, $3);}
 ;
 
-function_call:       postfix_expression '(' function_arguments ')'      {$$ = create_binary(FUNC, '(', $1, $3);}
-
-function_arguments:  //EMPTY
-      |              expression
 
 expression_list:     expression ';'                                     {print_ast($1, 0);}
       |              expression_list expression ';'                     {print_ast($2, 0);}
