@@ -81,32 +81,6 @@ struct astnode * create_fn_node(struct astnode *postfix, struct linked_list *hea
 struct linked_list * create_ll_node(struct astnode *expr);
 void push_ll(struct linked_list *head, struct astnode *expr);
 
-// // Numbers
-// struct astnode_num {
-//     enum num_type type; 
-//     union {
-//         unsigned long long integer; 
-//         long double frac; 
-//     };
-// };
-
-// // Identifiers 
-// struct astnode_ident {
-//     char * ident; 
-// };
-
-// // Char Literal
-// struct astnode_char_lit {
-//     char c; 
-// };
-
-// // String
-// struct astnode_str_lit {
-//     char * str; 
-//     int len;
-// };
-
-
 // Node struct
 struct astnode {
     enum node_type type;
@@ -119,15 +93,6 @@ struct astnode {
             char char_lit;
             struct string_literal str_lit;
             struct astnode_fncall fncall;
-            // struct astnode_logop logop;
-            // struct astnode_assigncomp assigncomp;
-            // struct astnode_assign assign;
-            // struct astnode_deref deref;
-            // struct astnode_addressof addressof;
-            // struct astnode_compop compop;
-            // struct astnode_sizeof sizeof;
-            // struct astnode_indselect indselect;
-            //struct ternary_op tern;
     };
 };
 
