@@ -3,6 +3,21 @@
 #include "parser.tab.h"
 
 
+// Symbol table helper function to check for an entry
+int check_for_symbol(char * ident){
+    // if (global->head->symbol_table_entry.name == ident){
+    //     return 0;
+    // }
+    // struct astnode * global
+    // global->head = global->next; 
+    // while (global->next != NULL){
+
+    // }
+
+}
+
+void add_symbol_entry();
+
 
 // ast node helper function
 struct astnode * make_ast_node(int type) {

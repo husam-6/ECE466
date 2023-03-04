@@ -6,6 +6,9 @@
    // Function prototypes
    void yyerror(const char* msg);
    int yylex();
+
+   // Global symbol table
+   /* struct scope global = {.head = NULL, .next = NULL,.outer = NULL}; */
 }
 
 %token IDENT CHARLIT STRING NUMBER INDSEL PLUSPLUS MINUSMINUS SHL SHR
@@ -235,15 +238,6 @@ direct_abstract_declarator:   '(' abstract_declarator ')'
       |                 statement
 ; */
 
-/* compound-statement:
-      { block-item-listopt }
-
-block-item-list:
-block-item
-block-item-list block-item
-block-item:
-declaration
-statement */
 
 // Expressions 6.5.1
 primary_expression:   IDENT                        {

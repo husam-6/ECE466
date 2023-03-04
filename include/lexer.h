@@ -32,6 +32,8 @@ enum num_type{
         L,
         LL,
         I,
+        C,
+        UC,
         D,
         F,
         LD
