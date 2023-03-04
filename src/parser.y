@@ -56,7 +56,7 @@ function_definition: declaration_specifiers declarator compound_statement
 ;
 
 statement:        compound_statement
-      |           expression ';'
+      |           expression ';'                {print_ast($1, 0);}
 ;
 
 compound_statement: '{' decl_or_stmt_list '}'
@@ -475,7 +475,7 @@ constant_expression: conditional_expression
 
 
 void yyerror(const char* msg) {
-      fprintf(stderr, "%s\n", msg);
+      fprintf(stderr, "ERROR: %s on line %d\n", msg, line_num);
 }
 
 
