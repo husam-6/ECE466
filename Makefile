@@ -17,5 +17,8 @@ $(BUILD)/parser.tab.c: parser.y
 $(BUILD)/lex.yy.c: lexer.l parser.tab.c
 	flex --outfile=$(BUILD)/lex.yy.c $<
 
+test: all
+	gcc -E ptests/*.c | ./$(BUILD)/a.out >ptests/test.out 2>ptests/test.err
+
 clean: 
 	rm build/*

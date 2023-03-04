@@ -81,6 +81,10 @@ struct astnode * create_fn_node(struct astnode *postfix, struct linked_list *hea
 struct linked_list * create_ll_node(struct astnode *expr);
 void push_ll(struct linked_list *head, struct astnode *expr);
 
+// struct {
+//     struct astnode_symbol * test;
+// }
+
 // Node struct
 struct astnode {
     enum node_type type;
@@ -93,6 +97,13 @@ struct astnode {
             char char_lit;
             struct string_literal str_lit;
             struct astnode_fncall fncall;
+            // struct astnode_symbol * symbol_table_entry;
+            // struct arr_type array;
+            // struct scalar_type scale_type;
+            // struct struct_union_type str_union;
+            // struct pointer_type point;
+            // struct function_type func;
+
     };
 };
 

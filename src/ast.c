@@ -183,7 +183,7 @@ char * print_datatype(int type){
         case D:         {return "double"; break;}
         case F:         {return "float"; break;}
         case LD:        {return "long"; break;}
-        default:        {fprintf(stderr, "Unknown number type...\n"); break;}
+        default:        {fprintf(stderr, "Unknown number type...\n"); return ""; break;}
     }
 }
 
