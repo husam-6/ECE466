@@ -15,7 +15,7 @@
 %token INT LONG REGISTER RESTRICT RETURN SHORT SIGNED SIZEOF STATIC
 %token STRUCT SWITCH TYPEDEF UNION UNSIGNED VOID VOLATILE WHILE _BOOL
 %token _COMPLEX _IMAGINARY
-%start declaration_or_fndef
+%start declaration_or_fndef_list
 /* %start statement */
 
 
@@ -45,6 +45,9 @@
 
 %%
 // Top Level (From Hak)
+declaration_or_fndef_list:    declaration_or_fndef
+      |                       declaration_or_fndef_list declaration_or_fndef
+
 declaration_or_fndef:         declaration
       |                       function_definition
 ;
@@ -107,7 +110,7 @@ storage_class_specifier:      //TYPEDEF
 type_specifier:   VOID
       |           CHAR
       |           SHORT
-      |           INT {printf("int\n");}
+      |           INT 
       |           LONG
       |           FLOAT
       |           DOUBLE
