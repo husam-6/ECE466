@@ -15,8 +15,9 @@
 %token INT LONG REGISTER RESTRICT RETURN SHORT SIGNED SIZEOF STATIC
 %token STRUCT SWITCH TYPEDEF UNION UNSIGNED VOID VOLATILE WHILE _BOOL
 %token _COMPLEX _IMAGINARY
+%start declaration_or_fndef
+/* %start statement */
 
-%start expression_list
 
 %union {
       int token;
@@ -30,23 +31,345 @@
 };
 
 
-%type <ident> IDENT LTEQ GTEQ EQEQ NOTEQ LOGAND LOGOR TIMESEQ DIVEQ MODEQ PLUSEQ
+%type <ident> IDENT 
+%type <token> LTEQ GTEQ EQEQ NOTEQ LOGAND LOGOR TIMESEQ DIVEQ MODEQ PLUSEQ
 %type <token> MINUSEQ SHLEQ SHREQ ANDEQ XOREQ OREQ assignment_operator
 %type <op_type> unary_operator
 %type <astnode_p> primary_expression postfix_expression unary_expression cast_expression multiplicative_expression
 %type <astnode_p> additive_expression shift_expression relational_expression equality_expression AND_expression
 %type <astnode_p> exclusive_OR_expression inclusive_OR_expression logical_AND_expression logical_OR_expression conditional_expression
-%type <astnode_p> assignment_expression expression function_call expression_list
+%type <astnode_p> assignment_expression expression function_call // expression_list
+/* %type <ll_p> function_arguments */
 %type <ll_p> function_arguments
 
 
 %%
-// **** Preorder Traversal ****
+// Top Level (From Hak)
+declaration_or_fndef:         declaration
+      |                       function_definition
+;
+
+function_definition: declaration_specifiers declarator compound_statement
+;
+
+statement:        compound_statement
+      |           expression ';'
+;
+
+compound_statement: '{' decl_or_stmt_list '}'
+;
+
+decl_or_stmt_list:      decl_or_stmt ';'
+      |                 decl_or_stmt_list ';' decl_or_stmt
+;
+
+decl_or_stmt:     declaration
+      |           statement
+;
+
+
+// Declarations
+/* declaration:            declaration_specifiers init_declarator_list_opt ';' */
+declaration:            declaration_specifiers init_declarator_list ';'
+      |                 declaration_specifiers  ';'
+;
+
+/* declaration_specifiers: storage_class_specifier declaration_specifiers_opt
+      |                 type_specifier declaration_specifiers_opt
+      |                 type_qualifier declaration_specifiers_opt
+      |                 function_specifier declaration_specifiers_opt
+; */
+declaration_specifiers: storage_class_specifier declaration_specifiers
+      |                 storage_class_specifier
+      |                 type_specifier declaration_specifiers
+      |                 type_specifier
+      |                 type_qualifier declaration_specifiers
+      |                 type_qualifier
+      |                 function_specifier declaration_specifiers
+      |                 function_specifier
+;
+
+init_declarator_list:   init_declarator
+      |                 init_declarator_list ',' init_declarator
+;
+
+init_declarator:        declarator
+      |                 declarator '=' initializer
+;
+
+storage_class_specifier:      TYPEDEF
+      |                       EXTERN
+      |                       STATIC
+      |                       AUTO
+      |                       REGISTER
+;
+
+type_specifier:   VOID
+      |           CHAR
+      |           SHORT
+      |           INT
+      |           LONG
+      |           FLOAT
+      |           DOUBLE
+      |           SIGNED
+      |           UNSIGNED
+      |           _BOOL
+      |           _COMPLEX
+      |           struct_or_union_specifier
+      |           enum_specifier
+      |           typedef_name
+;
+
+/* struct_or_union_specifier:    struct_or_union identifier_opt '{' struct_declaration_list '}' */
+struct_or_union_specifier:    struct_or_union IDENT '{' struct_declaration_list '}'
+      |                       struct_or_union IDENT
+      |                       struct_or_union '{' struct_declaration_list '}'
+;
+
+struct_or_union:              STRUCT
+      |                       UNION
+;
+
+struct_declaration_list:      struct_declaration
+      |                       struct_declaration_list struct_declaration
+;
+
+struct_declaration:           specifier_qualifier_list struct_declarator_list ';'
+;
+
+/* specifier_qualifier_list:     type_specifier specifier_qualifier_list_opt
+      |                       type_qualifier specifier_qualifier_list_opt
+; */
+specifier_qualifier_list:     type_specifier specifier_qualifier_list
+      |                       type_specifier
+      |                       type_qualifier specifier_qualifier_list
+      |                       type_qualifier
+;
+
+struct_declarator_list:       struct_declarator
+      |                       struct_declarator_list ',' struct_declarator
+;
+
+struct_declarator:      declarator
+      /* |                 declarator_opt ':' constant_expression */
+      |                 declarator ':' constant_expression
+      |                 ':' constant_expression
+;
+
+enum_specifier:
+      /* |                 ENUM identifier_opt '{' enumerator_list '}'
+      |                 ENUM identifier_opt '{' enumerator_list ',' '}' */
+      |                 ENUM IDENT '{' enumerator_list '}'
+      |                 ENUM IDENT '{' enumerator_list ',' '}'
+      |                 ENUM '{' enumerator_list '}'
+      |                 ENUM '{' enumerator_list ',' '}'
+      |                 ENUM IDENT
+;
+
+enumerator_list:
+      |                 enumerator
+      |                 enumerator_list ',' enumerator
+;
+
+enumerator:             enumeration_constant
+      |                 enumeration_constant '=' constant_expression
+;
+
+type_qualifier:         CONST
+      |                 RESTRICT
+      |                 VOLATILE
+;
+
+function_specifier:     INLINE
+;
+
+/* declarator:             pointer_opt direct_declarator */
+declarator:             pointer direct_declarator
+      |                 direct_declarator
+;
+
+/* direct_declarator:      IDENT
+      |                 '(' declarator ')'
+      |                 direct_declarator '[' type_qualifier_list assignment_expression ']'
+      |                 direct_declarator '[' STATIC type_qualifier_list assignment_expression ']'
+      |                 direct_declarator '[' type_qualifier_list STATIC assignment_expression ']'
+      |                 direct_declarator '[' type_qualifier_list '*' ']'
+      |                 direct_declarator '(' parameter_type_list ')'
+      |                 direct_declarator '(' identifier_list ')'
+; */
+direct_declarator:      IDENT
+      |                 '(' declarator ')'
+      |                 direct_declarator '[' type_qualifier_list assignment_expression ']'
+      |                 direct_declarator '[' assignment_expression ']'
+      |                 direct_declarator '[' type_qualifier_list   ']'
+      |                 direct_declarator '['  ']'
+      |                 direct_declarator '[' STATIC type_qualifier_list assignment_expression ']'
+      |                 direct_declarator '[' STATIC assignment_expression ']'
+      |                 direct_declarator '[' type_qualifier_list STATIC assignment_expression ']'
+      |                 direct_declarator '[' type_qualifier_list '*' ']'
+      |                 direct_declarator '['  '*' ']'
+      |                 direct_declarator '(' parameter_type_list ')'
+      |                 direct_declarator '(' identifier_list ')'
+      |                 direct_declarator '(' ')'
+;
+
+/* pointer:                '*' type_qualifier_list_opt
+      |                 '*' type_qualifier_list_opt pointer
+; */
+
+pointer:                '*' type_qualifier_list
+      |                 '*' type_qualifier_list pointer
+;
+
+type_qualifier_list:    type_qualifier
+      |                 type_qualifier_list type_qualifier
+;
+
+parameter_type_list:    parameter_list
+      |                 parameter_list ',' ELLIPSIS
+;
+
+parameter_list:         parameter_declaration
+      |                 parameter_list ',' parameter_declaration
+;
+
+parameter_declaration:  declaration_specifiers declarator
+      /* |                 declaration_specifiers abstract_declarator_opt */
+      |                 declaration_specifiers abstract_declarator
+      |                 declaration_specifiers
+;
+
+identifier_list:        IDENT
+      |                 identifier_list ',' IDENT
+
+enumeration_constant:   IDENT
+;
+
+/* type_name:              specifier_qualifier_list abstract_declarator_opt */
+type_name:              specifier_qualifier_list abstract_declarator
+      |                 specifier_qualifier_list
+;
+
+abstract_declarator:    pointer
+      /* |                 pointer_opt direct_abstract_declarator */
+      |                 pointer direct_abstract_declarator
+      |                 direct_abstract_declarator
+;
+
+/* direct_abstract_declarator:   '(' abstract_declarator ')'
+      |                       direct_abstract_declarator '[' assignment_expression ']'
+      |                       direct_abstract_declarator '[' '*' ']'
+      |                       direct_abstract_declarator '(' parameter_type_list ')'
+; */
+direct_abstract_declarator:   '(' abstract_declarator ')'
+      |                       direct_abstract_declarator '[' assignment_expression ']'
+      |                       direct_abstract_declarator '['  ']'
+      |                       '[' assignment_expression ']'
+      |                       '['  ']'
+      |                       direct_abstract_declarator '[' '*' ']'
+      |                       '[' '*' ']'
+      |                       direct_abstract_declarator '(' parameter_type_list ')'
+      |                       direct_abstract_declarator '('  ')'
+      |                       '(' parameter_type_list ')'
+      |                       '('  ')'
+;
+
+typedef_name:           IDENT
+;
+
+initializer:            assignment_expression
+      |                 '{' initializer_list '}'
+      |                 '{' initializer_list ',' '}'
+;
+
+/* initializer_list:       designation_opt initializer
+      |                 initializer_list ',' designation_opt initializer
+; */
+
+initializer_list:       designation initializer
+      |                 initializer_list ',' designation initializer
+      |                 initializer
+      |                 initializer_list ',' initializer
+;
+
+designation:            designator_list '='
+;
+
+designator_list:        designator
+      |                 designator_list designator
+;
+
+designator:             '[' constant_expression ']'
+      |                 '.' IDENT
+;
+
+
+/* block_item:             declaration
+      |                 statement
+; */
+
+/* designation_opt:                  
+      |                 designation
+;
+
+direct_abstract_declarator_opt:   
+      |                 direct_abstract_declarator
+;
+
+assignment_expression_opt:        
+      |                 assignment_expression
+;
+
+parameter_type_list_opt:          
+      |                 parameter_type_list
+;
+
+pointer_opt:                      
+      |                 pointer
+;
+
+abstract_declarator_opt:          
+      |                 abstract_declarator
+;
+
+type_qualifier_list_opt:          
+      |                 type_qualifier_list
+;
+
+identifier_list_opt:              
+      |                 identifier_list
+;
+
+identifier_opt:                   
+      |                 IDENT
+;
+
+declarator_opt:                   
+      |                 declarator
+;
+
+declaration_specifiers_opt:       
+      |                 declaration_specifiers
+;
+
+specifier_qualifier_list_opt:     
+      |                 specifier_qualifier_list
+;
+
+init_declarator_list_opt:         
+      |                 init_declarator_list
+; */
+
+
+
+// Expressions
 primary_expression:   IDENT                        {
                                                       // Identifier node
                                                       struct astnode *node = make_ast_node(IDENT_NODE);
                                                       node->ident = yylval.ident;
                                                       $$ = node; 
+                                                      // Look up in symbol table
+                                                      // Point to struct in symbol table
                                                    }       
       |               NUMBER                       {
                                                       // Number node (struct stays the same)
@@ -81,8 +404,7 @@ postfix_expression:  primary_expression
                                                                   struct astnode *deref = create_unary(DEREF, '*', add);
                                                                   $$ = deref;
                                                             }
-
-      // |              postfix_expression '(' argument_expression_listopt ')'
+      |              function_call 
       |              postfix_expression '.' IDENT           {
                                                                   // Ident node
                                                                   struct astnode *ident = make_ast_node(IDENT_NODE);
@@ -105,16 +427,18 @@ postfix_expression:  primary_expression
       |              postfix_expression PLUSPLUS            {$$ = create_unary(UNARY_OP, PLUSPLUS, $1);}
       |              postfix_expression MINUSMINUS          {$$ = create_unary(UNARY_OP, MINUSMINUS, $1);}
       
-      //|              '(' type_name ')' '{' initializer_list '}'
-      //|              '(' type_name ')' '{' initializer_list ',' '}'
+      |              '(' type_name ')' '{' initializer_list '}'
+      |              '(' type_name ')' '{' initializer_list ',' '}'
 ;
 
-// argument_expression_list: assignment_expression
-//       |              argument_expression_list ',' assignment_expression
-// ;
+function_call:       postfix_expression '(' function_arguments ')'      {$$ = create_fn_node($1 , $3);}
+
+function_arguments:  /*EMPTY*/                                            
+      |              assignment_expression                              {$$ = create_ll_node($1);}//make linked list, return head
+      |              function_arguments ',' assignment_expression       {push_ll($1, $3); $$ = $1;}//add to linked list in front, return head                 
 
 unary_expression:    postfix_expression
-      |              function_call                          
+      //|            function_call                         
       |              PLUSPLUS unary_expression              {
                                                                   //Make dummy node with the number 1 in it
                                                                   struct astnode *one = make_ast_node(NUM);
@@ -147,7 +471,7 @@ unary_expression:    postfix_expression
 
                                                             }    
       |              SIZEOF '(' unary_expression ')'        {$$= create_unary(SIZEOF_OP, SIZEOF, $3);}
-      //|               SIZEOF '(' type_name ')'
+      |              SIZEOF '(' type_name ')'
 ;
 
 unary_operator:      '&'            {$$ = '&';}
@@ -159,7 +483,7 @@ unary_operator:      '&'            {$$ = '&';}
 ;
 
 cast_expression:  unary_expression
-   //   |           '(' type_name ')' cast_expression
+      |           '(' type_name ')' cast_expression
 ;
 
 multiplicative_expression: cast_expression
@@ -238,22 +562,18 @@ assignment_operator: '='             {$$ = '=';}
 ;
 
 
-function_call:       postfix_expression '(' function_arguments ')'      {$$ = create_fn_node($1, $3);}
-
-function_arguments:  //EMPTY                                            
-      |              assignment_expression                              {$$ = create_ll_node($1);}//make linked list, return head
-      |              function_arguments ',' assignment_expression       {push_ll($1, $3); $$ = $1;}//add to linked list in front, return head                 
 
 expression:          assignment_expression                              
       |              expression ',' assignment_expression               {$$ = create_binary(BINOP, ',', $1, $3);}
 ;
 
 
-expression_list:     expression ';'                                     {print_ast($1, 0);}
+/* expression_list:     expression ';'                                     {print_ast($1, 0);}
       |              expression_list expression ';'                     {print_ast($2, 0);}
+; */
+
+constant_expression: conditional_expression
 ;
-// constant_expression: conditional_expression
-//;
 %%
 
 
