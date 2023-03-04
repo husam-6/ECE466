@@ -59,8 +59,8 @@ statement:        compound_statement
 compound_statement: '{' decl_or_stmt_list '}'
 ;
 
-decl_or_stmt_list:      decl_or_stmt ';'
-      |                 decl_or_stmt_list ';' decl_or_stmt
+decl_or_stmt_list:      decl_or_stmt 
+      |                 decl_or_stmt_list decl_or_stmt
 ;
 
 decl_or_stmt:     declaration
@@ -94,11 +94,11 @@ init_declarator_list:   init_declarator
 ;
 
 init_declarator:        declarator
-      |                 declarator '=' initializer
+      /* |                 declarator '=' initializer */
 ;
 
-storage_class_specifier:      TYPEDEF
-      |                       EXTERN
+storage_class_specifier:      //TYPEDEF
+                              EXTERN
       |                       STATIC
       |                       AUTO
       |                       REGISTER
@@ -107,7 +107,7 @@ storage_class_specifier:      TYPEDEF
 type_specifier:   VOID
       |           CHAR
       |           SHORT
-      |           INT
+      |           INT {printf("int\n");}
       |           LONG
       |           FLOAT
       |           DOUBLE
@@ -116,8 +116,8 @@ type_specifier:   VOID
       |           _BOOL
       |           _COMPLEX
       |           struct_or_union_specifier
-      |           enum_specifier
-      |           typedef_name
+      //|           enum_specifier
+      //|           typedef_name
 ;
 
 /* struct_or_union_specifier:    struct_or_union identifier_opt '{' struct_declaration_list '}' */
@@ -156,24 +156,21 @@ struct_declarator:      declarator
       |                 ':' constant_expression
 ;
 
-enum_specifier:
-      /* |                 ENUM identifier_opt '{' enumerator_list '}'
-      |                 ENUM identifier_opt '{' enumerator_list ',' '}' */
-      |                 ENUM IDENT '{' enumerator_list '}'
+/* enum_specifier:
+                        ENUM IDENT '{' enumerator_list '}'
       |                 ENUM IDENT '{' enumerator_list ',' '}'
       |                 ENUM '{' enumerator_list '}'
       |                 ENUM '{' enumerator_list ',' '}'
       |                 ENUM IDENT
 ;
 
-enumerator_list:
-      |                 enumerator
+enumerator_list:        enumerator
       |                 enumerator_list ',' enumerator
 ;
 
 enumerator:             enumeration_constant
       |                 enumeration_constant '=' constant_expression
-;
+; */
 
 type_qualifier:         CONST
       |                 RESTRICT
@@ -218,7 +215,9 @@ direct_declarator:      IDENT
 ; */
 
 pointer:                '*' type_qualifier_list
+      |                 '*'   
       |                 '*' type_qualifier_list pointer
+      |                 '*' pointer
 ;
 
 type_qualifier_list:    type_qualifier
@@ -241,9 +240,11 @@ parameter_declaration:  declaration_specifiers declarator
 
 identifier_list:        IDENT
       |                 identifier_list ',' IDENT
-
-enumeration_constant:   IDENT
 ;
+
+/* enumeration_constant:   IDENT
+; */
+
 
 /* type_name:              specifier_qualifier_list abstract_declarator_opt */
 type_name:              specifier_qualifier_list abstract_declarator
@@ -274,25 +275,25 @@ direct_abstract_declarator:   '(' abstract_declarator ')'
       |                       '('  ')'
 ;
 
-typedef_name:           IDENT
-;
+/* typedef_name:           IDENT
+; */
 
-initializer:            assignment_expression
+/* initializer:            assignment_expression
       |                 '{' initializer_list '}'
       |                 '{' initializer_list ',' '}'
-;
+; */
 
 /* initializer_list:       designation_opt initializer
       |                 initializer_list ',' designation_opt initializer
 ; */
-
+/* 
 initializer_list:       designation initializer
       |                 initializer_list ',' designation initializer
       |                 initializer
       |                 initializer_list ',' initializer
-;
+; */
 
-designation:            designator_list '='
+/* designation:            designator_list '='
 ;
 
 designator_list:        designator
@@ -301,63 +302,11 @@ designator_list:        designator
 
 designator:             '[' constant_expression ']'
       |                 '.' IDENT
-;
+; */
 
 
 /* block_item:             declaration
       |                 statement
-; */
-
-/* designation_opt:                  
-      |                 designation
-;
-
-direct_abstract_declarator_opt:   
-      |                 direct_abstract_declarator
-;
-
-assignment_expression_opt:        
-      |                 assignment_expression
-;
-
-parameter_type_list_opt:          
-      |                 parameter_type_list
-;
-
-pointer_opt:                      
-      |                 pointer
-;
-
-abstract_declarator_opt:          
-      |                 abstract_declarator
-;
-
-type_qualifier_list_opt:          
-      |                 type_qualifier_list
-;
-
-identifier_list_opt:              
-      |                 identifier_list
-;
-
-identifier_opt:                   
-      |                 IDENT
-;
-
-declarator_opt:                   
-      |                 declarator
-;
-
-declaration_specifiers_opt:       
-      |                 declaration_specifiers
-;
-
-specifier_qualifier_list_opt:     
-      |                 specifier_qualifier_list
-;
-
-init_declarator_list_opt:         
-      |                 init_declarator_list
 ; */
 
 
@@ -427,8 +376,8 @@ postfix_expression:  primary_expression
       |              postfix_expression PLUSPLUS            {$$ = create_unary(UNARY_OP, PLUSPLUS, $1);}
       |              postfix_expression MINUSMINUS          {$$ = create_unary(UNARY_OP, MINUSMINUS, $1);}
       
-      |              '(' type_name ')' '{' initializer_list '}'
-      |              '(' type_name ')' '{' initializer_list ',' '}'
+      /* |              '(' type_name ')' '{' initializer_list '}'
+      |              '(' type_name ')' '{' initializer_list ',' '}' */
 ;
 
 function_call:       postfix_expression '(' function_arguments ')'      {$$ = create_fn_node($1 , $3);}
