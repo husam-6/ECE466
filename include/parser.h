@@ -13,6 +13,7 @@ struct astnode * create_ternary(int op_type, struct astnode *left, struct astnod
 int check_for_symbol();
 void add_symbol_entry();
 void create_scope();
+void print_symbol_table();
 
 // For debugging, print the ast symbolically 
 void print_ast(struct astnode * node, int depth);
@@ -110,11 +111,14 @@ struct astnode_symbol {
     enum namespace n_space;
     enum symbol_kind symbol_k;  
     int storage_class;     //Only for declarations (-1 if not)
+    
+    // Next item in symbol table
+    struct astnode_symbol * next;
 };
 
 
 // Global scope
-extern struct scope global; 
+extern struct scope curr_scope; 
 
 // Scalar type struct
 struct scalar_type{
@@ -146,8 +150,7 @@ struct astnode {
 
 // Scope struct 
 struct scope {
-    struct astnode * head;
-    struct astnode * next;
+    struct astnode_symbol * head;
     struct scope * outer;
 };
 

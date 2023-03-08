@@ -7,8 +7,6 @@
    void yyerror(const char* msg);
    int yylex();
 
-   // Global symbol table
-   /* struct scope global = {.head = NULL, .next = NULL,.outer = NULL}; */
 }
 
 %token IDENT CHARLIT STRING NUMBER INDSEL PLUSPLUS MINUSMINUS SHL SHR
@@ -49,7 +47,7 @@
 %%
 // Top Level (From Hak)
 declaration_or_fndef_list:    declaration_or_fndef
-      |                       declaration_or_fndef_list declaration_or_fndef
+      |                       declaration_or_fndef_list declaration_or_fndef              {print_symbol_table();}
 
 declaration_or_fndef:         declaration
       |                       function_definition
@@ -76,7 +74,7 @@ decl_or_stmt:     declaration
 
 // Declarations 6.7
 declaration:            declaration_specifiers init_declarator_list ';'
-      |                 declaration_specifiers  ';'
+      |                 declaration_specifiers  ';'                                 
 ;
 
 declaration_specifiers: storage_class_specifier declaration_specifiers
@@ -165,10 +163,10 @@ function_specifier:     INLINE
 
 // 6.7.5
 declarator:             pointer direct_declarator
-      |                 direct_declarator
+      |                 direct_declarator                         
 ;
 
-direct_declarator:      IDENT
+direct_declarator:      IDENT                                                                         {printf("%s\n", $1); add_symbol_entry($1);}
       |                 '(' declarator ')'
       |                 direct_declarator '[' type_qualifier_list assignment_expression ']'
       |                 direct_declarator '[' assignment_expression ']'
@@ -467,6 +465,8 @@ constant_expression: conditional_expression
 ;
 %%
 
+// Global symbol table
+struct scope curr_scope = {.head = NULL, .outer = NULL}; 
 
 void yyerror(const char* msg) {
       fprintf(stderr, "ERROR: %s on line %d\n", msg, line_num);
