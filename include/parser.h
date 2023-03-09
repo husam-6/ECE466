@@ -14,6 +14,7 @@ int check_for_symbol();
 void add_symbol_entry();
 void create_scope();
 void print_symbol_table();
+struct astnode * create_array_node(int size);
 
 // For debugging, print the ast symbolically 
 void print_ast(struct astnode * node, int depth);
@@ -45,6 +46,10 @@ enum node_type{
     IDENT_NODE,
     CHAR_LIT,
     STR_LIT,
+    ARRAY_TYPE, 
+    POINTER_TYPE, 
+    FUNCTION_TYPE, 
+    SCALAR_TYPE, 
 };
 
 
@@ -97,10 +102,11 @@ enum symbol_kind{
 };
 
 enum namespace {
-    var,
-    tag,
-    label,
-    member
+    VAR_S,
+    FUNC_S, 
+    TAG_S,
+    LABEL_S,
+    MEMBER_S
 };
 
 
@@ -110,7 +116,7 @@ struct astnode_symbol {
     char * name;
     enum namespace n_space;
     enum symbol_kind symbol_k;  
-    int storage_class;     //Only for declarations (-1 if not)
+    int storage_class;     //Only for variable declarations (-1 if not)
     
     // Next item in symbol table
     struct astnode_symbol * next;
@@ -126,6 +132,23 @@ struct scalar_type{
 };
 
 
+// Array type nodeos
+struct arr_type{
+    int size;
+};
+
+
+struct type_node{
+    struct astnode * next_type; 
+    union{
+        struct scalar_type scalar;
+        struct arr_type array_node;
+        // struct function_type func_node;
+        // struct struct_union_type struct_union_node;
+    };
+};
+
+
 // Node struct
 struct astnode {
     enum node_type type;
@@ -138,12 +161,8 @@ struct astnode {
             char char_lit;
             struct string_literal str_lit;
             struct astnode_fncall fncall;
-            struct astnode_symbol * symbol_table_entry;
-            struct scalar_type scale_type;
-            // struct arr_type array;
-            // struct struct_union_type struct_union;
-            // struct pointer_type point;
-            // struct function_type func;
+            struct astnode_symbol symbol_table_entry;
+            struct type_node t_node; 
 
     };
 };

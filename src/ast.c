@@ -1,73 +1,6 @@
 // Helper file for functions related to bison parser
 #include "parser.h"
 #include "parser.tab.h"
-#include <string.h>
-
-
-// Print symbol table identifiers
-void print_symbol_table(){
-    printf("Printing symbol table...\n");
-    struct astnode_symbol * tmp; 
-    tmp = curr_scope.head; 
-    while (tmp->next != NULL){
-        printf("Symbol Ident: %s\n", tmp->name);
-        tmp = tmp->next; 
-    }
-    printf("Symbol Ident: %s\n", tmp->name);
-}
-
-
-// Symbol table helper function to check for an entry
-// Returns 2 if table was empty when called
-// Returns 1 if the entry is in the table
-// Returns 0 if it isnt
-int check_for_symbol(char * ident){
-    struct astnode_symbol * tmp; 
-    tmp = curr_scope.head; 
-    if (tmp == NULL)
-        return 2; 
-
-    // Check all entries in symbol table
-    while (tmp->next != NULL){
-        // Check if we find the identifier
-        if (!strcmp(tmp->name, ident)){
-            // Still need to check if the same type (ie if its a valid redeclaration)
-            return 1;
-        }
-        tmp = tmp->next; 
-    }
-
-    if (tmp->name == ident)
-        return 1;
-
-    return 0;
-}
-
-// Add symbol to symbol table
-void add_symbol_entry(char * ident){
-    int in_table = check_for_symbol(ident);
-
-    // Already in table
-    if (in_table == 1){
-        yyerror("Redeclaration of variable");
-    }
-    
-    // Only saving identifier for now...
-    struct astnode_symbol * new_symbol = (struct astnode_symbol *)malloc(sizeof(struct astnode_symbol)); 
-    if (in_table == 2){
-        // Push onto symbol stack 
-        new_symbol->name = ident; 
-        curr_scope.head = new_symbol; 
-        new_symbol->next = NULL; 
-        return;
-    }
-
-
-    // Push onto symbol stack 
-    new_symbol->name = ident; 
-    new_symbol->next = curr_scope.head; 
-    curr_scope.head = new_symbol; 
-}
 
 
 // ast node helper function
@@ -322,8 +255,20 @@ void print_ast(struct astnode * head, int depth){
             printf("STRING %s\n", head->str_lit.content);
             break;
         }
+        case ARRAY_TYPE:{
+            n_tabs(depth);
+            printf("ARRAY TYPE NODE: size = %d\n", head->t_node.array_node.size);
+            print_ast(head->t_node.next_type, depth+1);
+            break;
+        }
+        case SCALAR_TYPE:{
+            n_tabs(depth);
+            printf("SCALAR TYPE NODE: %s\n", print_datatype(head->t_node.scalar.arith_type));
+            print_ast(head->t_node.next_type, depth+1);
+            break;
+        }
         default:{
-            fprintf(stderr, "UNKNOWN NODE TYPE\n");
+            fprintf(stderr, "UNKNOWN NODE TYPE %d\n", head->type);
             break;
         }
     }
