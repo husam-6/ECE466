@@ -418,7 +418,12 @@ function_specifier:     INLINE
 ;
 
 // 6.7.5
-declarator:             pointer direct_declarator                                   //{print_ast($2, 0);}
+declarator:             pointer direct_declarator                                   {
+                                                                                          struct astnode *node = make_ast_node(POINTER_TYPE);
+                                                                                          node->t_node.next_type = $2; 
+                                                                                          $$ = node; 
+                                                                                          top = $$; 
+                                                                                    }
       |                 direct_declarator                                           //{print_ast($1, 0);}
 ;
 

@@ -267,6 +267,12 @@ void print_ast(struct astnode * head, int depth){
             print_ast(head->t_node.next_type, depth+1);
             break;
         }
+        case POINTER_TYPE:{
+            n_tabs(depth);
+            printf("POINTER TYPE NODE\n");
+            print_ast(head->t_node.next_type, depth+1);
+            break;
+        }
         default:{
             fprintf(stderr, "UNKNOWN NODE TYPE %d\n", head->type);
             break;
