@@ -3,25 +3,6 @@
 
 #include "lexer.h"
 
-// Function prototypes (helper functions for major types of operations)
-struct astnode * make_ast_node(int type);
-struct astnode * create_unary(int op_type, int op, struct astnode *expr);
-struct astnode * create_binary(int op_type, int op, struct astnode *left, struct astnode *right);
-struct astnode * create_ternary(int op_type, struct astnode *left, struct astnode *middle, struct astnode *right);
-
-// For declarations...
-int check_for_symbol();
-void add_symbol_entry();
-void create_scope();
-void print_symbol_table();
-struct astnode * create_array_node(int size);
-
-// For debugging, print the ast symbolically 
-void print_ast(struct astnode * node, int depth);
-
-
-
-// #include "../lexer/lexer.h"
 enum op_type{
     BINOP = 0,
     ASSIGNMENT,
@@ -50,7 +31,28 @@ enum node_type{
     POINTER_TYPE, 
     FUNCTION_TYPE, 
     SCALAR_TYPE, 
+    IDENT_TYPE,
 };
+
+// Function prototypes (helper functions for major types of operations)
+struct astnode * make_ast_node(int type);
+struct astnode * create_unary(int op_type, int op, struct astnode *expr);
+struct astnode * create_binary(int op_type, int op, struct astnode *left, struct astnode *right);
+struct astnode * create_ternary(int op_type, struct astnode *left, struct astnode *middle, struct astnode *right);
+
+// For declarations...
+int check_for_symbol();
+void add_symbol_entry();
+void create_scope();
+void print_symbol_table();
+struct astnode * create_array_node(int size);
+struct astnode * push_next_type(enum node_type type, struct astnode * next);
+
+// For debugging, print the ast symbolically 
+void print_ast(struct astnode * node, int depth);
+
+
+
 
 
 // AST Node structs
@@ -141,6 +143,7 @@ struct arr_type{
 struct type_node{
     struct astnode * next_type; 
     union{
+        char * ident;
         struct scalar_type scalar;
         struct arr_type array_node;
         // struct function_type func_node;

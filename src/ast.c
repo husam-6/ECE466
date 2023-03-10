@@ -245,6 +245,11 @@ void print_ast(struct astnode * head, int depth){
             printf("IDENT %s\n", head->ident);
             break;
         }
+        case IDENT_TYPE: {
+            n_tabs(depth);
+            printf("IDENT  %s\n", head->t_node.ident);
+            break;
+        }
         case CHAR_LIT:{
             n_tabs(depth);
             printf("CONSTANT: (type=int)%d\n", head->char_lit);

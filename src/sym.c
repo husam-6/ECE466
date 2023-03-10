@@ -3,11 +3,22 @@
 #include <string.h>
 
 
-struct astnode * create_array_node(int size){
-    struct astnode *node = make_ast_node(ARRAY_TYPE);
-    node->t_node.array_node.size = size;         // for now, -1 for undefined size
-    node->t_node.next_type = NULL;
-    return node; 
+
+struct astnode * push_next_type(enum node_type type, struct astnode * next){
+    if (tail == next){
+        printf("Loop?\n");
+    }
+
+    // Make node
+    struct astnode * next_type = make_ast_node(type);
+
+    // Point newly created node to next in sequence
+    next_type->t_node.next_type = next;
+
+    // Point previous node to newly created node
+    tail->t_node.next_type = next_type;
+
+    return next_type;
 }
 
 
@@ -51,7 +62,8 @@ int check_for_symbol(char * ident){
 }
 
 // Add symbol to symbol table
-void add_symbol_entry(char * ident, int namespace, int kind, int stg_class){
+// void add_symbol_entry(char * ident, int namespace, int kind, int stg_class){
+void add_symbol_entry(char * ident){
     int in_table = check_for_symbol(ident);     // Only checks in current scope for now
 
     // Already in table
