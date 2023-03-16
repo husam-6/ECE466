@@ -3,8 +3,10 @@ vpath %.tab.c build
 vpath %.yy.c build
 vpath %.h include
 vpath %.c src
-vpath %.y src
-vpath %.l src
+vpath %.c src/parser
+vpath %.c src/lexer
+vpath %.y src/parser
+vpath %.l src/lexer
 CXXFLAGS=-I./include -I./build -Wall -Wextra
 BUILD = build
 
@@ -17,8 +19,10 @@ $(BUILD)/parser.tab.c: parser.y
 $(BUILD)/lex.yy.c: lexer.l parser.tab.c
 	flex --outfile=$(BUILD)/lex.yy.c $<
 
+# test: all
+# 	gcc -E ptests/*.c | ./$(BUILD)/a.out >ptests/test.out 2>ptests/test.err
 test: all
-	gcc -E ptests/*.c | ./$(BUILD)/a.out >ptests/test.out 2>ptests/test.err
+	gcc -E ptests/*.c | ./$(BUILD)/a.out
 
 clean: 
 	rm build/*
