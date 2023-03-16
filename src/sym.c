@@ -4,8 +4,8 @@
 
 
 
-struct astnode * push_next_type(enum node_type type, struct astnode * next){
-    if (tail == next){
+struct astnode * push_next_type(enum node_type type, struct astnode * prev, struct astnode * next){
+    if (prev == next){
         printf("Loop?\n");
     }
 
@@ -16,7 +16,7 @@ struct astnode * push_next_type(enum node_type type, struct astnode * next){
     next_type->t_node.next_type = next;
 
     // Point previous node to newly created node
-    tail->t_node.next_type = next_type;
+    prev->t_node.next_type = next_type;
 
     return next_type;
 }

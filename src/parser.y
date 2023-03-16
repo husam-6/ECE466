@@ -52,7 +52,7 @@
 declaration_or_fndef_list:    declaration_or_fndef
       |                       declaration_or_fndef_list declaration_or_fndef              //{print_symbol_table();}
 
-declaration_or_fndef:         declaration                                                 {print_ast($1, 0);}
+declaration_or_fndef:         declaration                                                 {print_ast(top, 0); print_ast(tail, 0);}
       |                       function_definition
 ;
 
@@ -304,13 +304,7 @@ constant_expression: conditional_expression
 
 
 // Declarations 6.7
-declaration:            declaration_specifiers init_declarator_list ';'                         {
-/* declaration:            declaration_specifiers declarator ';'                                   {      */
-                                                                                                      // Point type node of declarator
-                                                                                                      $1->t_node.next_type = $2; 
-                                                                                                      $$ = $1;
-                                                                                                      tail = $$;
-                                                                                                }
+declaration:            declaration_specifiers init_declarator_list ';'                         {$$ = $2;}
       |                 declaration_specifiers  ';'                                             
 ;
 
@@ -345,10 +339,11 @@ type_specifier:   VOID
       |           CHAR
       |           SHORT
       |           INT                                                         {     
-                                                                                    printf("FIRST NODE: SCALAR\n");
                                                                                     struct astnode * tmp = make_ast_node(SCALAR_TYPE);
                                                                                     tmp->t_node.scalar.arith_type = I; 
                                                                                     $$ = tmp;
+
+                                                                                    // Set up pointers to keep track of top and tail nodes
                                                                                     top = $$; 
                                                                                     tail = $$;  
                                                                               }
@@ -408,10 +403,8 @@ function_specifier:     INLINE
 
 // 6.7.5
 declarator:             pointer direct_declarator                                   {
-                                                                                          printf("DECLARATOR\n");
-                                                                                          // $1->t_node.next_type = $2; 
-                                                                                          // tail = $2; 
-                                                                                          // $$ = $2;
+                                                                                          // Update tail node (end of declarator now)
+                                                                                          tail = $2; 
                                                                                     }
       |                 direct_declarator                                           //{print_ast($1, 0);}
 ;
@@ -420,45 +413,39 @@ declarator:             pointer direct_declarator                               
 // Assume function declarations take unknown args
 direct_declarator:      IDENT                                                       {
                                                                                           // Identifier node
-                                                                                          printf("SEE IDENT %s\n",$1);
-                                                                                          // printf("tail NODE TYPE %d\n", tail->type);
-                                                                                          struct astnode * node = push_next_type(IDENT_TYPE, NULL);
+                                                                                          struct astnode * node = push_next_type(IDENT_TYPE, tail, NULL);
                                                                                           node->t_node.ident = $1;
-                                                                                          // tail = node;
                                                                                           $$ = node;
                                                                                     }           
       |                 '(' declarator ')'                                          {$$ = $2;}
-      |                 direct_declarator '['  ']'                                  {$$ = push_next_type(ARRAY_TYPE, $1); $$->t_node.array_node.size = -1; tail = $$;}
+      |                 direct_declarator '['  ']'                                  {$$ = push_next_type(ARRAY_TYPE, tail, $1); $$->t_node.array_node.size = -1; tail = $$;}
       |                 direct_declarator '[' NUMBER ']'                            {
-                                                                                          printf("ARRAY \n");
-                                                                                          // printf("%d\n", tail->type);
                                                                                           if (yylval.num.type >= 8){
                                                                                                 yyerror("Non-integer size provided in array declaration"); exit(1);
                                                                                           }
-                                                                                          $$ = push_next_type(ARRAY_TYPE, $1);
-                                                                                          $$->t_node.array_node.size = yylval.num.integer;
-                                                                                          // tail = $$;
-                                                                                          // $$ = push_next_type(ARRAY_TYPE, $1);   
+
+                                                                                          // Add array type node
+                                                                                          struct astnode * tmp = push_next_type(ARRAY_TYPE, tail, $1);
+                                                                                          tmp->t_node.array_node.size = yylval.num.integer;
+
+                                                                                          // Update tail node to be latest added node, return end of the declarator (ident)
+                                                                                          tail = tmp;
+                                                                                          $$ = $1; 
                                                                                     }
       |                 direct_declarator '(' ')'                                    
 ;
 
 pointer:                '*' type_qualifier_list                                     //{$$ = create_pointer_node(tail); tail = $$;}
       |                 '*'                                                         {     
-                                                                                          printf("POINT 1\n");
-                                                                                          $$ = push_next_type(POINTER_TYPE, NULL);
+                                                                                          // Add first pointer node
+                                                                                          $$ = push_next_type(POINTER_TYPE, tail, NULL);
                                                                                           tail = $$;
                                                                                     }
       |                 '*' type_qualifier_list pointer
       |                 '*' pointer                                                 {
-                                                                                          printf("POINT n\n");
-                                                                                          // struct astnode *tmp = make_ast_node(POINTER_TYPE);
-                                                                                          // tmp->t_node.next_type = $2; 
-                                                                                          // tail->t_node.next_type = $$;
-                                                                                          // tail = $2;
-                                                                                          // $$ = $2;
-                                                                                          $$ = push_next_type(POINTER_TYPE, $2);
-                                                                                          // tail = $$; 
+                                                                                          // Nested pointer
+                                                                                          $$ = push_next_type(POINTER_TYPE, tail, NULL);
+                                                                                          tail = $$;
                                                                                     }
 ;
 
