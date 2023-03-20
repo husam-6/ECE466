@@ -247,7 +247,8 @@ void print_ast(struct astnode * head, int depth){
         }
         case IDENT_TYPE: {
             n_tabs(depth);
-            printf("IDENT  %s\n", head->t_node.ident);
+            printf("IDENT %s\n", head->t_node.ident);
+            print_ast(head->t_node.next_type, depth+1);
             break;
         }
         case CHAR_LIT:{
@@ -269,7 +270,7 @@ void print_ast(struct astnode * head, int depth){
         case SCALAR_TYPE:{
             n_tabs(depth);
             printf("SCALAR TYPE NODE: %s\n", print_datatype(head->t_node.scalar.arith_type));
-            print_ast(head->t_node.next_type, depth+1);
+            // print_ast(head->t_node.next_type, depth+1);
             break;
         }
         case POINTER_TYPE:{
