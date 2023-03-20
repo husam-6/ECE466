@@ -427,6 +427,7 @@ declarator:             pointer direct_declarator                               
                                                                                           } 
                                                                                           // Update tail node (end of declarator now)
                                                                                           tail = ptr_tail; 
+                                                                                          $$ = tail;
                                                                                     }
       |                 direct_declarator                                           //{print_ast($1, 0);}
 ;
