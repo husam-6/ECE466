@@ -2,7 +2,11 @@
 #include "parser.tab.h"
 #include <string.h>
 
-
+struct astnode * create_scalar_node(enum num_type arith){
+    struct astnode * tmp = make_ast_node(SCALAR_TYPE);
+    tmp->t_node.scalar.arith_type = arith;
+    return tmp; 
+}
 
 struct astnode * push_next_type(enum node_type type, struct astnode * prev, struct astnode * next){
     if (prev == next){

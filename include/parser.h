@@ -47,6 +47,7 @@ void create_scope();
 void print_symbol_table();
 struct astnode * create_array_node(int size);
 struct astnode * push_next_type(enum node_type type, struct astnode *prev, struct astnode * next);
+struct astnode * create_scalar_node(enum num_type arith);
 
 // For debugging, print the ast symbolically 
 void print_ast(struct astnode * node, int depth);

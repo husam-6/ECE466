@@ -173,7 +173,7 @@ void print_op_type(int op_type) {
 
 char * print_datatype(int type){
     switch (type) {
-        case U:         {return"int"; break;}
+        case U:         {return"unsigned"; break;}
         case UL:        {return("unsigned long"); break;}
         case ULL:       {return("unsigned long long"); break;}
         case L:         {return "long"; break;}
@@ -182,6 +182,11 @@ char * print_datatype(int type){
         case D:         {return "double"; break;}
         case F:         {return "float"; break;}
         case LD:        {return "long"; break;}
+        case C:         {return "char"; break;}
+        case UC:        {return "unsigned char"; break;}
+        case SH:        {return "short"; break;}
+        case S:         {return "signed"; break;}
+        case V:         {return "void"; break;}
         default:        {fprintf(stderr, "Unknown number type...\n"); return ""; break;}
     }
 }
