@@ -8,9 +8,6 @@
    int yylex();
    struct astnode * top;
    struct astnode * tail;  
-   struct astnode * tmp_ptr_head;  
-   struct astnode * tmp_ptr_tail;  
-
 }
 
 %token IDENT CHARLIT STRING NUMBER INDSEL PLUSPLUS MINUSMINUS SHL SHR
@@ -52,11 +49,11 @@
 %%
 // Top Level (From Hak)
 declaration_or_fndef_list:    declaration_or_fndef
-      |                       declaration_or_fndef_list declaration_or_fndef              //{print_symbol_table();}
+      |                       declaration_or_fndef_list declaration_or_fndef              {print_symbol_table();}             // For debugging printing symbol table at top level
 
 declaration_or_fndef:         declaration                                                 {
-                                                                                                print_ast(top, 0);
-                                                                                                print_ast(tail, 0);
+                                                                                                // print_ast(top, 0);
+                                                                                                // print_ast(tail, 0);
                                                                                           }
       |                       function_definition
 ;
@@ -81,70 +78,70 @@ decl_or_stmt:     declaration
 
 
 // Expressions 6.5.1
-primary_expression:   IDENT                                 {
-                                                                  // Identifier node
-                                                                  // Look up in symbol table
-                                                                  // Point to struct in symbol table
-                                                                  struct astnode *node = make_ast_node(IDENT_NODE);
-                                                                  node->ident = yylval.ident;
-                                                                  $$ = node; 
-                                                            }       
-      |               NUMBER                                {
-                                                               // Number node (struct stays the same)
-                                                               struct astnode *node = make_ast_node(NUM);
-                                                               node->num = yylval.num;
-                                                               $$ = node; 
-                                                            } 
-      |               STRING                                {
-                                                               // String node
-                                                               struct astnode *node = make_ast_node(STR_LIT);
-                                                               node->str_lit.content = yylval.str.content;
-                                                               node->str_lit.length = yylval.str.length;
-                                                               $$ = node; 
-                                                            } 
-      |               CHARLIT                               {
-                                                               // Charlit node
-                                                               struct astnode *node = make_ast_node(CHAR_LIT);
-                                                               node->char_lit = yylval.charlit;
-                                                               $$ = node; 
-                                                            } 
-      |               '(' expression ')'                    {
-                                                               $$ = $2;
-                                                            }
+primary_expression:   IDENT                                             {
+                                                                              // Identifier node
+                                                                              // Look up in symbol table
+                                                                              // Point to struct in symbol table
+                                                                              struct astnode *node = make_ast_node(IDENT_NODE);
+                                                                              node->ident = yylval.ident;
+                                                                              $$ = node; 
+                                                                        }       
+      |               NUMBER                                            {
+                                                                           // Number node (struct stays the same)
+                                                                           struct astnode *node = make_ast_node(NUM);
+                                                                           node->num = yylval.num;
+                                                                           $$ = node; 
+                                                                        } 
+      |               STRING                                            {
+                                                                           // String node
+                                                                           struct astnode *node = make_ast_node(STR_LIT);
+                                                                           node->str_lit.content = yylval.str.content;
+                                                                           node->str_lit.length = yylval.str.length;
+                                                                           $$ = node; 
+                                                                        } 
+      |               CHARLIT                                           {
+                                                                           // Charlit node
+                                                                           struct astnode *node = make_ast_node(CHAR_LIT);
+                                                                           node->char_lit = yylval.charlit;
+                                                                           $$ = node; 
+                                                                        } 
+      |               '(' expression ')'                                {
+                                                                           $$ = $2;
+                                                                        }
 ;
 
 // 6.5.2
 postfix_expression:  primary_expression
-      |              postfix_expression '[' expression ']'  {
-                                                                  // Addition node
-                                                                  struct astnode *add = create_binary(BINOP,'+', $1, $3);
-                                                                  
-                                                                  //Deref node
-                                                                  struct astnode *deref = create_unary(DEREF, '*', add);
-                                                                  $$ = deref;
-                                                            }
-      |              function_call 
-      |              postfix_expression '.' IDENT           {
-                                                                  // Ident node
-                                                                  struct astnode *ident = make_ast_node(IDENT_NODE);
-                                                                  ident->ident = $3;
+      |              postfix_expression '[' expression ']'              {
+                                                                              // Addition node
+                                                                              struct astnode *add = create_binary(BINOP,'+', $1, $3);
 
-                                                                  $$ = create_binary(SELECT, '.', $1, ident);
-                                                            
-                                                            }
-      |              postfix_expression INDSEL IDENT        {
-                                                                  // Ident node
-                                                                  struct astnode *ident = make_ast_node(IDENT_NODE);
-                                                                  ident->ident = $3;
+                                                                              //Deref node
+                                                                              struct astnode *deref = create_unary(DEREF, '*', add);
+                                                                              $$ = deref;
+                                                                        }
+      |              function_call        
+      |              postfix_expression '.' IDENT                       {
+                                                                              // Ident node
+                                                                              struct astnode *ident = make_ast_node(IDENT_NODE);
+                                                                              ident->ident = $3;
 
-                                                                  // Addition node
-                                                                  struct astnode *add = create_binary(BINOP,'+', $1, ident);
-                                                                  
-                                                                  //Deref node
-                                                                  $$ = create_unary(DEREF, '*', add);
-                                                            }
-      |              postfix_expression PLUSPLUS            {$$ = create_unary(UNARY_OP, PLUSPLUS, $1);}
-      |              postfix_expression MINUSMINUS          {$$ = create_unary(UNARY_OP, MINUSMINUS, $1);}
+                                                                              $$ = create_binary(SELECT, '.', $1, ident);
+
+                                                                        }
+      |              postfix_expression INDSEL IDENT                    {
+                                                                              // Ident node
+                                                                              struct astnode *ident = make_ast_node(IDENT_NODE);
+                                                                              ident->ident = $3;
+
+                                                                              // Addition node
+                                                                              struct astnode *add = create_binary(BINOP,'+', $1, ident);
+
+                                                                              //Deref node
+                                                                              $$ = create_unary(DEREF, '*', add);
+                                                                        }
+      |              postfix_expression PLUSPLUS                        {$$ = create_unary(UNARY_OP, PLUSPLUS, $1);}
+      |              postfix_expression MINUSMINUS                      {$$ = create_unary(UNARY_OP, MINUSMINUS, $1);}
       
       /* |              '(' type_name ')' '{' initializer_list '}'
       |              '(' type_name ')' '{' initializer_list ',' '}' */
@@ -158,38 +155,38 @@ function_arguments:  /*EMPTY*/
 
 // 6.5.3
 unary_expression:    postfix_expression                       
-      |              PLUSPLUS unary_expression              {
-                                                                  //Make dummy node with the number 1 in it
-                                                                  struct astnode *one = make_ast_node(NUM);
-                                                                  one->num.type = I; 
-                                                                  one->num.integer = 1;
+      |              PLUSPLUS unary_expression                          {
+                                                                              //Make dummy node with the number 1 in it
+                                                                              struct astnode *one = make_ast_node(NUM);
+                                                                              one->num.type = I; 
+                                                                              one->num.integer = 1;
 
-                                                                  // Set up binary node for ++expr
-                                                                  $$ = create_binary(ASSIGNMENT_COMPOUND, PLUSEQ, $2, one);
-                                                            }
-      |              MINUSMINUS unary_expression            {
-                                                                  // Set up unary node for --expr
+                                                                              // Set up binary node for ++expr
+                                                                              $$ = create_binary(ASSIGNMENT_COMPOUND, PLUSEQ, $2, one);
+                                                                        }
+      |              MINUSMINUS unary_expression                        {
+                                                                              // Set up unary node for --expr
 
-                                                                  //Make dummy node with the number 1 in it
-                                                                  struct astnode *one = make_ast_node(NUM); 
-                                                                  one->num.type = I; 
-                                                                  one->num.integer = 1;
+                                                                              //Make dummy node with the number 1 in it
+                                                                              struct astnode *one = make_ast_node(NUM); 
+                                                                              one->num.type = I; 
+                                                                              one->num.integer = 1;
 
-                                                                  $$ = create_binary(ASSIGNMENT_COMPOUND, MINUSEQ, $2, one); 
-                                                            }
-                                                            
-      |              unary_operator cast_expression         {
-                                                                  struct astnode *un_op;
-                                                                  //Special Case For Deref
-                                                                  if ($1 == '*')
-                                                                        un_op = create_unary(DEREF, $1, $2);
-                                                                  else
-                                                                        un_op = create_unary(UNARY_OP, $1, $2);
-                                                                  
-                                                                  $$ = un_op;            
+                                                                              $$ = create_binary(ASSIGNMENT_COMPOUND, MINUSEQ, $2, one); 
+                                                                        }
 
-                                                            }    
-      |              SIZEOF '(' unary_expression ')'        {$$= create_unary(SIZEOF_OP, SIZEOF, $3);}
+      |              unary_operator cast_expression                     {
+                                                                              struct astnode *un_op;
+                                                                              //Special Case For Deref
+                                                                              if ($1 == '*')
+                                                                                    un_op = create_unary(DEREF, $1, $2);
+                                                                              else
+                                                                                    un_op = create_unary(UNARY_OP, $1, $2);
+
+                                                                              $$ = un_op;            
+
+                                                                        }    
+      |              SIZEOF '(' unary_expression ')'                    {$$= create_unary(SIZEOF_OP, SIZEOF, $3);}
       |              SIZEOF '(' type_name ')'               
 ;
 
@@ -296,7 +293,7 @@ assignment_operator: '='             {$$ = '=';}
 
 // 6.5.17
 expression:          assignment_expression                              
-      |              expression ',' assignment_expression               {$$ = create_binary(BINOP, ',', $1, $3);}
+      |              expression ',' assignment_expression                                 {$$ = create_binary(BINOP, ',', $1, $3);}
 ;
 
 
@@ -309,14 +306,17 @@ constant_expression: conditional_expression
 
 
 // Declarations 6.7
-declaration:            declaration_specifiers init_declarator_list ';'                         {
-                                                                                                      $$ = $2;
-                                                                                                      $2->t_node.next_type = $1; 
+declaration:            declaration_specifiers init_declarator_list ';'                   {
+                                                                                                $$ = $2;
+                                                                                                $2->t_node.next_type = $1; 
 
-                                                                                                      // Update tail
-                                                                                                      tail = $1; 
-                                                                                                      $$ = $1;
-                                                                                                }
+                                                                                                // Update tail
+                                                                                                tail = $1; 
+                                                                                                $$ = $1;
+
+                                                                                                // Add to symbol table
+                                                                                                add_symbol_entry(top->t_node.ident, top);
+                                                                                          }
       |                 declaration_specifiers  ';'                                             
 ;
 
@@ -396,9 +396,9 @@ struct_declarator:      declarator
 ;
 
 // 6.7.3
-type_qualifier:         CONST
-      |                 RESTRICT
-      |                 VOLATILE
+type_qualifier:         CONST                                                       {yyerror("Unimplemented - qualifiers optional");}
+      |                 RESTRICT                                                    {yyerror("Unimplemented - qualifiers optional");}
+      |                 VOLATILE                                                    {yyerror("Unimplemented - qualifiers optional");}
 ;
 
 // 6.7.4
@@ -453,21 +453,13 @@ direct_declarator:      IDENT                                                   
                                                                                           tail = tmp;
                                                                                           $$ = tmp; 
                                                                                     }
-      |                 direct_declarator '(' ')'                                    
+      |                 direct_declarator '(' ')'                                   {yyerror("Unimplemented");}
 ;
 
-pointer:                '*' type_qualifier_list                                     //{$$ = create_pointer_node(tail); tail = $$;}
-      |                 '*'                                                         {     
-                                                                                          struct astnode *tmp_ptr = make_ast_node(POINTER_TYPE);
-                                                                                          $$ = tmp_ptr;
-
-                                                                                    }
-      |                 '*' type_qualifier_list pointer
-      |                 '*' pointer                                                 {
-                                                                                          // Nested pointer
-                                                                                          push_next_type(POINTER_TYPE, $2, NULL);
-                                                                                          $$ = $2;
-                                                                                    }
+pointer:                '*' type_qualifier_list                                     {yyerror("Unimplemented - qualifiers optional");}
+      |                 '*'                                                         {$$ = make_ast_node(POINTER_TYPE);}
+      |                 '*' type_qualifier_list pointer                             {yyerror("Unimplemented - qualifiers optional");}
+      |                 '*' pointer                                                 {push_next_type(POINTER_TYPE, $2, NULL); $$ = $2;}          // Nested pointers
 ;
 
 type_qualifier_list:    type_qualifier

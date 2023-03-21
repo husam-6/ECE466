@@ -28,14 +28,18 @@ struct astnode * push_next_type(enum node_type type, struct astnode * prev, stru
 
 // Print symbol table identifiers
 void print_symbol_table(){
-    printf("Printing symbol table...\n");
-    struct astnode_symbol * tmp; 
+    printf("---------\tPRINTING SYMBOL TABLE...\t---------\n");
+    struct astnode * tmp; 
     tmp = curr_scope.head; 
-    while (tmp->next != NULL){
-        printf("Symbol Ident: %s\n", tmp->name);
-        tmp = tmp->next; 
+    while (tmp->tab_entry.next != NULL){
+        printf("- Symbol Ident: %s\n", tmp->tab_entry.name);
+        printf("- With the following type: \n");
+        print_ast(tmp->tab_entry.type, 0);
+        tmp = tmp->tab_entry.next; 
     }
-    printf("Symbol Ident: %s\n", tmp->name);
+    printf("- Symbol Ident: %s\n", tmp->tab_entry.name);
+    printf("- With the following type: \n");
+    print_ast(tmp->tab_entry.type, 0);
 }
 
 
@@ -44,22 +48,22 @@ void print_symbol_table(){
 // Returns 1 if the entry is in the table
 // Returns 0 if it isnt
 int check_for_symbol(char * ident){
-    struct astnode_symbol * tmp; 
+    struct astnode * tmp; 
     tmp = curr_scope.head; 
     if (tmp == NULL)
         return 2; 
 
     // Check all entries in symbol table
-    while (tmp->next != NULL){
+    while (tmp->tab_entry.next != NULL){
         // Check if we find the identifier
-        if (!strcmp(tmp->name, ident)){
-            // Still need to check if the same type (ie if its a valid redeclaration)
+        if (!strcmp(tmp->tab_entry.name, ident)){
+            // Still need to check if the same type + namespace (could be a valid redeclaration as well)
             return 1;
         }
-        tmp = tmp->next; 
+        tmp = tmp->tab_entry.next; 
     }
 
-    if (tmp->name == ident)
+    if (tmp->tab_entry.name == ident)
         return 1;
 
     return 0;
@@ -67,28 +71,30 @@ int check_for_symbol(char * ident){
 
 // Add symbol to symbol table
 // void add_symbol_entry(char * ident, int namespace, int kind, int stg_class){
-void add_symbol_entry(char * ident){
+void add_symbol_entry(char * ident, struct astnode * type){
     int in_table = check_for_symbol(ident);     // Only checks in current scope for now
 
     // Already in table
     if (in_table == 1){
         yyerror("Redeclaration of variable");
-        exit(1);
+        exit(2);
     }
     
-    // Only saving identifier for now...
-    struct astnode_symbol * new_symbol = (struct astnode_symbol *)malloc(sizeof(struct astnode_symbol)); 
+    // Only saving identifier and type for now...
+    struct astnode * new_symbol = make_ast_node(AST_SYMBOL); 
     if (in_table == 2){
         // Push onto symbol stack 
-        new_symbol->name = ident; 
+        new_symbol->tab_entry.name = ident; 
+        new_symbol->tab_entry.type = type; 
         curr_scope.head = new_symbol; 
-        new_symbol->next = NULL; 
+        new_symbol->tab_entry.next = NULL; 
         return;
     }
 
 
     // Push onto symbol stack 
-    new_symbol->name = ident; 
-    new_symbol->next = curr_scope.head; 
+    new_symbol->tab_entry.name = ident; 
+    new_symbol->tab_entry.type = type; 
+    new_symbol->tab_entry.next = curr_scope.head; 
     curr_scope.head = new_symbol; 
 }

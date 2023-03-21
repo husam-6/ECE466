@@ -32,6 +32,7 @@ enum node_type{
     FUNCTION_TYPE, 
     SCALAR_TYPE, 
     IDENT_TYPE,
+    AST_SYMBOL
 };
 
 // Function prototypes (helper functions for major types of operations)
@@ -122,7 +123,7 @@ struct astnode_symbol {
     int storage_class;     //Only for variable declarations (-1 if not)
     
     // Next item in symbol table
-    struct astnode_symbol * next;
+    struct astnode * next;
 };
 
 
@@ -165,7 +166,7 @@ struct astnode {
             char char_lit;
             struct string_literal str_lit;
             struct astnode_fncall fncall;
-            struct astnode_symbol symbol_table_entry;
+            struct astnode_symbol tab_entry;
             struct type_node t_node; 
 
     };
@@ -173,7 +174,7 @@ struct astnode {
 
 // Scope struct 
 struct scope {
-    struct astnode_symbol * head;
+    struct astnode * head;
     struct scope * outer;
 };
 
