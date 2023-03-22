@@ -6,6 +6,9 @@
 #include <ctype.h>
 #include <math.h>
 
+// Function to test lexer
+int lex_tester();
+
 // Function to parse a directive indicating a new file 
 void file_start(char* yytext);
 

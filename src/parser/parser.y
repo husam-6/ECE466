@@ -2,6 +2,8 @@
 {
    #include "lexer.h" 
    #include "parser.h"
+   #include "sym.h"
+   #include "type.h"
 
    // Function prototypes
    void yyerror(const char* msg);
@@ -317,7 +319,7 @@ declaration:            declaration_specifiers init_declarator_list ';'         
                                                                                                 $$ = $1;
 
                                                                                                 // Add to symbol table
-                                                                                                add_symbol_entry(top->ident, top->next_type);
+                                                                                                add_symbol_entry(top->ident.name, top->next_type, top->ident.n_space);
                                                                                           }
       |                 declaration_specifiers  ';'                                             
 ;
@@ -426,7 +428,10 @@ declarator:             pointer direct_declarator                               
 direct_declarator:      IDENT                                                       {
                                                                                           // Identifier node
                                                                                           struct type_node * node = make_type_node(IDENT_TYPE);
-                                                                                          node->ident = $1;
+                                                                                          node->ident.name = $1;
+
+                                                                                          // Save namespace (change later if applicable)
+                                                                                          node->ident.n_space = VAR_S;
 
                                                                                           $$ = node;
                                                                                           // Set top and tail nodes
@@ -437,8 +442,8 @@ direct_declarator:      IDENT                                                   
       |                 direct_declarator '['  ']'                                  {
                                                                                           // Add array type node
                                                                                           struct type_node * tmp = push_next_type(ARRAY_TYPE, $1, NULL);
-                                                                                          tmp->array_node.size = -1;         // Make size -1 for now to distinguish between known and unknown sizes
-
+                                                                                          tmp->size = -1;         // Make size -1 for now to distinguish between known and unknown sizes
+                                                                                          
                                                                                           // Update tail node to be latest added node, return end of the declarator (ident)
                                                                                           tail = tmp;
                                                                                           $$ = tmp; 
@@ -449,7 +454,7 @@ direct_declarator:      IDENT                                                   
                                                                                           }
                                                                                           // Add array type node
                                                                                           struct type_node * tmp = push_next_type(ARRAY_TYPE, $1, NULL);
-                                                                                          tmp->array_node.size = yylval.num.integer;
+                                                                                          tmp->size = yylval.num.integer;
 
                                                                                           // Update tail node to be latest added node, return end of the declarator (ident)
                                                                                           tail = tmp;
@@ -517,23 +522,3 @@ direct_abstract_declarator:   '(' abstract_declarator ')'
 
 
 %%
-
-// Global symbol table
-struct scope curr_scope = {.head = NULL, .outer = NULL}; 
-
-void yyerror(const char* msg) {
-      fprintf(stderr, "ERROR: %s on line %d\n", msg, line_num);
-}
-
-
-int main(){
-      /* struct astnode * tmp = make_ast_node(POINTER_TYPE);
-      struct astnode * tmp2 = make_ast_node(POINTER_TYPE);
-      struct astnode *node = make_ast_node(IDENT_NODE);
-      node->ident = "TMP";
-      tmp->t_node.next_type = tmp2; 
-      tmp2->t_node.next_type = node; 
-
-      print_ast(tmp, 0); */
-      yyparse();
-}

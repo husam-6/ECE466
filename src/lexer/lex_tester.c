@@ -6,7 +6,7 @@
 
 
 
-int main() {
+int lex_tester() {
     int t;
     while((t=yylex()))
         {
