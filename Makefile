@@ -10,7 +10,7 @@ vpath %.l src/lexer
 CXXFLAGS=-I./include -I./build -Wall -Wextra
 BUILD = build
 
-all: parser.tab.c lex.yy.c ast.c lex_help.c sym.c
+all: parser.tab.c lex.yy.c ast.c lex_help.c sym.c type.c
 	gcc $(CXXFLAGS) $^ -ll -o build/a.out
 
 $(BUILD)/parser.tab.c: parser.y

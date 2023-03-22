@@ -250,12 +250,6 @@ void print_ast(struct astnode * head, int depth){
             printf("IDENT %s\n", head->ident);
             break;
         }
-        case IDENT_TYPE: {
-            n_tabs(depth);
-            printf("IDENT %s\n", head->t_node.ident);
-            print_ast(head->t_node.next_type, depth+1);
-            break;
-        }
         case CHAR_LIT:{
             n_tabs(depth);
             printf("CONSTANT: (type=int)%d\n", head->char_lit);
@@ -266,30 +260,9 @@ void print_ast(struct astnode * head, int depth){
             printf("STRING %s\n", head->str_lit.content);
             break;
         }
-        case ARRAY_TYPE:{
-            n_tabs(depth);
-            printf("ARRAY TYPE NODE: size = %d\n", head->t_node.array_node.size);
-            print_ast(head->t_node.next_type, depth+1);
-            break;
-        }
-        case SCALAR_TYPE:{
-            n_tabs(depth);
-            printf("SCALAR TYPE NODE: %s\n", print_datatype(head->t_node.scalar.arith_type));
-            // print_ast(head->t_node.next_type, depth+1);
-            break;
-        }
-        case POINTER_TYPE:{
-            n_tabs(depth);
-            printf("POINTER TYPE NODE\n");
-            print_ast(head->t_node.next_type, depth+1);
-            break;
-        }
         default:{
             fprintf(stderr, "UNKNOWN NODE TYPE %d\n", head->type);
             break;
         }
     }
-    
-      
-
 }
