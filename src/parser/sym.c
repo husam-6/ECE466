@@ -31,33 +31,37 @@ char * print_namespace(enum namespace n_space){
     }
 }
 
+char * print_scope(enum scope_type s_type){
+    switch(s_type){
+        case (S_GLOBAL):                {return "GLOBAL";};
+        case (S_FUNC):                  {return "FUNCTION";};
+        case (S_BLOCK):                 {return "BLOCK";};
+        case (S_MEMBER):                {return "MEMBER";};
+        case (S_PROTOTYPE):             {return "PROTOTYPE";};
+        default:                        {return "UNKNOWN";}
+    }
+}
+
 
 // Print symbol table identifiers
 void print_symbol_table(){
     printf("------------\tPRINTING SYMBOL TABLE...\t------------\n");
     struct astnode_symbol * tmp; 
-    tmp = curr_scope.head; 
+    tmp = curr_scope->head; 
     while (tmp->next != NULL){
-        printf("- Symbol Ident: %s, Storage Class: %s, Namespace: %s, Scope: %d\n", 
-               tmp->name, print_s_class(tmp->s_class), print_namespace(tmp->n_space), curr_scope.s_type);
-        printf("- Declared on line %d, with the following type: \n", tmp->line_num);
-        print_type(tmp->type, 0);
+        print_declaration(tmp); 
         tmp = tmp->next; 
     }
-    printf("- Symbol Ident: %s, Storage Class: %s, Namespace: %s, Scope: %d\n", 
-            tmp->name, print_s_class(tmp->s_class), print_namespace(tmp->n_space), curr_scope.s_type);
-    printf("- Declared on line %d, with the following type: \n", tmp->line_num);
-    print_type(tmp->type, 0);
+    print_declaration(tmp);
 }
 
 
-// Print declaration
+// Prints given declaration (astnode_symbol)
 void print_declaration(struct astnode_symbol * decl){
-    decl = curr_scope.head; 
-    printf("- Symbol Ident: %s, Storage Class: %s, Namespace: %s, Scope: %d\n", 
-            decl->name, print_s_class(decl->s_class), print_namespace(decl->n_space), curr_scope.s_type);
+    printf("- Symbol Ident: %s, Storage Class: %s, Namespace: %s, Scope: %s\n", 
+            decl->name, print_s_class(decl->s_class), print_namespace(decl->n_space), print_scope(curr_scope->s_type));
     printf("- Declared on line %d, with the following type: \n", decl->line_num);
-    print_type(decl->type, 0);
+    print_type(decl->type, 1);
 }
 
 
@@ -65,9 +69,9 @@ void print_declaration(struct astnode_symbol * decl){
 // Returns 2 if table was empty when called
 // Returns 1 if the entry is in the table
 // Returns 0 if it isnt
-int check_for_symbol(char * ident, enum namespace n_space, struct scope scope){
+int check_for_symbol(char * ident, enum namespace n_space, struct scope * scope){
     struct astnode_symbol * tmp; 
-    tmp = scope.head; 
+    tmp = scope->head; 
     if (tmp == NULL)
         return 2; 
 
@@ -107,7 +111,7 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
     if (in_table == 2)
         new_symbol->next = NULL;            // If empty
     else
-        new_symbol->next = curr_scope.head; // Else push to top of stack
+        new_symbol->next = curr_scope->head; // Else push to top of stack
 
 
     // Set variable parameters
@@ -117,13 +121,34 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
     new_symbol->symbol_k = symbol_k; 
     new_symbol->s_class = s_class;
     new_symbol->line_num = line_num;  
-    curr_scope.head = new_symbol; 
+    curr_scope->head = new_symbol; 
 }
 
+// Scope helper function
+struct scope * make_new_scope(enum scope_type s_type) {
+    struct scope * node = (struct scope *)malloc(sizeof(struct scope));
+    node->s_type = s_type; 
+    return node;
+}
 
+// Function to push new scope on top of stack of scopes
 void create_new_scope(){
-    if (curr_scope.s_type < 2){
-        
+    struct scope * tmp = NULL; 
+    // Figure out new scope in sequence
+    if (curr_scope->s_type == S_BLOCK || curr_scope->s_type == S_FUNC){
+        // Make new block scope
+        tmp = make_new_scope(S_BLOCK);
     }
+    else if (curr_scope->s_type == S_GLOBAL){
+        tmp = make_new_scope(S_FUNC);
+    }
+    tmp->outer = curr_scope;
+    curr_scope = tmp;
+}
 
+void close_outer_scope(){
+    // For now not freeing any memory...
+    struct scope * tmp = curr_scope; 
+    curr_scope = curr_scope->outer; 
+    free(tmp);
 }

@@ -3,12 +3,25 @@
 
 extern enum storage_class tmp_s_class;
 
+enum scope_type{
+    S_GLOBAL,
+    S_FUNC,
+    S_BLOCK,
+    S_PROTOTYPE,
+    S_MEMBER
+};
+
 // For declarations...
 int check_for_symbol();
 void add_symbol_entry();
 void create_scope();
 void print_symbol_table();
 void print_declaration();
+
+// For scopes
+struct scope * make_new_scope(enum scope_type s_type);
+void create_new_scope();
+void close_outer_scope();
 
 // Enums for symbol structure
 enum symbol_kind{
@@ -48,16 +61,8 @@ struct astnode_symbol {
 
 
 // Global scope
-extern struct scope curr_scope; 
+extern struct scope * curr_scope; 
 
-
-enum scope_type{
-    S_GLOBAL,
-    S_FUNC,
-    S_BLOCK,
-    S_PROTOTYPE,
-    S_MEMBER
-};
 
 // Scope struct 
 struct scope {

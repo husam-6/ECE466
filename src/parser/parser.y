@@ -52,7 +52,7 @@
 
 %%
 // Top Level (From Hak)
-declaration_or_fndef_list:    declaration_or_fndef                                        {print_symbol_table();}
+declaration_or_fndef_list:    declaration_or_fndef                                        //{print_symbol_table();}
       |                       declaration_or_fndef_list declaration_or_fndef              //{print_symbol_table();}             // For debugging printing symbol table at top level
 
 declaration_or_fndef:         declaration                                                 {
@@ -65,14 +65,40 @@ declaration_or_fndef:         declaration                                       
 // Declaration Specifier int, extern int
 // Declarator is the ident and any pointers/array info
 // Compound statement is everything in the brackets
-function_definition: declaration_specifiers declarator {$2->next_type = $1; add_symbol_entry(top->ident.name, top->next_type, top->ident.n_space, top->ident.s_class, DEF); print_declaration(top);}     compound_statement                 
+function_definition:    declaration_specifiers declarator 
+                                                      {
+                                                            $2->next_type = $1;
+
+                                                            // Tmp var for functions, top points to identifier type node
+                                                            struct type_node * tmp_func = top->next_type; 
+
+                                                            // Save function return type (next type gets saved in function node)
+                                                            tmp_func->func_node.return_type = tmp_func->next_type;  
+                                                            add_symbol_entry(top->ident.name, top->next_type, top->ident.n_space, top->ident.s_class, DEF);
+
+                                                            // Reset tmp_s_class
+                                                            tmp_s_class = -1; 
+                                                            
+                                                            print_declaration(curr_scope->head);
+                                                      }
+                        compound_statement        
 ;
 
-statement:        compound_statement
-      |           expression ';'                                                          {print_ast($1, 0);}
+statement:        compound_statement                  
+      |           expression ';'                      {print_ast($1, 0);}
 ;
 
-compound_statement: '{' decl_or_stmt_list '}'                                            
+compound_statement:     '{'                           {
+                                                            // Make new scope 
+                                                            // Block default 
+                                                            create_new_scope();
+                                                      }
+
+                        decl_or_stmt_list '}'         {
+                                                            // End scope (pop it off stack)
+                                                            // Go back to previous scope 
+                                                            {close_outer_scope();}
+                                                      }                                           
 ;
 
 decl_or_stmt_list:      decl_or_stmt 
@@ -321,14 +347,19 @@ declaration:            declaration_specifiers init_declarator_list ';'         
                                                                                                 tail = $1; 
                                                                                                 $$ = $1;
 
+                                                                                                // If function, save return type
+                                                                                                struct type_node * tmp = top->next_type;
+                                                                                                if (tmp->type == FUNCTION_TYPE){
+                                                                                                      tmp->func_node.return_type = tmp->next_type;
+                                                                                                }
+
                                                                                                 // Add to symbol table
-                                                                                                add_symbol_entry(top->ident.name, top->next_type,
-                                                                                                                 top->ident.n_space, top->ident.s_class, DECL);
+                                                                                                add_symbol_entry(top->ident.name, tmp, top->ident.n_space, top->ident.s_class, DECL);
                                                                                                 
                                                                                                 // Reset tmp_s_class
                                                                                                 tmp_s_class = -1;
 
-                                                                                                print_declaration(top); 
+                                                                                                print_declaration(curr_scope->head);
                                                                                           }
       |                 declaration_specifiers  ';'                                             
 ;
@@ -415,7 +446,7 @@ type_qualifier:         CONST                                                   
 ;
 
 // 6.7.4
-function_specifier:     INLINE
+function_specifier:     INLINE                                                      {yyerror("inline function specifier unimplemented");}
 ;
 
 // 6.7.5
@@ -424,7 +455,7 @@ declarator:             pointer direct_declarator                               
                                                                                           struct type_node *ptr_tail = $1;
                                                                                           while(ptr_tail->next_type != NULL){
                                                                                                 ptr_tail = ptr_tail->next_type; 
-                                                                                          } 
+                                                                                          }
                                                                                           // Update tail node (end of declarator now)
                                                                                           tail = ptr_tail; 
                                                                                           $$ = tail;
@@ -444,7 +475,7 @@ direct_declarator:      IDENT                                                   
 
                                                                                           if (tmp_s_class != -1)
                                                                                                 node->ident.s_class = tmp_s_class; 
-                                                                                          else if (curr_scope.s_type == S_GLOBAL)
+                                                                                          else if (curr_scope->s_type == S_GLOBAL)
                                                                                                 node->ident.s_class = EXTERN_S;
                                                                                           else
                                                                                                 node->ident.s_class = AUTO_S;
@@ -497,9 +528,9 @@ direct_declarator:      IDENT                                                   
 ;
 
 pointer:                '*' type_qualifier_list                                     {yyerror("Unimplemented - qualifiers optional"); $$ = make_type_node(POINTER_TYPE);}
-      |                 '*'                                                         {$$ = make_type_node(POINTER_TYPE);}
+      |                 '*'                                                         {$$ = make_type_node(POINTER_TYPE); tail = $$;}
       |                 '*' type_qualifier_list pointer                             {yyerror("Unimplemented - qualifiers optional");}
-      |                 '*' pointer                                                 {push_next_type(POINTER_TYPE, $2, NULL); $$ = $2;}          // Nested pointers
+      |                 '*' pointer                                                 {tail = push_next_type(POINTER_TYPE, tail , NULL); $$ = $2;}          // Nested pointers
 ;
 
 type_qualifier_list:    type_qualifier
@@ -510,13 +541,13 @@ parameter_type_list:    parameter_list
       |                 parameter_list ',' ELLIPSIS
 ;
 
-parameter_list:         parameter_declaration
+parameter_list:         parameter_declaration         
       |                 parameter_list ',' parameter_declaration
 ;
 
 // Assume function declarations only take unknonw arguments, this just accepts it and allows for function definitions
-parameter_declaration:  declaration_specifiers declarator {
-
+parameter_declaration:  declaration_specifiers declarator   {
+                                                                  
                                                             }
 ;
 

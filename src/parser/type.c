@@ -32,7 +32,13 @@ void print_type(struct type_node * head, int depth){
         case FUNCTION_TYPE:{
             n_tabs(depth);
             printf("FUNCTION TYPE NODE\n");
-            print_type(head->next_type, depth+1);
+            // print_type(head->next_type, depth+1);
+            // Print return type
+            n_tabs(depth+1);
+            printf("RETURN TYPE:\n");
+            print_type(head->func_node.return_type, depth+1);
+
+            // Also print parameter list
             break;
         }
         default: {
@@ -54,6 +60,7 @@ struct type_node * make_type_node(enum Type type){
 struct type_node * create_scalar_node(enum num_type arith){
     struct type_node *node = make_type_node(SCALAR_TYPE);
     node->arith_type = arith;
+    node->next_type = NULL;
     return node; 
 }
 

@@ -5,7 +5,7 @@
 #include "type.h"
 
 // Global symbol table
-struct scope curr_scope = {.head = NULL, .outer = NULL, .s_type = S_GLOBAL}; 
+struct scope * curr_scope; 
 
 // tmp storage class
 enum storage_class tmp_s_class = -1; 
@@ -16,6 +16,11 @@ void yyerror(const char* msg) {
 
 
 int main(){
+      // Initialize global scope symbol table
+      curr_scope = make_new_scope(S_GLOBAL);
+      curr_scope->head = NULL; 
+      curr_scope->outer = NULL;
+
       /* struct astnode * tmp = make_ast_node(POINTER_TYPE);
       struct astnode * tmp2 = make_ast_node(POINTER_TYPE);
       struct astnode *node = make_ast_node(IDENT_NODE);

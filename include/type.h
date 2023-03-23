@@ -24,6 +24,14 @@ struct type_node * push_next_type(enum Type type, struct type_node *prev, struct
 void print_type(struct type_node * type, int depth);
 struct type_node * make_type_node(enum Type type);
 
+
+// Function type node - includes return type and linked list of parameters
+struct function_type {
+    struct type_node * return_type; 
+    struct astnode_symbol * param_head; 
+
+};
+
 // Node to represent a type
 struct type_node{
     enum Type type;
@@ -32,7 +40,7 @@ struct type_node{
         struct ident_type ident;
         enum num_type arith_type;
         int size;
-        // struct function_type func_node;
+        struct function_type func_node;
         // struct struct_union_type struct_union_node;
     };
 };
