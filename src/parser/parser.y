@@ -9,7 +9,7 @@
    void yyerror(const char* msg);
    int yylex();
    struct type_node * top;
-   struct type_node * tail;  
+   struct type_node * tail; 
 }
 
 %token IDENT CHARLIT STRING NUMBER INDSEL PLUSPLUS MINUSMINUS SHL SHR
@@ -52,8 +52,8 @@
 
 %%
 // Top Level (From Hak)
-declaration_or_fndef_list:    declaration_or_fndef
-      |                       declaration_or_fndef_list declaration_or_fndef              {print_symbol_table();}             // For debugging printing symbol table at top level
+declaration_or_fndef_list:    declaration_or_fndef                                        {print_symbol_table();}
+      |                       declaration_or_fndef_list declaration_or_fndef              //{print_symbol_table();}             // For debugging printing symbol table at top level
 
 declaration_or_fndef:         declaration                                                 {
                                                                                                 // print_type(top, 0);
@@ -62,7 +62,10 @@ declaration_or_fndef:         declaration                                       
       |                       function_definition
 ;
 
-function_definition: declaration_specifiers declarator compound_statement                 
+// Declaration Specifier int, extern int
+// Declarator is the ident and any pointers/array info
+// Compound statement is everything in the brackets
+function_definition: declaration_specifiers declarator {$2->next_type = $1; add_symbol_entry(top->ident.name, top->next_type, top->ident.n_space, top->ident.s_class, DEF); print_declaration(top);}     compound_statement                 
 ;
 
 statement:        compound_statement
@@ -319,16 +322,22 @@ declaration:            declaration_specifiers init_declarator_list ';'         
                                                                                                 $$ = $1;
 
                                                                                                 // Add to symbol table
-                                                                                                add_symbol_entry(top->ident.name, top->next_type, top->ident.n_space);
+                                                                                                add_symbol_entry(top->ident.name, top->next_type,
+                                                                                                                 top->ident.n_space, top->ident.s_class, DECL);
+                                                                                                
+                                                                                                // Reset tmp_s_class
+                                                                                                tmp_s_class = -1;
+
+                                                                                                print_declaration(top); 
                                                                                           }
       |                 declaration_specifiers  ';'                                             
 ;
 
-declaration_specifiers: storage_class_specifier declaration_specifiers
+declaration_specifiers: storage_class_specifier declaration_specifiers                    {$$ = $2;}
       |                 storage_class_specifier
-      |                 type_specifier declaration_specifiers                             {$1->next_type = $2; tail = $2; $$ = $1;}
+      |                 type_specifier declaration_specifiers                             {$1->next_type = $2; tail = $2; $$ = $1;}       // Still need to check if its a valid type...
       |                 type_specifier                                                    {$$ = $1;}
-      |                 type_qualifier declaration_specifiers
+      |                 type_qualifier declaration_specifiers                             {$$ = $2;}
       |                 type_qualifier
       |                 function_specifier declaration_specifiers
       |                 function_specifier
@@ -344,10 +353,10 @@ init_declarator:        declarator
 
 // 6.7.1
 storage_class_specifier:      //TYPEDEF
-                              EXTERN
-      |                       STATIC
-      |                       AUTO
-      |                       REGISTER
+                              EXTERN                                                {tmp_s_class = EXTERN_S;}
+      |                       STATIC                                                {tmp_s_class = STATIC_S;}
+      |                       AUTO                                                  {tmp_s_class = AUTO_S;}
+      |                       REGISTER                                              {tmp_s_class = REGISTER_S;}
 ;
 
 // 6.7.2
@@ -400,9 +409,9 @@ struct_declarator:      declarator
 ;
 
 // 6.7.3
-type_qualifier:         CONST                                                       {yyerror("Unimplemented - qualifiers optional");}
-      |                 RESTRICT                                                    {yyerror("Unimplemented - qualifiers optional");}
-      |                 VOLATILE                                                    {yyerror("Unimplemented - qualifiers optional");}
+type_qualifier:         CONST                                                       {yyerror("qualifiers unimplemented");}
+      |                 RESTRICT                                                    {yyerror("qualifiers unimplemented");}
+      |                 VOLATILE                                                    {yyerror("qualifiers unimplemented");}
 ;
 
 // 6.7.4
@@ -430,8 +439,17 @@ direct_declarator:      IDENT                                                   
                                                                                           struct type_node * node = make_type_node(IDENT_TYPE);
                                                                                           node->ident.name = $1;
 
-                                                                                          // Save namespace (change later if applicable)
+                                                                                          // Save namespace + s_class (change later if applicable)
                                                                                           node->ident.n_space = VAR_S;
+
+                                                                                          if (tmp_s_class != -1)
+                                                                                                node->ident.s_class = tmp_s_class; 
+                                                                                          else if (curr_scope.s_type == S_GLOBAL)
+                                                                                                node->ident.s_class = EXTERN_S;
+                                                                                          else
+                                                                                                node->ident.s_class = AUTO_S;
+
+                                                                                          
 
                                                                                           $$ = node;
                                                                                           // Set top and tail nodes
@@ -460,10 +478,25 @@ direct_declarator:      IDENT                                                   
                                                                                           tail = tmp;
                                                                                           $$ = tmp; 
                                                                                     }
-      |                 direct_declarator '(' ')'                                   {yyerror("Unimplemented");}
+      |                 direct_declarator '(' ')'                                   {
+                                                                                          // Could be definition 
+                                                                                          // Change namespace to func
+                                                                                          top->ident.n_space = FUNC_S;
+                                                                                          struct type_node * tmp = push_next_type(FUNCTION_TYPE, $1, NULL);
+                                                                                          tail = tmp;
+                                                                                          $$ = tmp;
+
+                                                                                    }
+      |                 direct_declarator '(' parameter_type_list ')'               {
+                                                                                          // Assume will always be declaration in our compiler
+                                                                                          top->ident.n_space = FUNC_S;
+                                                                                          struct type_node * tmp = push_next_type(FUNCTION_TYPE, $1, NULL);
+                                                                                          tail = tmp;
+                                                                                          $$ = tmp;
+                                                                                    }
 ;
 
-pointer:                '*' type_qualifier_list                                     {yyerror("Unimplemented - qualifiers optional");}
+pointer:                '*' type_qualifier_list                                     {yyerror("Unimplemented - qualifiers optional"); $$ = make_type_node(POINTER_TYPE);}
       |                 '*'                                                         {$$ = make_type_node(POINTER_TYPE);}
       |                 '*' type_qualifier_list pointer                             {yyerror("Unimplemented - qualifiers optional");}
       |                 '*' pointer                                                 {push_next_type(POINTER_TYPE, $2, NULL); $$ = $2;}          // Nested pointers
@@ -481,9 +514,10 @@ parameter_list:         parameter_declaration
       |                 parameter_list ',' parameter_declaration
 ;
 
-parameter_declaration:  declaration_specifiers declarator
-      |                 declaration_specifiers abstract_declarator
-      |                 declaration_specifiers
+// Assume function declarations only take unknonw arguments, this just accepts it and allows for function definitions
+parameter_declaration:  declaration_specifiers declarator {
+
+                                                            }
 ;
 
 /* identifier_list:        IDENT

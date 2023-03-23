@@ -29,8 +29,14 @@ void print_type(struct type_node * head, int depth){
             print_type(head->next_type, depth+1);
             break;
         }
+        case FUNCTION_TYPE:{
+            n_tabs(depth);
+            printf("FUNCTION TYPE NODE\n");
+            print_type(head->next_type, depth+1);
+            break;
+        }
         default: {
-            fprintf(stderr, "Unknown type node encountered...\n");
+            fprintf(stderr, "Unknown type node encountered...%d\n", head->type);
             exit(2);
         }
     }

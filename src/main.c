@@ -5,7 +5,10 @@
 #include "type.h"
 
 // Global symbol table
-struct scope curr_scope = {.head = NULL, .outer = NULL}; 
+struct scope curr_scope = {.head = NULL, .outer = NULL, .s_type = S_GLOBAL}; 
+
+// tmp storage class
+enum storage_class tmp_s_class = -1; 
 
 void yyerror(const char* msg) {
       fprintf(stderr, "ERROR: %s on line %d\n", msg, line_num);

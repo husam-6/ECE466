@@ -22,7 +22,7 @@ $(BUILD)/lex.yy.c: lexer.l parser.tab.c
 test: all
 	gcc -E ptests/*.c | ./$(BUILD)/a.out >ptests/test.out 2>ptests/test.err
 
-testout: all
+print: all
 	gcc -E ptests/*.c | ./$(BUILD)/a.out
 
 clean: 
