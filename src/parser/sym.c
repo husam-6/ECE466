@@ -47,7 +47,16 @@ char * print_scope(enum scope_type s_type){
 void print_symbol_table(){
     printf("------------\tPRINTING SYMBOL TABLE...\t------------\n");
     struct astnode_symbol * tmp; 
-    tmp = curr_scope->head; 
+    struct scope * tmp_scope = curr_scope;
+    while(tmp_scope->outer != NULL){
+        tmp = tmp_scope->head; 
+        while (tmp->next != NULL){
+            print_declaration(tmp); 
+            tmp = tmp->next; 
+        }
+        print_declaration(tmp);
+    }
+    tmp = tmp_scope->head; 
     while (tmp->next != NULL){
         print_declaration(tmp); 
         tmp = tmp->next; 
@@ -104,9 +113,7 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
         exit(2);
     }
     
-    // Only saving identifier and type for now...
     struct astnode_symbol * new_symbol = make_symbol_node(); 
-    
     // Push onto symbol stack 
     if (in_table == 2)
         new_symbol->next = NULL;            // If empty
@@ -140,7 +147,12 @@ void create_new_scope(){
         tmp = make_new_scope(S_BLOCK);
     }
     else if (curr_scope->s_type == S_GLOBAL){
-        tmp = make_new_scope(S_FUNC);
+        tmp = make_new_scope(S_PROTOTYPE);
+    }
+    else if(curr_scope->s_type == S_PROTOTYPE){
+        // Just change prototype scope to now be functions cope
+        curr_scope->s_type = S_FUNC;
+        return;
     }
     tmp->outer = curr_scope;
     curr_scope = tmp;

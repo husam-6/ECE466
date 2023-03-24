@@ -38,9 +38,9 @@ enum namespace {
 };
 
 enum storage_class{
+    EXTERN_S,
     AUTO_S,
     REGISTER_S, 
-    EXTERN_S,
     STATIC_S,
     NON_VAR
 };

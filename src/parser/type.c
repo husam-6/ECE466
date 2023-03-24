@@ -19,7 +19,7 @@ void print_type(struct type_node * head, int depth){
         }
         case SCALAR_TYPE:{
             n_tabs(depth);
-            printf("SCALAR TYPE NODE: %s\n", print_datatype(head->arith_type));
+            printf("SCALAR TYPE NODE: %s\n", print_datatype(head->scalar.arith_type));
             print_type(head->next_type, depth+1);
             break;
         }
@@ -47,8 +47,6 @@ void print_type(struct type_node * head, int depth){
         }
     }
 }
-        
-
 
 struct type_node * make_type_node(enum Type type){
     struct type_node *node = (struct type_node *)malloc(sizeof(struct type_node));
@@ -56,12 +54,30 @@ struct type_node * make_type_node(enum Type type){
     return node;
 }
 
+struct top_tail * make_tt_node(){
+    return (struct top_tail *)malloc(sizeof(struct top_tail));
+}
 
-struct type_node * create_scalar_node(enum num_type arith){
+
+struct top_tail * create_scalar_node(enum num_type arith){
     struct type_node *node = make_type_node(SCALAR_TYPE);
-    node->arith_type = arith;
+    node->scalar.arith_type = arith;
     node->next_type = NULL;
-    return node; 
+    struct top_tail * tt = make_tt_node();
+    tt->top = node; 
+    tt->tail = node;  
+    return tt; 
+}
+
+struct top_tail * create_pointer_node(){
+    // Make new type node
+    struct type_node * tmp = make_type_node(POINTER_TYPE);
+
+    // Create a top_tail struct that points top and tail towards it
+    struct top_tail * tt = make_tt_node(); 
+    tt->top = tmp; 
+    tt->tail = tmp; 
+    return tt; 
 }
 
 struct type_node * push_next_type(enum Type type, struct type_node * prev, struct type_node * next){
