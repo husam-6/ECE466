@@ -32,13 +32,16 @@ void print_type(struct type_node * head, int depth){
         case FUNCTION_TYPE:{
             n_tabs(depth);
             printf("FUNCTION TYPE NODE\n");
-            // print_type(head->next_type, depth+1);
+
             // Print return type
             n_tabs(depth+1);
             printf("RETURN TYPE:\n");
             print_type(head->func_node.return_type, depth+1);
 
             // Also print parameter list
+            n_tabs(depth+1);
+            printf("PARAMETERS:\n");
+            print_params(head->func_node.param_head, depth+2);
             break;
         }
         default: {
@@ -46,6 +49,20 @@ void print_type(struct type_node * head, int depth){
             exit(2);
         }
     }
+}
+
+// Helper function to print function parameters
+void print_params(struct astnode_symbol * head, int depth){
+    int i = 1; 
+    while(head->next != NULL){
+        n_tabs(depth);
+        printf("Argument %d: \n", i);
+        print_type(head->type, depth+1);
+        i++; head = head->next;
+    }
+    n_tabs(depth);
+    printf("Argument %d: \n", i);
+    print_type(head->type, depth+1);
 }
 
 struct type_node * make_type_node(enum Type type){

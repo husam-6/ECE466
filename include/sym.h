@@ -72,4 +72,6 @@ struct scope {
 };
 
 
+void print_params(struct astnode_symbol * head, int depth);
+
 #endif /* SYM_H */

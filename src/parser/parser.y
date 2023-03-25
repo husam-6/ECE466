@@ -76,10 +76,16 @@ function_definition:    declaration_specifiers declarator
 
                                                                               // Save function return type (next type gets saved in function node)
                                                                               tmp_func->func_node.return_type = tmp_func->next_type;  
+
+                                                                              // Save parameter list in function node (if we have one...)
+                                                                              if (curr_scope->s_type == S_PROTOTYPE)
+                                                                                    tmp_func->func_node.param_head = curr_scope->head;
+
                                                                               add_symbol_entry($2->top->ident.name, $2->top->next_type, $2->top->ident.n_space, $2->top->ident.s_class, DEF);
 
-                                                                              if (curr_scope->s_type == S_PROTOTYPE)
+                                                                              if (curr_scope->s_type == S_PROTOTYPE){
                                                                                     print_declaration(curr_scope->outer->head, curr_scope->outer);
+                                                                              }
                                                                               else
                                                                                     print_declaration(curr_scope->head, curr_scope);
 
@@ -95,7 +101,7 @@ statement:        compound_statement
       |           expression ';'                                        {print_ast($1, 0);}
 ;                 
 
-compound_statement:     '{'   {create_new_scope();}   decl_or_stmt_list '}' {print_symbol_table(); close_outer_scope();}                                           
+compound_statement:     '{'   {create_new_scope();}   decl_or_stmt_list '}' {close_outer_scope();}                                           
 ;
 
 decl_or_stmt_list:      decl_or_stmt 
