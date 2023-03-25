@@ -122,3 +122,91 @@ struct type_node * push_next_type(enum Type type, struct type_node * prev, struc
 
     return node;
 }
+
+
+// Returns 1 if valid
+// Returns 0 if invalid
+int check_type_specifier(struct type_node * head){
+    int tmp = head->scalar.arith_type;
+    
+    // If just a basic type, valid
+    if (tmp == V || tmp == I || tmp == C || tmp == F || tmp == D){
+        if (head->next_type != NULL)
+            return 0;
+        return 1; 
+    }
+
+
+    // If signed...
+    if (tmp == S){
+        if (head->next_type == NULL)
+            return 0; 
+        head = head->next_type;
+        tmp = head->scalar.arith_type; 
+
+        // Can only have signed char, signed short, signed int, signed long
+        if (tmp != C && tmp != SH && tmp != L && tmp != I)
+            return 0;
+        return check_type_specifier(head);
+    }
+        
+    // If unsigned
+    if (tmp == U){
+        if (head->next_type == NULL)
+            return 1; 
+
+        head = head->next_type;
+        tmp = head->scalar.arith_type;
+
+        // Can only have unsigned char, unsigned short, unsigned int, unsigned long
+        if (tmp != C && tmp != SH && tmp != L && tmp != I)
+            return 0;
+
+        return check_type_specifier(head);
+    }
+
+    // If long
+    if (tmp == L){
+        if (head->next_type == NULL)
+            return 1; 
+        
+        head = head->next_type;
+        tmp = head->scalar.arith_type;
+
+        // can only have 2 consecutive longs
+        if (tmp == L){
+            if (head->next_type == NULL)
+                return 1; 
+        
+            head = head->next_type;
+            tmp = head->scalar.arith_type;
+
+            if (tmp != L)
+                return check_type_specifier(head);
+        }
+
+        else if (tmp != I && tmp != D)      // Must be long int, long long int, or long double
+            return 0;
+        
+        return check_type_specifier(head);
+    }
+
+    // if short
+    if (tmp == S){
+        if (head->next_type == NULL)
+            return 1; 
+        
+        head = head->next_type;
+        tmp = head->scalar.arith_type;
+
+        // Can only have short int or short
+        if (tmp != I){
+            return 0; 
+        }
+
+        return check_type_specifier(head);
+    }
+
+
+    return 0;
+}

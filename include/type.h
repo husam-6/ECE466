@@ -30,6 +30,7 @@ struct top_tail * create_pointer_node();
 struct type_node * push_next_type(enum Type type, struct type_node *prev, struct type_node * next);
 void print_type(struct type_node * type, int depth);
 struct type_node * make_type_node(enum Type type);
+int check_type_specifier(struct type_node * head);
 
 
 // Function type node - includes return type and linked list of parameters

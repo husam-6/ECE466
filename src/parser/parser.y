@@ -54,7 +54,7 @@
 %%
 // Top Level (From Hak)
 declaration_or_fndef_list:    declaration_or_fndef                                        //{print_symbol_table();}
-      |                       declaration_or_fndef_list declaration_or_fndef              {print_symbol_table();}             // For debugging printing symbol table at top level
+      |                       declaration_or_fndef_list declaration_or_fndef              //{print_symbol_table();}             // For debugging printing symbol table at top level
 
 declaration_or_fndef:         declaration                                                 {
                                                                                                 // print_type(top, 0);
@@ -342,6 +342,7 @@ declaration:            declaration_specifiers init_declarator_list ';'         
                                                                                                 if ($1->top->scalar.s_class <=4 && $1->top->scalar.s_class >=0)
                                                                                                       $2->top->ident.s_class = $1->top->scalar.s_class;
 
+                                                                                                // Check if storage class should be assumed as AUTO
                                                                                                 if (curr_scope->s_type == PROTOTYPE_SCOPE || curr_scope->s_type == FUNC_SCOPE)
                                                                                                       $2->top->ident.s_class = AUTO_S; 
 
@@ -349,6 +350,13 @@ declaration:            declaration_specifiers init_declarator_list ';'         
                                                                                                 struct type_node * tmp = $2->top->next_type;
                                                                                                 if (tmp->type == FUNCTION_TYPE){
                                                                                                       tmp->func_node.return_type = tmp->next_type;
+                                                                                                }
+
+                                                                                                // Check if type is valid
+                                                                                                int r = check_type_specifier($1->top);
+                                                                                                if (!r){
+                                                                                                      yyerror("INVALID TYPE SPECIFIER,");
+                                                                                                      exit(2);
                                                                                                 }
 
                                                                                                 // Add to symbol table
@@ -364,7 +372,11 @@ declaration:            declaration_specifiers init_declarator_list ';'         
 
 declaration_specifiers: storage_class_specifier declaration_specifiers                    {$2->top->scalar.s_class = $1; $$ = $2;}
       |                 storage_class_specifier
-      |                 type_specifier declaration_specifiers                             {$1->tail->next_type = $2->top; $1->tail = $2->tail; $$ = $1;}       // Still need to check if its a valid type...
+      |                 type_specifier declaration_specifiers                             {
+                                                                                                $1->tail->next_type = $2->top;
+                                                                                                $1->tail = $2->tail;
+                                                                                                $$ = $1;
+                                                                                          }       // Still need to check if its a valid type...
       |                 type_specifier                                                    {$$ = $1;}
       |                 type_qualifier declaration_specifiers                             {$$ = $2;}
       |                 type_qualifier
