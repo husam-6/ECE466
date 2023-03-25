@@ -53,15 +53,20 @@ void print_type(struct type_node * head, int depth){
 
 // Helper function to print function parameters
 void print_params(struct astnode_symbol * head, int depth){
-    int i = 1; 
+    int i = 1;
+    if (head == NULL){
+        n_tabs(depth);
+        printf("Unknown arguments\n");
+        return; 
+    }
     while(head->next != NULL){
         n_tabs(depth);
-        printf("Argument %d: \n", i);
+        printf("Argument %d: ident %s\n", i, head->name);
         print_type(head->type, depth+1);
         i++; head = head->next;
     }
     n_tabs(depth);
-    printf("Argument %d: \n", i);
+    printf("Argument %d: ident %s\n", i, head->name);
     print_type(head->type, depth+1);
 }
 

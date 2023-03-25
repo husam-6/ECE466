@@ -4,11 +4,11 @@
 extern enum storage_class tmp_s_class;
 
 enum scope_type{
-    S_GLOBAL,
-    S_FUNC,
-    S_BLOCK,
-    S_PROTOTYPE,
-    S_MEMBER
+    GLOBAL_SCOPE,
+    FUNC_SCOPE,
+    BLOCK_SCOPE,
+    PROTOTYPE_SCOPE,
+    MEMBER_SCOPE
 };
 
 // For declarations...

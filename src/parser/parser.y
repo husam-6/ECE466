@@ -54,7 +54,7 @@
 %%
 // Top Level (From Hak)
 declaration_or_fndef_list:    declaration_or_fndef                                        //{print_symbol_table();}
-      |                       declaration_or_fndef_list declaration_or_fndef              //{print_symbol_table();}             // For debugging printing symbol table at top level
+      |                       declaration_or_fndef_list declaration_or_fndef              {print_symbol_table();}             // For debugging printing symbol table at top level
 
 declaration_or_fndef:         declaration                                                 {
                                                                                                 // print_type(top, 0);
@@ -78,23 +78,16 @@ function_definition:    declaration_specifiers declarator
                                                                               tmp_func->func_node.return_type = tmp_func->next_type;  
 
                                                                               // Save parameter list in function node (if we have one...)
-                                                                              if (curr_scope->s_type == S_PROTOTYPE)
+                                                                              if (curr_scope->s_type == PROTOTYPE_SCOPE)
                                                                                     tmp_func->func_node.param_head = curr_scope->head;
 
                                                                               add_symbol_entry($2->top->ident.name, $2->top->next_type, $2->top->ident.n_space, $2->top->ident.s_class, DEF);
-
-                                                                              if (curr_scope->s_type == S_PROTOTYPE){
-                                                                                    print_declaration(curr_scope->outer->head, curr_scope->outer);
-                                                                              }
-                                                                              else
-                                                                                    print_declaration(curr_scope->head, curr_scope);
-
 
                                                                               // print_symbol_table();
 
                                                                               // create_new_scope();
                                                                         }
-                        compound_statement                              
+                        compound_statement                              //{print_symbol_table();}
 ;                 
 
 statement:        compound_statement                                    
@@ -344,9 +337,12 @@ constant_expression: conditional_expression
 // Declarations 6.7
 declaration:            declaration_specifiers init_declarator_list ';'                   {
                                                                                                 $2->tail->next_type = $1->top; 
-                                                                                                $2->top->ident.s_class = $1->top->scalar.s_class;
 
-                                                                                                if (curr_scope->s_type == S_PROTOTYPE || curr_scope->s_type == S_FUNC)
+                                                                                                // Change storage class if appicable
+                                                                                                if ($1->top->scalar.s_class <=4 && $1->top->scalar.s_class >=0)
+                                                                                                      $2->top->ident.s_class = $1->top->scalar.s_class;
+
+                                                                                                if (curr_scope->s_type == PROTOTYPE_SCOPE || curr_scope->s_type == FUNC_SCOPE)
                                                                                                       $2->top->ident.s_class = AUTO_S; 
 
                                                                                                 // If function, save return type
@@ -359,7 +355,9 @@ declaration:            declaration_specifiers init_declarator_list ';'         
                                                                                                 add_symbol_entry($2->top->ident.name, tmp, $2->top->ident.n_space, 
                                                                                                                  $2->top->ident.s_class, DECL);
 
-                                                                                                print_declaration(curr_scope->head, curr_scope);
+                                                                                                // Change this if you want to get prototypes working for real
+                                                                                                if (curr_scope->s_type == PROTOTYPE_SCOPE)
+                                                                                                      close_outer_scope();
                                                                                           }
       |                 declaration_specifiers  ';'                                             
 ;
@@ -473,7 +471,7 @@ direct_declarator:      IDENT                                                   
                                                                                           // Default to EXTERN - edit later 
                                                                                           node->ident.s_class = EXTERN_S;
 
-                                                                                          if (curr_scope->s_type == S_FUNC || curr_scope->s_type == S_PROTOTYPE)
+                                                                                          if (curr_scope->s_type == FUNC_SCOPE || curr_scope->s_type == PROTOTYPE_SCOPE)
                                                                                                 node->ident.s_class = AUTO_S;
 
 
@@ -509,6 +507,7 @@ direct_declarator:      IDENT                                                   
                                                                                           // Could be definition 
                                                                                           // Change namespace to func
                                                                                           $1->top->ident.n_space = FUNC_S;
+                                                                                          $1->top->ident.s_class = EXTERN_S;
                                                                                           struct type_node * tmp = push_next_type(FUNCTION_TYPE, $1->tail, NULL);
                                                                                           $1->tail = tmp;
                                                                                           $$ = $1;
@@ -516,9 +515,12 @@ direct_declarator:      IDENT                                                   
       |                 direct_declarator '(' parameter_type_list ')'               {
                                                                                           // Assume will always be declaration in our compiler
                                                                                           $1->top->ident.n_space = FUNC_S;
+                                                                                          $1->top->ident.s_class = EXTERN_S;
                                                                                           struct type_node * tmp = push_next_type(FUNCTION_TYPE, $1->tail, NULL);
                                                                                           $1->tail = tmp;
                                                                                           $$ = $1;
+
+                                                                                          // close_outer_scope();
                                                                                     }
 ;
 
@@ -551,16 +553,16 @@ parameter_type_list:    parameter_list
 parameter_list:         parameter_declaration                                       {
                                                                                           // make_symbol_table_proto_or_member(enum scope_type t)
                                                                                           // Add to symbol table
-                                                                                          create_new_scope(S_PROTOTYPE);
+                                                                                          create_new_scope(PROTOTYPE_SCOPE);
                                                                                           add_symbol_entry($1->top->ident.name, $1->top->next_type, $1->top->ident.n_space, AUTO_S, DECL);
 
-                                                                                          print_declaration(curr_scope->head, curr_scope);
+                                                                                          // print_declaration(curr_scope->head, curr_scope);
 
                                                                                     }
       |                 parameter_list ',' parameter_declaration                    {
                                                                                           add_symbol_entry($3->top->ident.name, $3->top->next_type, $3->top->ident.n_space, AUTO_S, DECL);
 
-                                                                                          print_declaration(curr_scope->head, curr_scope);
+                                                                                          // print_declaration(curr_scope->head, curr_scope);
                                                                   
                                                                                     }
 ;

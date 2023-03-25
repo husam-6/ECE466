@@ -33,36 +33,37 @@ char * print_namespace(enum namespace n_space){
 
 char * print_scope(enum scope_type s_type){
     switch(s_type){
-        case (S_GLOBAL):                {return "GLOBAL";};
-        case (S_FUNC):                  {return "FUNCTION";};
-        case (S_BLOCK):                 {return "BLOCK";};
-        case (S_MEMBER):                {return "MEMBER";};
-        case (S_PROTOTYPE):             {return "PROTOTYPE";};
-        default:                        {return "UNKNOWN";}
+        case (GLOBAL_SCOPE):                {return "GLOBAL";};
+        case (FUNC_SCOPE):                  {return "FUNCTION";};
+        case (BLOCK_SCOPE):                 {return "BLOCK";};
+        case (MEMBER_SCOPE):                {return "MEMBER";};
+        case (PROTOTYPE_SCOPE):             {return "PROTOTYPE";};
+        default:                            {return "UNKNOWN";}
     }
+}
+
+
+void print_scope_symbols(struct scope * curr_scope){
+        struct astnode_symbol * tmp = curr_scope->head; 
+        while (tmp->next != NULL){
+            print_declaration(tmp, curr_scope); 
+            tmp = tmp->next; 
+        }
+        print_declaration(tmp, curr_scope);
+        curr_scope = curr_scope->outer;
 }
 
 
 // Print symbol table identifiers
 void print_symbol_table(){
-    printf("------------\tPRINTING SYMBOL TABLE...\t------------\n");
-    struct astnode_symbol * tmp; 
+    printf("------------\tPRINTING SYMBOL TABLE...\t------------\n"); 
     struct scope * tmp_scope = curr_scope;
     while(tmp_scope->outer != NULL){
-        tmp = tmp_scope->head; 
-        while (tmp->next != NULL){
-            print_declaration(tmp, tmp_scope); 
-            tmp = tmp->next; 
-        }
-        print_declaration(tmp, tmp_scope);
-        tmp_scope = tmp_scope->outer; 
+        print_scope_symbols(tmp_scope);
     }
-    tmp = tmp_scope->head; 
-    while (tmp->next != NULL){
-        print_declaration(tmp, tmp_scope); 
-        tmp = tmp->next; 
-    }
-    print_declaration(tmp, tmp_scope);
+    print_scope_symbols(tmp_scope);
+    printf("------------\tEND OF SYMBOL TABLE\t------------\n");
+
 }
 
 
@@ -118,7 +119,7 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
     
     struct scope * tmp_scope = curr_scope;
     int proto = 0;
-    if (curr_scope->s_type == S_PROTOTYPE && n_space == FUNC_S){
+    if (curr_scope->s_type == PROTOTYPE_SCOPE && n_space == FUNC_S){
         tmp_scope = tmp_scope->outer; 
         proto = 1; 
     }
@@ -139,6 +140,9 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
     new_symbol->line_num = line_num;  
     tmp_scope->head = new_symbol; 
 
+    // Print the newly inputted symbol 
+    print_declaration(new_symbol, tmp_scope);
+
     // Update curr_scope
     if (proto)
         curr_scope->outer = tmp_scope; 
@@ -157,19 +161,19 @@ struct scope * make_new_scope(enum scope_type s_type) {
 void create_new_scope(enum scope_type s_type){
     struct scope * tmp = NULL; 
     // Figure out new scope in sequence
-    if (curr_scope->s_type == S_BLOCK || curr_scope->s_type == S_FUNC){
+    if (curr_scope->s_type == BLOCK_SCOPE || curr_scope->s_type == FUNC_SCOPE){
         // Make new block scope
-        tmp = make_new_scope(S_BLOCK);
+        tmp = make_new_scope(BLOCK_SCOPE);
     }
-    else if (curr_scope->s_type == S_GLOBAL){
-        if (s_type == S_PROTOTYPE)
-            tmp = make_new_scope(S_PROTOTYPE);
+    else if (curr_scope->s_type == GLOBAL_SCOPE){
+        if (s_type == PROTOTYPE_SCOPE)
+            tmp = make_new_scope(PROTOTYPE_SCOPE);
         else
-            tmp = make_new_scope(S_FUNC);
+            tmp = make_new_scope(FUNC_SCOPE);
     }
-    else if(curr_scope->s_type == S_PROTOTYPE){
+    else if(curr_scope->s_type == PROTOTYPE_SCOPE){
         // Just change prototype scope to now be functions cope
-        curr_scope->s_type = S_FUNC;
+        curr_scope->s_type = FUNC_SCOPE;
         return;
     }
     tmp->outer = curr_scope;

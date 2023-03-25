@@ -17,7 +17,7 @@ void yyerror(const char* msg) {
 
 int main(){
       // Initialize global scope symbol table
-      curr_scope = make_new_scope(S_GLOBAL);
+      curr_scope = make_new_scope(GLOBAL_SCOPE);
       curr_scope->head = NULL; 
       curr_scope->outer = NULL;
 
