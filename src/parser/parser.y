@@ -8,8 +8,6 @@
    // Function prototypes
    void yyerror(const char* msg);
    int yylex();
-   /* struct type_node * top;
-   struct type_node * tail;  */
 }
 
 %token IDENT CHARLIT STRING NUMBER INDSEL PLUSPLUS MINUSMINUS SHL SHR
@@ -72,7 +70,7 @@ function_definition:    declaration_specifiers declarator
                                                                         {
                                                                               $2->tail->next_type = $1->top;
                                                                               $2->top->ident.s_class = $1->top->scalar.s_class;
-                                                                              
+
                                                                               // Tmp var for functions, top points to identifier type node
                                                                               struct type_node * tmp_func = $2->top->next_type; 
 
@@ -80,31 +78,24 @@ function_definition:    declaration_specifiers declarator
                                                                               tmp_func->func_node.return_type = tmp_func->next_type;  
                                                                               add_symbol_entry($2->top->ident.name, $2->top->next_type, $2->top->ident.n_space, $2->top->ident.s_class, DEF);
 
-                                                                              // Reset tmp_s_class
-                                                                              tmp_s_class = -1; 
+                                                                              if (curr_scope->s_type == S_PROTOTYPE)
+                                                                                    print_declaration(curr_scope->outer->head, curr_scope->outer);
+                                                                              else
+                                                                                    print_declaration(curr_scope->head, curr_scope);
 
-                                                                              print_declaration(curr_scope->head);
+
+                                                                              // print_symbol_table();
 
                                                                               // create_new_scope();
                                                                         }
-                        compound_statement                        
+                        compound_statement                              
 ;                 
 
 statement:        compound_statement                                    
       |           expression ';'                                        {print_ast($1, 0);}
 ;                 
 
-compound_statement:     '{'                                             {
-                                                                              // Make new scope 
-                                                                              // Block default 
-                                                                              create_new_scope();
-                                                                        }
-
-                        decl_or_stmt_list '}'                           {
-                                                                              // End scope (pop it off stack)
-                                                                              // Go back to previous scope 
-                                                                              close_outer_scope();
-                                                                        }                                           
+compound_statement:     '{'   {create_new_scope();}   decl_or_stmt_list '}' {print_symbol_table(); close_outer_scope();}                                           
 ;
 
 decl_or_stmt_list:      decl_or_stmt 
@@ -349,9 +340,8 @@ declaration:            declaration_specifiers init_declarator_list ';'         
                                                                                                 $2->tail->next_type = $1->top; 
                                                                                                 $2->top->ident.s_class = $1->top->scalar.s_class;
 
-                                                                                                // Update tail
-                                                                                                // $2->tail = $1->tail; 
-                                                                                                // $$ = $2;
+                                                                                                if (curr_scope->s_type == S_PROTOTYPE || curr_scope->s_type == S_FUNC)
+                                                                                                      $2->top->ident.s_class = AUTO_S; 
 
                                                                                                 // If function, save return type
                                                                                                 struct type_node * tmp = $2->top->next_type;
@@ -362,11 +352,8 @@ declaration:            declaration_specifiers init_declarator_list ';'         
                                                                                                 // Add to symbol table
                                                                                                 add_symbol_entry($2->top->ident.name, tmp, $2->top->ident.n_space, 
                                                                                                                  $2->top->ident.s_class, DECL);
-                                                                                                
-                                                                                                // Reset tmp_s_class
-                                                                                                tmp_s_class = -1;
 
-                                                                                                print_declaration(curr_scope->head);
+                                                                                                print_declaration(curr_scope->head, curr_scope);
                                                                                           }
       |                 declaration_specifiers  ';'                                             
 ;
@@ -480,6 +467,10 @@ direct_declarator:      IDENT                                                   
                                                                                           // Default to EXTERN - edit later 
                                                                                           node->ident.s_class = EXTERN_S;
 
+                                                                                          if (curr_scope->s_type == S_FUNC || curr_scope->s_type == S_PROTOTYPE)
+                                                                                                node->ident.s_class = AUTO_S;
+
+
                                                                                           // Set top and tail nodes
                                                                                           struct top_tail * tt = make_tt_node(); 
                                                                                           tt->top = node; 
@@ -554,22 +545,16 @@ parameter_type_list:    parameter_list
 parameter_list:         parameter_declaration                                       {
                                                                                           // make_symbol_table_proto_or_member(enum scope_type t)
                                                                                           // Add to symbol table
-                                                                                          create_new_scope();
-                                                                                          add_symbol_entry($1->top->ident.name, $1->top->next_type, $1->top->ident.n_space, $1->top->ident.s_class, DECL);
-                                                                  
-                                                                                          // Reset tmp_s_class
-                                                                                          tmp_s_class = -1;
+                                                                                          create_new_scope(S_PROTOTYPE);
+                                                                                          add_symbol_entry($1->top->ident.name, $1->top->next_type, $1->top->ident.n_space, AUTO_S, DECL);
 
-                                                                                          print_declaration(curr_scope->head);
+                                                                                          print_declaration(curr_scope->head, curr_scope);
 
                                                                                     }
       |                 parameter_list ',' parameter_declaration                    {
-                                                                                          add_symbol_entry($3->top->ident.name, $3->top->next_type, $3->top->ident.n_space, $1->top->ident.s_class, DECL);
-                                                                  
-                                                                                          // Reset tmp_s_class
-                                                                                          tmp_s_class = -1;
+                                                                                          add_symbol_entry($3->top->ident.name, $3->top->next_type, $3->top->ident.n_space, AUTO_S, DECL);
 
-                                                                                          print_declaration(curr_scope->head);
+                                                                                          print_declaration(curr_scope->head, curr_scope);
                                                                   
                                                                                     }
 ;

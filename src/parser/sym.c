@@ -51,24 +51,25 @@ void print_symbol_table(){
     while(tmp_scope->outer != NULL){
         tmp = tmp_scope->head; 
         while (tmp->next != NULL){
-            print_declaration(tmp); 
+            print_declaration(tmp, tmp_scope); 
             tmp = tmp->next; 
         }
-        print_declaration(tmp);
+        print_declaration(tmp, tmp_scope);
+        tmp_scope = tmp_scope->outer; 
     }
     tmp = tmp_scope->head; 
     while (tmp->next != NULL){
-        print_declaration(tmp); 
+        print_declaration(tmp, tmp_scope); 
         tmp = tmp->next; 
     }
-    print_declaration(tmp);
+    print_declaration(tmp, tmp_scope);
 }
 
 
-// Prints given declaration (astnode_symbol)
-void print_declaration(struct astnode_symbol * decl){
+// Prints given declaration (astnode_symbol) (takes in a given symbol and the scope from which it came from)
+void print_declaration(struct astnode_symbol * decl, struct scope * stored_in){
     printf("- Symbol Ident: %s, Storage Class: %s, Namespace: %s, Scope: %s\n", 
-            decl->name, print_s_class(decl->s_class), print_namespace(decl->n_space), print_scope(curr_scope->s_type));
+            decl->name, print_s_class(decl->s_class), print_namespace(decl->n_space), print_scope(stored_in->s_type));
     printf("- Declared on line %d, with the following type: \n", decl->line_num);
     print_type(decl->type, 1);
 }
@@ -114,11 +115,19 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
     }
     
     struct astnode_symbol * new_symbol = make_symbol_node(); 
+    
+    struct scope * tmp_scope = curr_scope;
+    int proto = 0;
+    if (curr_scope->s_type == S_PROTOTYPE && n_space == FUNC_S){
+        tmp_scope = tmp_scope->outer; 
+        proto = 1; 
+    }
+
     // Push onto symbol stack 
     if (in_table == 2)
         new_symbol->next = NULL;            // If empty
     else
-        new_symbol->next = curr_scope->head; // Else push to top of stack
+        new_symbol->next = tmp_scope->head; // Else push to top of stack
 
 
     // Set variable parameters
@@ -128,7 +137,13 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
     new_symbol->symbol_k = symbol_k; 
     new_symbol->s_class = s_class;
     new_symbol->line_num = line_num;  
-    curr_scope->head = new_symbol; 
+    tmp_scope->head = new_symbol; 
+
+    // Update curr_scope
+    if (proto)
+        curr_scope->outer = tmp_scope; 
+    else
+        curr_scope = tmp_scope; 
 }
 
 // Scope helper function
@@ -139,7 +154,7 @@ struct scope * make_new_scope(enum scope_type s_type) {
 }
 
 // Function to push new scope on top of stack of scopes
-void create_new_scope(){
+void create_new_scope(enum scope_type s_type){
     struct scope * tmp = NULL; 
     // Figure out new scope in sequence
     if (curr_scope->s_type == S_BLOCK || curr_scope->s_type == S_FUNC){
@@ -147,7 +162,10 @@ void create_new_scope(){
         tmp = make_new_scope(S_BLOCK);
     }
     else if (curr_scope->s_type == S_GLOBAL){
-        tmp = make_new_scope(S_PROTOTYPE);
+        if (s_type == S_PROTOTYPE)
+            tmp = make_new_scope(S_PROTOTYPE);
+        else
+            tmp = make_new_scope(S_FUNC);
     }
     else if(curr_scope->s_type == S_PROTOTYPE){
         // Just change prototype scope to now be functions cope
