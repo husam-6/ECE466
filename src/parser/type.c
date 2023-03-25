@@ -36,7 +36,7 @@ void print_type(struct type_node * head, int depth){
             // Print return type
             n_tabs(depth+1);
             printf("RETURN TYPE:\n");
-            print_type(head->func_node.return_type, depth+1);
+            print_type(head->func_node.return_type, depth+2);
 
             // Also print parameter list
             n_tabs(depth+1);
@@ -65,17 +65,19 @@ void print_params(struct astnode_symbol * head, int depth){
     print_type(head->type, depth+1);
 }
 
+// Allocate memory for a type node
 struct type_node * make_type_node(enum Type type){
     struct type_node *node = (struct type_node *)malloc(sizeof(struct type_node));
     node->type = type;
     return node;
 }
 
+// Allocate memory for a top-tail node (for building types)
 struct top_tail * make_tt_node(){
     return (struct top_tail *)malloc(sizeof(struct top_tail));
 }
 
-
+// Allocate memory for a scalar node
 struct top_tail * create_scalar_node(enum num_type arith){
     struct type_node *node = make_type_node(SCALAR_TYPE);
     node->scalar.arith_type = arith;
@@ -86,6 +88,7 @@ struct top_tail * create_scalar_node(enum num_type arith){
     return tt; 
 }
 
+// iniitalize first pointer node
 struct top_tail * create_pointer_node(){
     // Make new type node
     struct type_node * tmp = make_type_node(POINTER_TYPE);
@@ -97,6 +100,7 @@ struct top_tail * create_pointer_node(){
     return tt; 
 }
 
+// Helper function to push a new type to a linked list of types (given previous and next node in sequence)
 struct type_node * push_next_type(enum Type type, struct type_node * prev, struct type_node * next){
     if (prev == next){
         printf("Loop?\n");
