@@ -10,6 +10,7 @@ enum Type{
     FUNCTION_TYPE, 
     SCALAR_TYPE, 
     IDENT_TYPE,
+    S_CLASS
 };
 
 struct ident_type{
@@ -26,7 +27,8 @@ struct scalar_type{
 // struct type_node * create_array_node(int size);
 struct top_tail * make_tt_node();
 struct top_tail * create_scalar_node(enum num_type arith);
-struct top_tail * create_pointer_node();
+struct top_tail * create_s_class_node(enum storage_class s_class);
+struct top_tail * init_tt_node();
 struct type_node * push_next_type(enum Type type, struct type_node *prev, struct type_node * next);
 void print_type(struct type_node * type, int depth);
 struct type_node * make_type_node(enum Type type);

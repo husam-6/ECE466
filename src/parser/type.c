@@ -84,24 +84,27 @@ struct top_tail * make_tt_node(){
 
 // Allocate memory for a scalar node
 struct top_tail * create_scalar_node(enum num_type arith){
-    struct type_node *node = make_type_node(SCALAR_TYPE);
-    node->scalar.arith_type = arith;
-    node->next_type = NULL;
-    struct top_tail * tt = make_tt_node();
-    tt->top = node; 
-    tt->tail = node;  
+    struct top_tail * tt = init_tt_node(SCALAR_TYPE);
+    tt->top->scalar.arith_type = arith;
     return tt; 
 }
 
-// iniitalize first pointer node
-struct top_tail * create_pointer_node(){
+struct top_tail * create_s_class_node(enum storage_class s_class){
+    struct top_tail * tt = init_tt_node(S_CLASS);
+    tt->top->scalar.s_class = s_class;
+    return tt; 
+}
+
+// Initalize first top_tail node
+struct top_tail * init_tt_node(enum Type type){
     // Make new type node
-    struct type_node * tmp = make_type_node(POINTER_TYPE);
+    struct type_node * tmp = make_type_node(type);
 
     // Create a top_tail struct that points top and tail towards it
     struct top_tail * tt = make_tt_node(); 
     tt->top = tmp; 
-    tt->tail = tmp; 
+    tt->tail = tmp;
+    tmp->next_type = NULL; 
     return tt; 
 }
 

@@ -32,7 +32,6 @@
       struct linked_list *ll_p;
       struct type_node *type_p;
       struct top_tail *tt; 
-      enum storage_class s_class; 
 };
 
 
@@ -47,7 +46,7 @@
 %type <tt> declarator declaration_specifiers declaration init_declarator
 %type <tt> init_declarator_list type_specifier pointer direct_declarator parameter_declaration parameter_list
 /* %type <ll_p> function_arguments */
-%type<s_class> storage_class_specifier
+%type<tt> storage_class_specifier function_specifier type_qualifier
 %type <ll_p> function_arguments
 
 
@@ -68,14 +67,32 @@ declaration_or_fndef:         declaration                                       
 // Compound statement is everything in the brackets
 function_definition:    declaration_specifiers declarator 
                                                                         {
+                                                                              // Remove temporary storage class node if it exists
+                                                                              if ($1->top->type == S_CLASS){
+                                                                                    // Check if storage class is valid for a function...
+                                                                                    if ($1->top->scalar.s_class == AUTO_S || $1->top->scalar.s_class == REGISTER_S){
+                                                                                          yyerror("INVALID STORAGE CLASS FOR FUNCTION");
+                                                                                          exit(2);
+                                                                                    }
+                                                                                    $2->top->ident.s_class = $1->top->scalar.s_class;
+                                                                                    $1->top = $1->top->next_type;
+                                                                              }
+
+                                                                              // Chain types
                                                                               $2->tail->next_type = $1->top;
-                                                                              $2->top->ident.s_class = $1->top->scalar.s_class;
 
                                                                               // Tmp var for functions, top points to identifier type node
                                                                               struct type_node * tmp_func = $2->top->next_type; 
 
                                                                               // Save function return type (next type gets saved in function node)
                                                                               tmp_func->func_node.return_type = tmp_func->next_type;  
+
+                                                                              // Check if type is valid
+                                                                              int r = check_type_specifier($1->top);
+                                                                              if (!r){
+                                                                                    yyerror("INVALID TYPE SPECIFIER,");
+                                                                                    exit(2);
+                                                                              }
 
                                                                               // Save parameter list in function node (if we have one...)
                                                                               if (curr_scope->s_type == PROTOTYPE_SCOPE)
@@ -336,11 +353,14 @@ constant_expression: conditional_expression
 
 // Declarations 6.7
 declaration:            declaration_specifiers init_declarator_list ';'                   {
-                                                                                                $2->tail->next_type = $1->top; 
-
-                                                                                                // Change storage class if appicable
-                                                                                                if ($1->top->scalar.s_class <=4 && $1->top->scalar.s_class >=0)
+                                                                                                // Remove temporary storage class node if it exists 
+                                                                                                if ($1->top->type == S_CLASS){
+                                                                                                      // Update storage class before removing
                                                                                                       $2->top->ident.s_class = $1->top->scalar.s_class;
+                                                                                                      $1->top = $1->top->next_type;
+                                                                                                }
+
+                                                                                                $2->tail->next_type = $1->top; 
 
                                                                                                 // Check if storage class should be assumed as AUTO
                                                                                                 if (curr_scope->s_type == PROTOTYPE_SCOPE || curr_scope->s_type == FUNC_SCOPE)
@@ -370,13 +390,24 @@ declaration:            declaration_specifiers init_declarator_list ';'         
       |                 declaration_specifiers  ';'                                             
 ;
 
-declaration_specifiers: storage_class_specifier declaration_specifiers                    {$2->top->scalar.s_class = $1; $$ = $2;}
-      |                 storage_class_specifier
+declaration_specifiers: storage_class_specifier declaration_specifiers                    {
+                                                                                                if ($2->top->type == S_CLASS){
+                                                                                                      yyerror("INVALID STORAGE CLASS SPECIFIERS");
+                                                                                                      exit(2);
+                                                                                                }
+                                                                                                // Save scalar value
+                                                                                                $2->top->scalar.s_class = $1->top->scalar.s_class;
+                                                                                                
+                                                                                                $1->tail->next_type = $2->top; 
+                                                                                                $1->tail = $2->tail; 
+                                                                                                $$ = $1;
+                                                                                          }
+      |                 storage_class_specifier                                           
       |                 type_specifier declaration_specifiers                             {
                                                                                                 $1->tail->next_type = $2->top;
                                                                                                 $1->tail = $2->tail;
                                                                                                 $$ = $1;
-                                                                                          }       // Still need to check if its a valid type...
+                                                                                          }       
       |                 type_specifier                                                    {$$ = $1;}
       |                 type_qualifier declaration_specifiers                             {$$ = $2;}
       |                 type_qualifier
@@ -394,10 +425,10 @@ init_declarator:        declarator
 
 // 6.7.1
 storage_class_specifier:      //TYPEDEF
-                              EXTERN                                                {$$ = EXTERN_S;}
-      |                       STATIC                                                {$$ = STATIC_S;}
-      |                       AUTO                                                  {$$ = AUTO_S;}
-      |                       REGISTER                                              {$$ = REGISTER_S;}
+                              EXTERN                                                {$$ = create_s_class_node(EXTERN_S);}
+      |                       STATIC                                                {$$ = create_s_class_node(STATIC_S);}
+      |                       AUTO                                                  {$$ = create_s_class_node(AUTO_S);}
+      |                       REGISTER                                              {$$ = create_s_class_node(REGISTER_S);}
 ;
 
 // 6.7.2
@@ -505,7 +536,8 @@ direct_declarator:      IDENT                                                   
                                                                                     }
       |                 direct_declarator   '[' NUMBER ']'                          {
                                                                                           if (yylval.num.type >= 8){
-                                                                                                yyerror("Non-integer size provided in array declaration"); exit(1);
+                                                                                                yyerror("Non-integer size provided in array declaration");
+                                                                                                exit(2);
                                                                                           }
                                                                                           // Add array type node
                                                                                           struct type_node * tmp = push_next_type(ARRAY_TYPE, $1->tail, NULL);
@@ -536,8 +568,8 @@ direct_declarator:      IDENT                                                   
                                                                                     }
 ;
 
-pointer:                '*' type_qualifier_list                                     {yyerror("Unimplemented - qualifiers optional"); $$ = create_pointer_node();}
-      |                 '*'                                                         {$$ = create_pointer_node();}
+pointer:                '*' type_qualifier_list                                     {yyerror("Unimplemented - qualifiers optional"); $$ = init_tt_node(POINTER_TYPE);}
+      |                 '*'                                                         {$$ = init_tt_node(POINTER_TYPE);}
       |                 '*' type_qualifier_list pointer                             {
                                                                                           yyerror("Unimplemented - qualifiers optional");
                                                                                           // Nested pointers

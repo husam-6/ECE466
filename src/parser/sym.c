@@ -42,6 +42,13 @@ char * print_scope(enum scope_type s_type){
     }
 }
 
+char * print_def_decl(enum symbol_kind k){
+    switch (k){
+        case DECL: {return "DECLARATION";}
+        case DEF:  {return "DEFINITION";}
+    }
+
+}
 
 void print_scope_symbols(struct scope * curr_scope){
         struct astnode_symbol * tmp = curr_scope->head; 
@@ -69,10 +76,11 @@ void print_symbol_table(){
 
 // Prints given declaration (astnode_symbol) (takes in a given symbol and the scope from which it came from)
 void print_declaration(struct astnode_symbol * decl, struct scope * stored_in){
-    printf("- Symbol Ident: %s, Storage Class: %s, Namespace: %s, Scope: %s\n", 
+    printf("%s\n", print_def_decl(decl->symbol_k));
+    printf("\t- Symbol Ident: %s, Storage Class: %s, Namespace: %s, Scope: %s\n", 
             decl->name, print_s_class(decl->s_class), print_namespace(decl->n_space), print_scope(stored_in->s_type));
-    printf("- Declared on line %d, with the following type: \n", decl->line_num);
-    print_type(decl->type, 1);
+    printf("\t- Declared on line %d, with the following type: \n", decl->line_num);
+    print_type(decl->type, 2);
 }
 
 

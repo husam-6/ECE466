@@ -73,5 +73,6 @@ struct scope {
 
 
 void print_params(struct astnode_symbol * head, int depth);
+char * print_s_class(enum storage_class s_class);
 
 #endif /* SYM_H */
