@@ -57,7 +57,6 @@ void print_scope_symbols(struct scope * curr_scope){
             tmp = tmp->next; 
         }
         print_declaration(tmp, curr_scope);
-        curr_scope = curr_scope->outer;
 }
 
 
@@ -67,6 +66,7 @@ void print_symbol_table(){
     struct scope * tmp_scope = curr_scope;
     while(tmp_scope->outer != NULL){
         print_scope_symbols(tmp_scope);
+        tmp_scope = tmp_scope->outer;
     }
     print_scope_symbols(tmp_scope);
     printf("------------\tEND OF SYMBOL TABLE\t------------\n");
@@ -111,11 +111,17 @@ int check_for_symbol(char * ident, enum namespace n_space, struct scope * scope)
 }
 
 // Add symbol to symbol table
-// void add_symbol_entry(char * ident, int namespace, int kind, int stg_class){
 void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_space, 
                       enum storage_class s_class, enum symbol_kind symbol_k)
 {
-    int in_table = check_for_symbol(ident, n_space, curr_scope);     // Only checks in current scope for now
+    struct scope * tmp_scope = curr_scope;
+    int proto = 0;
+    if (curr_scope->s_type == PROTOTYPE_SCOPE && n_space == FUNC_S){
+        tmp_scope = tmp_scope->outer; 
+        proto = 1; 
+    }
+
+    int in_table = check_for_symbol(ident, n_space, tmp_scope);     // Only checks in current scope for now
 
     // Already in table
     if (in_table == 1){
@@ -125,12 +131,6 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
     
     struct astnode_symbol * new_symbol = make_symbol_node(); 
     
-    struct scope * tmp_scope = curr_scope;
-    int proto = 0;
-    if (curr_scope->s_type == PROTOTYPE_SCOPE && n_space == FUNC_S){
-        tmp_scope = tmp_scope->outer; 
-        proto = 1; 
-    }
 
     // Push onto symbol stack 
     if (in_table == 2)
@@ -161,7 +161,9 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
 // Scope helper function
 struct scope * make_new_scope(enum scope_type s_type) {
     struct scope * node = (struct scope *)malloc(sizeof(struct scope));
-    node->s_type = s_type; 
+    node->s_type = s_type;
+    node->outer = NULL; 
+    node->head = NULL; 
     return node;
 }
 
@@ -193,4 +195,21 @@ void close_outer_scope(){
     struct scope * tmp = curr_scope; 
     curr_scope = curr_scope->outer; 
     free(tmp);
+}
+
+// Reverses a given astnode symbol linked list / stack
+struct astnode_symbol * reverse(struct astnode_symbol * head){
+    struct astnode_symbol * current = head;
+    struct astnode_symbol * prev = NULL;
+    struct astnode_symbol * next = NULL;
+
+    while (current->next != NULL){
+        next = current->next; 
+        current->next = prev; 
+        prev = current; 
+        current = next; 
+    }
+    current->next = prev;
+
+    return current;
 }

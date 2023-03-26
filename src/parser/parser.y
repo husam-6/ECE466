@@ -95,8 +95,10 @@ function_definition:    declaration_specifiers declarator
                                                                               }
 
                                                                               // Save parameter list in function node (if we have one...)
-                                                                              if (curr_scope->s_type == PROTOTYPE_SCOPE)
+                                                                              if (curr_scope->s_type == PROTOTYPE_SCOPE){
+                                                                                    curr_scope->head = reverse(curr_scope->head);
                                                                                     tmp_func->func_node.param_head = curr_scope->head;
+                                                                              }
 
                                                                               add_symbol_entry($2->top->ident.name, $2->top->next_type, $2->top->ident.n_space, $2->top->ident.s_class, DEF);
 
@@ -233,7 +235,7 @@ unary_expression:    postfix_expression
 
                                                                         }    
       |              SIZEOF '(' unary_expression ')'                    {$$= create_unary(SIZEOF_OP, SIZEOF, $3);}
-      |              SIZEOF '(' type_name ')'               
+      |              SIZEOF '(' type_name ')'                           
 ;
 
 unary_operator:      '&'            {$$ = '&';}
@@ -353,8 +355,19 @@ constant_expression: conditional_expression
 
 // Declarations 6.7
 declaration:            declaration_specifiers init_declarator_list ';'                   {
+                                                                                                // Check if storage class should be assumed as AUTO
+                                                                                                if (curr_scope->s_type == PROTOTYPE_SCOPE || curr_scope->s_type == FUNC_SCOPE || curr_scope->s_type == BLOCK_SCOPE)
+                                                                                                      $2->top->ident.s_class = AUTO_S; 
+
                                                                                                 // Remove temporary storage class node if it exists 
                                                                                                 if ($1->top->type == S_CLASS){
+                                                                                                      // Check if storage class is valid 
+                                                                                                      int tmp = $1->top->scalar.s_class;
+                                                                                                      if ((tmp == AUTO_S || tmp == REGISTER_S) && curr_scope->s_type == GLOBAL_SCOPE){
+                                                                                                            yyerror("INVALID STORAGE CLASS SPECIFIER IN GLOBAL SCOPE");
+                                                                                                            exit(2);
+                                                                                                      }
+
                                                                                                       // Update storage class before removing
                                                                                                       $2->top->ident.s_class = $1->top->scalar.s_class;
                                                                                                       $1->top = $1->top->next_type;
@@ -362,9 +375,6 @@ declaration:            declaration_specifiers init_declarator_list ';'         
 
                                                                                                 $2->tail->next_type = $1->top; 
 
-                                                                                                // Check if storage class should be assumed as AUTO
-                                                                                                if (curr_scope->s_type == PROTOTYPE_SCOPE || curr_scope->s_type == FUNC_SCOPE)
-                                                                                                      $2->top->ident.s_class = AUTO_S; 
 
                                                                                                 // If function, save return type
                                                                                                 struct type_node * tmp = $2->top->next_type;
@@ -375,7 +385,7 @@ declaration:            declaration_specifiers init_declarator_list ';'         
                                                                                                 // Check if type is valid
                                                                                                 int r = check_type_specifier($1->top);
                                                                                                 if (!r){
-                                                                                                      yyerror("INVALID TYPE SPECIFIER,");
+                                                                                                      yyerror("INVALID TYPE SPECIFIER");
                                                                                                       exit(2);
                                                                                                 }
 
@@ -392,7 +402,7 @@ declaration:            declaration_specifiers init_declarator_list ';'         
 
 declaration_specifiers: storage_class_specifier declaration_specifiers                    {
                                                                                                 if ($2->top->type == S_CLASS){
-                                                                                                      yyerror("INVALID STORAGE CLASS SPECIFIERS");
+                                                                                                      yyerror("ONLY ONE STORAGE CLASS SPECIFIER ALLOWED");
                                                                                                       exit(2);
                                                                                                 }
                                                                                                 // Save scalar value
@@ -536,7 +546,7 @@ direct_declarator:      IDENT                                                   
                                                                                     }
       |                 direct_declarator   '[' NUMBER ']'                          {
                                                                                           if (yylval.num.type >= 8){
-                                                                                                yyerror("Non-integer size provided in array declaration");
+                                                                                                yyerror("NON-INTEGER SIZE PROVIDED IN ARRAY DECLARATION");
                                                                                                 exit(2);
                                                                                           }
                                                                                           // Add array type node

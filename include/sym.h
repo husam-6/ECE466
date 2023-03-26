@@ -22,6 +22,7 @@ void print_declaration();
 struct scope * make_new_scope(enum scope_type s_type);
 void create_new_scope();
 void close_outer_scope();
+struct astnode_symbol * reverse(struct astnode_symbol * head);
 
 // Enums for symbol structure
 enum symbol_kind{
