@@ -2,7 +2,7 @@ int i1;
 unsigned int ui1;
 unsigned ui2;
 long unsigned ul1;
-const i2;
+const int i2;               // we dont allow implicit type to be an int as of right now
 signed i3;
 volatile unsigned ui3;
 char c1;

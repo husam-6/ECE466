@@ -68,14 +68,19 @@ declaration_or_fndef:         declaration                                       
 function_definition:    declaration_specifiers declarator 
                                                                         {
                                                                               // Remove temporary storage class node if it exists
-                                                                              if ($1->top->type == S_CLASS){
-                                                                                    // Check if storage class is valid for a function...
-                                                                                    if ($1->top->scalar.s_class == AUTO_S || $1->top->scalar.s_class == REGISTER_S){
-                                                                                          yyerror("INVALID STORAGE CLASS FOR FUNCTION");
-                                                                                          exit(2);
-                                                                                    }
-                                                                                    $2->top->ident.s_class = $1->top->scalar.s_class;
-                                                                                    $1->top = $1->top->next_type;
+                                                                              // if ($1->top->type == S_CLASS){
+                                                                              //       // Check if storage class is valid for a function...
+                                                                              //       if ($1->top->scalar.s_class == AUTO_S || $1->top->scalar.s_class == REGISTER_S){
+                                                                              //             yyerror("INVALID STORAGE CLASS FOR FUNCTION");
+                                                                              //             exit(2);
+                                                                              //       }
+                                                                              //       $2->top->ident.s_class = $1->top->scalar.s_class;
+                                                                              //       $1->top = $1->top->next_type;
+                                                                              // }
+                                                                              // Check if storage class is valid for a function...
+                                                                              if ($1->top->scalar.s_class == AUTO_S || $1->top->scalar.s_class == REGISTER_S){
+                                                                                    yyerror("INVALID STORAGE CLASS FOR FUNCTION");
+                                                                                    exit(2);
                                                                               }
 
                                                                               // Chain types
@@ -354,24 +359,24 @@ constant_expression: conditional_expression
 
 
 // Declarations 6.7
-declaration:            declaration_specifiers init_declarator_list ';'                   {
+declaration:            declaration_specifiers init_declarator_list ';'                   {     
                                                                                                 // Check if storage class should be assumed as AUTO
                                                                                                 if (curr_scope->s_type == PROTOTYPE_SCOPE || curr_scope->s_type == FUNC_SCOPE || curr_scope->s_type == BLOCK_SCOPE)
                                                                                                       $2->top->ident.s_class = AUTO_S; 
 
-                                                                                                // Remove temporary storage class node if it exists 
-                                                                                                if ($1->top->type == S_CLASS){
-                                                                                                      // Check if storage class is valid 
-                                                                                                      int tmp = $1->top->scalar.s_class;
-                                                                                                      if ((tmp == AUTO_S || tmp == REGISTER_S) && curr_scope->s_type == GLOBAL_SCOPE){
-                                                                                                            yyerror("INVALID STORAGE CLASS SPECIFIER IN GLOBAL SCOPE");
-                                                                                                            exit(2);
-                                                                                                      }
+                                                                                                // // Remove temporary storage class node if it exists 
+                                                                                                // if ($1->top->type == S_CLASS){
+                                                                                                //       // Check if storage class is valid 
+                                                                                                //       int tmp = $1->top->scalar.s_class;
+                                                                                                //       if ((tmp == AUTO_S || tmp == REGISTER_S) && curr_scope->s_type == GLOBAL_SCOPE){
+                                                                                                //             yyerror("INVALID STORAGE CLASS SPECIFIER IN GLOBAL SCOPE");
+                                                                                                //             exit(2);
+                                                                                                //       }
 
-                                                                                                      // Update storage class before removing
-                                                                                                      $2->top->ident.s_class = $1->top->scalar.s_class;
-                                                                                                      $1->top = $1->top->next_type;
-                                                                                                }
+                                                                                                //       // Update storage class before removing
+                                                                                                //       $2->top->ident.s_class = $1->top->scalar.s_class;
+                                                                                                //       $1->top = $1->top->next_type;
+                                                                                                // }
 
                                                                                                 $2->tail->next_type = $1->top; 
 

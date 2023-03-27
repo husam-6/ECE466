@@ -44,6 +44,12 @@ void print_type(struct type_node * head, int depth){
             print_params(head->func_node.param_head, depth+2);
             break;
         }
+        case S_CLASS:{
+            n_tabs(depth);
+            printf("STORAGE CLASS: %s\n", print_s_class(head->scalar.s_class));
+            print_type(head->next_type, depth+1);
+            break;
+        }
         default: {
             fprintf(stderr, "Unknown type node encountered...%d\n", head->type);
             exit(2);
@@ -135,7 +141,7 @@ int check_type_specifier(struct type_node * head){
     // If just a basic type, valid
     if (tmp == V || tmp == I || tmp == C || tmp == F || tmp == D){
         if (head->next_type != NULL)
-            return 0;
+            return check_type_specifier(head->next_type);
         return 1; 
     }
 
@@ -143,7 +149,7 @@ int check_type_specifier(struct type_node * head){
     // If signed...
     if (tmp == S){
         if (head->next_type == NULL)
-            return 0; 
+            return 1; 
         head = head->next_type;
         tmp = head->scalar.arith_type; 
 
@@ -187,8 +193,7 @@ int check_type_specifier(struct type_node * head){
             if (tmp != L)
                 return check_type_specifier(head);
         }
-
-        else if (tmp != I && tmp != D)      // Must be long int, long long int, or long double
+        else if (tmp != I && tmp != D && tmp != U)      // Must be long int, long long int, or long double
             return 0;
         
         return check_type_specifier(head);

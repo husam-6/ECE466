@@ -79,16 +79,89 @@ void print_declaration(struct astnode_symbol * decl, struct scope * stored_in){
     printf("%s\n", print_def_decl(decl->symbol_k));
     printf("\t- Symbol Ident: %s, Storage Class: %s, Namespace: %s, Scope: %s\n", 
             decl->name, print_s_class(decl->s_class), print_namespace(decl->n_space), print_scope(stored_in->s_type));
-    printf("\t- Declared on line %d, with the following type: \n", decl->line_num);
+    printf("\t- Declared in file %s:%d, with the following type: \n", file_name, decl->line_num);
     print_type(decl->type, 2);
 }
 
+
+
+// Returns 1 if types given are equivalent
+// Returns 0 if not
+// Doesn't account for functions for now... 
+int check_types(struct type_node * type_1, struct type_node * type_2){
+    if (type_1 == NULL && type_2 == NULL)
+        return 1; 
+    if (type_1 == NULL || type_2 == NULL)
+        return 0; 
+    if (type_1->type != type_2->type)
+        return 0; 
+    
+
+    // Arrays
+    if (type_1->type == ARRAY_TYPE){
+        if (type_1->size != type_2->size)
+            return 0; 
+        else
+            return check_types(type_1->next_type, type_2->next_type);
+    }
+
+    // Pointers
+    if (type_1->type == POINTER_TYPE)
+        return check_types(type_1->next_type, type_2->next_type);
+    
+    // Scalars
+    if (type_1->type == SCALAR_TYPE){
+        if (type_1->scalar.arith_type != type_2->scalar.arith_type || type_1->scalar.s_class != type_2->scalar.s_class)
+            return 0; 
+        return check_types(type_1->next_type, type_2->next_type);
+    }
+
+    // Storage class nodes
+    if (type_1->type == S_CLASS){
+        if (type_1->scalar.s_class != type_2->scalar.s_class)
+            return 0; 
+        return check_types(type_1->next_type, type_2->next_type);
+    }
+
+
+    return 0;
+}
+
+
+// Function to check whether a re-declaration is valid
+// Returns 1 if valid
+// Returns 0 if not
+int valid_redecl(struct astnode_symbol * first, struct astnode_symbol * second){
+    // If functions, check if the return types are the same
+    if (first->type->type == FUNCTION_TYPE){
+        if (first->s_class == second->s_class)      // Must have matching storage class
+            return check_types(first->type->func_node.return_type, second->type->func_node.return_type);
+        else
+            return 0; 
+    }
+
+    // If variable with extern (assume extern is always the first type node)
+    // Valid if second is not declared with auto, register, or static and types match
+    if (first->type->type == S_CLASS && first->type->scalar.s_class == EXTERN_S){
+        if (second->type->type == S_CLASS && second->type->scalar.s_class != EXTERN_S)       
+            return 0; 
+        
+        return check_types(first->type->next_type, second->type);
+    }
+
+
+    // variables with no storage class specifier and no initializer are valid if types match 
+    if (first->type->type != S_CLASS && second->type->type != S_CLASS)
+        return check_types(first->type, second->type);
+
+    return 0; 
+}
 
 // Symbol table helper function to check for an entry
 // Returns 2 if table was empty when called
 // Returns 1 if the entry is in the table
 // Returns 0 if it isnt
-int check_for_symbol(char * ident, enum namespace n_space, struct scope * scope){
+int check_for_symbol(char * ident, enum namespace n_space, struct scope * scope, struct astnode_symbol ** symbol_found){
     struct astnode_symbol * tmp; 
     tmp = scope->head; 
     if (tmp == NULL)
@@ -98,14 +171,19 @@ int check_for_symbol(char * ident, enum namespace n_space, struct scope * scope)
     while (tmp->next != NULL){
         // Check if we find the identifier with the same namespace...
         if ((!strcmp(tmp->name, ident)) && (tmp->n_space == n_space)){
+            if (symbol_found != NULL)
+                (*symbol_found) = tmp; 
             return 1;
         }
         tmp = tmp->next; 
     }
 
     // Check the last node as well
-    if (((!strcmp(tmp->name, ident))) && (tmp->n_space == n_space))
+    if (((!strcmp(tmp->name, ident))) && (tmp->n_space == n_space)){
+        if (symbol_found != NULL)
+            (*symbol_found) = tmp; 
         return 1;
+    }
 
     return 0;
 }
@@ -121,16 +199,11 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
         proto = 1; 
     }
 
-    int in_table = check_for_symbol(ident, n_space, tmp_scope);     // Only checks in current scope for now
+    struct astnode_symbol * symbol_found;
+    int in_table = check_for_symbol(ident, n_space, tmp_scope, &symbol_found);     // Only checks in current scope for now
+    // int in_table = check_for_symbol(ident, n_space, tmp_scope, NULL);     // Only checks in current scope for now
 
-    // Already in table
-    if (in_table == 1){
-        yyerror("Redeclaration of variable");                   // Still should check for valid redeclarations
-        exit(2);
-    }
-    
     struct astnode_symbol * new_symbol = make_symbol_node(); 
-    
 
     // Push onto symbol stack 
     if (in_table == 2)
@@ -146,6 +219,24 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
     new_symbol->symbol_k = symbol_k; 
     new_symbol->s_class = s_class;
     new_symbol->line_num = line_num;  
+
+    // Already in table
+    if (in_table == 1){
+        // Check if the redeclaration is valid
+        // printf("TESTING: IDENT %s\n", symbol_found->name);
+        if (symbol_k == DECL){
+            if (!valid_redecl(symbol_found, new_symbol)){
+                yyerror("INVALID REDECLARATION");                   // Still should check for valid redeclarations
+                exit(2);
+            }
+            return; 
+        }
+        else{
+            yyerror("INVALID REDECLARATION");                   // Still should check for valid redeclarations
+            exit(2);
+        }
+    }
+    
     tmp_scope->head = new_symbol; 
 
     // Print the newly inputted symbol 
