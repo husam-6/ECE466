@@ -195,7 +195,7 @@ int check_type_specifier(struct type_node * head){
     }
 
     // if short
-    if (tmp == S){
+    if (tmp == SH){
         if (head->next_type == NULL)
             return 1; 
         

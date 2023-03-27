@@ -19,7 +19,7 @@ void file_start(char* yytext){
         // Save file name
         else if (i == 2){
             file_name = token+1;
-            file_name[strlen(file_name)-1] = '\0'; 
+            file_name[strlen(file_name)-2] = '\0'; 
         }
         token = strtok(NULL, " ");
         i++; 

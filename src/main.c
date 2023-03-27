@@ -11,7 +11,7 @@ struct scope * curr_scope;
 enum storage_class tmp_s_class = -1; 
 
 void yyerror(const char* msg) {
-      fprintf(stderr, "ERROR ON LINE %d: %s\n", line_num, msg);
+      fprintf(stderr, "ERROR IN FILE %s:%d: %s\n", file_name, line_num, msg);
 }
 
 

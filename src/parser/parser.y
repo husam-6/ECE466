@@ -427,7 +427,7 @@ declaration_specifiers: storage_class_specifier declaration_specifiers          
 
 // for now require declarations to be on separate lines...
 init_declarator_list:   init_declarator                                                   //{printf("name: %s, node type: %d\n", $1->ident, $1->type);}
-      |                 init_declarator_list ',' init_declarator                          //{printf("name: %s, node type: %d\n", $1->ident, $1->type);}
+      /* |                 init_declarator_list ',' init_declarator                          //{printf("name: %s, node type: %d\n", $1->ident, $1->type);} */
 ;
 
 init_declarator:        declarator
