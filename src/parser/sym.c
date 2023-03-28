@@ -111,8 +111,9 @@ int check_types(struct type_node * type_1, struct type_node * type_2){
     
     // Scalars
     if (type_1->type == SCALAR_TYPE){
-        if (type_1->scalar.arith_type != type_2->scalar.arith_type || type_1->scalar.s_class != type_2->scalar.s_class)
-            return 0; 
+        if (type_1->scalar.arith_type != type_2->scalar.arith_type || type_1->scalar.s_class != type_2->scalar.s_class){
+            return 0;
+        }
         return check_types(type_1->next_type, type_2->next_type);
     }
 
@@ -134,8 +135,9 @@ int check_types(struct type_node * type_1, struct type_node * type_2){
 int valid_redecl(struct astnode_symbol * first, struct astnode_symbol * second){
     // If functions, check if the return types are the same
     if (first->type->type == FUNCTION_TYPE){
-        if (first->s_class == second->s_class)      // Must have matching storage class
+        if (first->s_class == second->s_class){      // Must have matching storage class
             return check_types(first->type->func_node.return_type, second->type->func_node.return_type);
+        }
         else
             return 0; 
     }
@@ -226,6 +228,7 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
         // printf("TESTING: IDENT %s\n", symbol_found->name);
         if (symbol_k == DECL){
             if (!valid_redecl(symbol_found, new_symbol)){
+                // print_declaration(new_symbol, tmp_scope); 
                 yyerror("INVALID REDECLARATION");                   // Still should check for valid redeclarations
                 exit(2);
             }

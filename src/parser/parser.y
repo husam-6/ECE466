@@ -68,15 +68,16 @@ declaration_or_fndef:         declaration                                       
 function_definition:    declaration_specifiers declarator 
                                                                         {
                                                                               // Remove temporary storage class node if it exists
-                                                                              // if ($1->top->type == S_CLASS){
-                                                                              //       // Check if storage class is valid for a function...
-                                                                              //       if ($1->top->scalar.s_class == AUTO_S || $1->top->scalar.s_class == REGISTER_S){
-                                                                              //             yyerror("INVALID STORAGE CLASS FOR FUNCTION");
-                                                                              //             exit(2);
-                                                                              //       }
-                                                                              //       $2->top->ident.s_class = $1->top->scalar.s_class;
-                                                                              //       $1->top = $1->top->next_type;
-                                                                              // }
+                                                                              if ($1->top->type == S_CLASS){
+                                                                                    // Check if storage class is valid for a function...
+                                                                                    if ($1->top->scalar.s_class == AUTO_S || $1->top->scalar.s_class == REGISTER_S){
+                                                                                          yyerror("INVALID STORAGE CLASS FOR FUNCTION");
+                                                                                          exit(2);
+                                                                                    }
+                                                                                    $2->top->ident.s_class = $1->top->scalar.s_class;
+                                                                                    $1->top = $1->top->next_type;
+                                                                              }
+
                                                                               // Check if storage class is valid for a function...
                                                                               if ($1->top->scalar.s_class == AUTO_S || $1->top->scalar.s_class == REGISTER_S){
                                                                                     yyerror("INVALID STORAGE CLASS FOR FUNCTION");
@@ -91,6 +92,7 @@ function_definition:    declaration_specifiers declarator
 
                                                                               // Save function return type (next type gets saved in function node)
                                                                               tmp_func->func_node.return_type = tmp_func->next_type;  
+                                                                              $2->top->ident.s_class = EXTERN_S;
 
                                                                               // Check if type is valid
                                                                               int r = check_type_specifier($1->top);
@@ -361,22 +363,23 @@ constant_expression: conditional_expression
 // Declarations 6.7
 declaration:            declaration_specifiers init_declarator_list ';'                   {     
                                                                                                 // Check if storage class should be assumed as AUTO
-                                                                                                if (curr_scope->s_type == PROTOTYPE_SCOPE || curr_scope->s_type == FUNC_SCOPE || curr_scope->s_type == BLOCK_SCOPE)
+                                                                                                if ((curr_scope->s_type == PROTOTYPE_SCOPE || curr_scope->s_type == FUNC_SCOPE || curr_scope->s_type == BLOCK_SCOPE) 
+                                                                                                     && $2->top->next_type->type != FUNCTION_TYPE)    // To verify we aren't setting a function node to have auto storage class... 
                                                                                                       $2->top->ident.s_class = AUTO_S; 
 
-                                                                                                // // Remove temporary storage class node if it exists 
-                                                                                                // if ($1->top->type == S_CLASS){
-                                                                                                //       // Check if storage class is valid 
-                                                                                                //       int tmp = $1->top->scalar.s_class;
-                                                                                                //       if ((tmp == AUTO_S || tmp == REGISTER_S) && curr_scope->s_type == GLOBAL_SCOPE){
-                                                                                                //             yyerror("INVALID STORAGE CLASS SPECIFIER IN GLOBAL SCOPE");
-                                                                                                //             exit(2);
-                                                                                                //       }
+                                                                                                // Check for explicit storage class node
+                                                                                                if ($1->top->type == S_CLASS){
+                                                                                                      // Check if storage class is valid 
+                                                                                                      int tmp = $1->top->scalar.s_class;
+                                                                                                      if ((tmp == AUTO_S || tmp == REGISTER_S) && curr_scope->s_type == GLOBAL_SCOPE){
+                                                                                                            yyerror("INVALID STORAGE CLASS SPECIFIER IN GLOBAL SCOPE");
+                                                                                                            exit(2);
+                                                                                                      }
 
-                                                                                                //       // Update storage class before removing
-                                                                                                //       $2->top->ident.s_class = $1->top->scalar.s_class;
-                                                                                                //       $1->top = $1->top->next_type;
-                                                                                                // }
+                                                                                                      // Update storage class before removing if function
+                                                                                                      $2->top->ident.s_class = $1->top->scalar.s_class;
+                                                                                                      $1->top = $1->top->next_type;
+                                                                                                }
 
                                                                                                 $2->tail->next_type = $1->top; 
 
@@ -531,7 +534,6 @@ direct_declarator:      IDENT                                                   
 
                                                                                           if (curr_scope->s_type == FUNC_SCOPE || curr_scope->s_type == PROTOTYPE_SCOPE)
                                                                                                 node->ident.s_class = AUTO_S;
-
 
                                                                                           // Set top and tail nodes
                                                                                           struct top_tail * tt = make_tt_node(); 
