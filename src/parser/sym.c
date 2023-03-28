@@ -196,6 +196,7 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
         while(tmp_scope->outer != NULL)
             tmp_scope = tmp_scope->outer; 
         proto = 1; 
+        // s_class = EXTERN_S; 
     }
 
     struct astnode_symbol * symbol_found;
@@ -230,6 +231,10 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
                 exit(2);
             }
             return; 
+        }
+        if (symbol_k == DEF && symbol_found->symbol_k == DEF){
+            yyerror("FUNCTION REDEFINITION");                   // Still should check for valid redeclarations
+            exit(2);
         }
     }
     

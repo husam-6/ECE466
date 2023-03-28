@@ -314,7 +314,7 @@ constant_expression: conditional_expression
 
 
 // Declarations 6.7
-declaration:            declaration_specifiers init_declarator_list ';'                   {new_declaration($1, $2);}
+declaration:            declaration_specifiers init_declarator_list ';'                   {new_declaration($1, $2, DECL);}
       |                 declaration_specifiers  ';'                                             
 ;
 
@@ -420,8 +420,11 @@ function_specifier:     INLINE                                                  
 
 // 6.7.5
 declarator:             pointer direct_declarator                                   {
-                                                                                          $2->tail->next_type = $1->top;
-
+                                                                                          if ($2->tail->type == FUNCTION_TYPE){
+                                                                                                $2->tail->func_node.return_type = $1->top;
+                                                                                          }
+                                                                                          else
+                                                                                                $2->tail->next_type = $1->top;
                                                                                           // Update tail node (end of declarator now)
                                                                                           $2->tail = $1->tail; 
                                                                                           $$ = $2;
@@ -478,6 +481,7 @@ direct_declarator:      IDENT                                                   
       |                 direct_declarator   '('                                     {create_new_scope(PROTOTYPE_SCOPE);}
                         parameter_type_list ')'                                     {
                                                                                           $$ = create_function_node($1);
+                                                                                          // if ($$->top->type != )
                                                                                           while (curr_scope->outer->s_type == PROTOTYPE_SCOPE)
                                                                                                 close_outer_scope(); 
                                                                                     }
@@ -513,12 +517,12 @@ parameter_list:         parameter_declaration                                   
                                                                                           // make_symbol_table_proto_or_member(enum scope_type t)
                                                                                           // Add to symbol table
                                                                                           // create_new_scope(PROTOTYPE_SCOPE);
-                                                                                          add_symbol_entry($1->top->ident.name, $1->top->next_type, $1->top->ident.n_space, AUTO_S, DECL);
+                                                                                          // add_symbol_entry($1->top->ident.name, $1->top->next_type, $1->top->ident.n_space, AUTO_S, DECL);
                                                                                           // print_symbol_table();
 
                                                                                     }
       |                 parameter_list ',' parameter_declaration                    {
-                                                                                          add_symbol_entry($3->top->ident.name, $3->top->next_type, $3->top->ident.n_space, AUTO_S, DECL);
+                                                                                          // add_symbol_entry($3->top->ident.name, $3->top->next_type, $3->top->ident.n_space, AUTO_S, DECL);
                                                                                           // print_symbol_table();
                                                                                           // print_declaration(curr_scope->head, curr_scope);
                                                                   
@@ -526,11 +530,7 @@ parameter_list:         parameter_declaration                                   
 ;
 
 // Assume function declarations only take unknonw arguments, this just accepts it and allows for function definitions
-parameter_declaration:  declaration_specifiers declarator                           {
-                                                                                          $2->tail->next_type = $1->top;
-                                                                                          $2->tail = $1->tail; 
-                                                                                          $$ = $2;
-                                                                                    }
+parameter_declaration:  declaration_specifiers declarator                           {new_declaration($1, $2, DEF);}
 ;
 
 /* identifier_list:        IDENT

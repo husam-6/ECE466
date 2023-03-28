@@ -43,6 +43,7 @@ void print_type(struct type_node * head, int depth){
             n_tabs(depth+1);
             printf("PARAMETERS:\n");
             print_params(head->func_node.param_head, depth+2);
+            print_type(head->next_type, depth+1);
             break;
         }
         case S_CLASS:{
@@ -107,11 +108,12 @@ struct top_tail * create_s_class_node(enum storage_class s_class){
 // Helper to allocate memory and initialize a function node
 struct top_tail * create_function_node(struct top_tail * direct_declarator){
     // Could be definition 
-    // Change namespace to func
-    direct_declarator->top->ident.n_space = FUNC_S;
-    direct_declarator->top->ident.s_class = EXTERN_S;
+    // Change namespace to function (unless its a pointer to a function!)
+    if (direct_declarator->top->next_type == NULL){
+        direct_declarator->top->ident.n_space = FUNC_S;
+        direct_declarator->top->ident.s_class = EXTERN_S;
+    }
     struct type_node * tmp = push_next_type(FUNCTION_TYPE, direct_declarator->tail, NULL);
-    tmp->func_node.return_type = create_scalar_node(I)->top;         // Default to int return type for a function
     direct_declarator->tail = tmp;
     return direct_declarator;
 }
@@ -253,16 +255,26 @@ void new_function_defs(struct top_tail * specifiers, struct top_tail * declarato
     }
 
     // Chain types
-    declarator->tail->next_type = specifiers->top;
-    if (declarator->tail->type == FUNCTION_TYPE)
-        declarator->tail->func_node.return_type = specifiers->top;
+    if (declarator->tail->type == FUNCTION_TYPE){
+        if (declarator->tail->func_node.return_type == NULL){
+            declarator->tail->func_node.return_type = specifiers->top;
+        }
+        else{
+            struct type_node * tmp_return_type = declarator->tail->func_node.return_type;
+            while(tmp_return_type->next_type != NULL)
+                tmp_return_type = tmp_return_type->next_type;
+            tmp_return_type->next_type = specifiers->top;
+        }
+    }
+    else{
+        declarator->tail->next_type = specifiers->top;
+    }
 
 
     // Tmp var for functions, top points to identifier type node
     struct type_node * tmp_func = declarator->top->next_type; 
-
-    // Save function return type (next type gets saved in function node)
-    tmp_func->func_node.return_type = tmp_func->next_type;  
+    if (tmp_func->func_node.return_type == NULL)
+        tmp_func->func_node.return_type = create_scalar_node(I)->top;         // Default to int return type for a function
     declarator->top->ident.s_class = EXTERN_S;
 
     // Check if type is valid
@@ -272,8 +284,19 @@ void new_function_defs(struct top_tail * specifiers, struct top_tail * declarato
         exit(2);
     }
 
+
     // Save parameter list in function node (if we have one...)
     if (curr_scope->s_type == PROTOTYPE_SCOPE){
+        // Check if arguments are valid)
+        struct astnode_symbol * tmp = curr_scope->head; 
+        while (tmp != NULL){
+            if (tmp->type->type == FUNCTION_TYPE){
+                yyerror("CANNOT ACCEPT A FUNCTION AS AN ARGUMENT");
+                exit(2);
+            }
+            tmp = tmp->next; 
+            
+        }
         curr_scope->head = reverse(curr_scope->head);
         tmp_func->func_node.param_head = curr_scope->head;
     }
@@ -286,7 +309,9 @@ void new_function_defs(struct top_tail * specifiers, struct top_tail * declarato
 }
 
 
-void new_declaration(struct top_tail * specifiers, struct top_tail * declarator){
+void new_declaration(struct top_tail * specifiers, struct top_tail * declarator, enum symbol_kind kind){
+    if (kind == DECL && curr_scope->s_type == PROTOTYPE_SCOPE)
+        close_outer_scope();
     // Check if storage class should be assumed as AUTO
     if ((curr_scope->s_type == PROTOTYPE_SCOPE || curr_scope->s_type == FUNC_SCOPE || curr_scope->s_type == BLOCK_SCOPE) 
             && declarator->top->ident.n_space != FUNC_S){    // To verify we aren't setting a function node to have auto storage class... 
@@ -307,14 +332,25 @@ void new_declaration(struct top_tail * specifiers, struct top_tail * declarator)
             specifiers->top = specifiers->top->next_type;
     }
 
-    declarator->tail->next_type = specifiers->top; 
-
-
-    // If function, save return type
-    struct type_node * tmp = declarator->top->next_type;
-    if (tmp->type == FUNCTION_TYPE){
-            tmp->func_node.return_type = tmp->next_type;
+    // Chain types
+    if (declarator->tail->type == FUNCTION_TYPE){
+        if (declarator->tail->func_node.return_type == NULL){
+            declarator->tail->func_node.return_type = specifiers->top;
+        }
+        else{
+            struct type_node * tmp_return_type = declarator->tail->func_node.return_type;
+            while(tmp_return_type->next_type != NULL)
+                tmp_return_type = tmp_return_type->next_type;
+            tmp_return_type->next_type = specifiers->top;
+        }
     }
+    else
+        declarator->tail->next_type = specifiers->top; 
+
+
+    struct type_node * tmp = declarator->top->next_type;
+    if (tmp->func_node.return_type == NULL)
+        tmp->func_node.return_type = create_scalar_node(I)->top;
 
     // Check if type is valid
     int r = check_type_specifier(specifiers->top);
