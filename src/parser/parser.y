@@ -65,55 +65,8 @@ declaration_or_fndef:         declaration                                       
 // Declaration Specifier int, extern int
 // Declarator is the ident and any pointers/array info
 // Compound statement is everything in the brackets
-function_definition:    declaration_specifiers declarator 
-                                                                        {
-                                                                              // Remove temporary storage class node if it exists
-                                                                              if ($1->top->type == S_CLASS){
-                                                                                    // Check if storage class is valid for a function...
-                                                                                    if ($1->top->scalar.s_class == AUTO_S || $1->top->scalar.s_class == REGISTER_S){
-                                                                                          yyerror("INVALID STORAGE CLASS FOR FUNCTION");
-                                                                                          exit(2);
-                                                                                    }
-                                                                                    $2->top->ident.s_class = $1->top->scalar.s_class;
-                                                                                    $1->top = $1->top->next_type;
-                                                                              }
-
-                                                                              // Check if storage class is valid for a function...
-                                                                              if ($1->top->scalar.s_class == AUTO_S || $1->top->scalar.s_class == REGISTER_S){
-                                                                                    yyerror("INVALID STORAGE CLASS FOR FUNCTION");
-                                                                                    exit(2);
-                                                                              }
-
-                                                                              // Chain types
-                                                                              $2->tail->next_type = $1->top;
-
-                                                                              // Tmp var for functions, top points to identifier type node
-                                                                              struct type_node * tmp_func = $2->top->next_type; 
-
-                                                                              // Save function return type (next type gets saved in function node)
-                                                                              tmp_func->func_node.return_type = tmp_func->next_type;  
-                                                                              $2->top->ident.s_class = EXTERN_S;
-
-                                                                              // Check if type is valid
-                                                                              int r = check_type_specifier($1->top);
-                                                                              if (!r){
-                                                                                    yyerror("INVALID TYPE SPECIFIER,");
-                                                                                    exit(2);
-                                                                              }
-
-                                                                              // Save parameter list in function node (if we have one...)
-                                                                              if (curr_scope->s_type == PROTOTYPE_SCOPE){
-                                                                                    curr_scope->head = reverse(curr_scope->head);
-                                                                                    tmp_func->func_node.param_head = curr_scope->head;
-                                                                              }
-
-                                                                              add_symbol_entry($2->top->ident.name, $2->top->next_type, $2->top->ident.n_space, $2->top->ident.s_class, DEF);
-
-                                                                              // print_symbol_table();
-
-                                                                              // create_new_scope();
-                                                                        }
-                        compound_statement                              //{print_symbol_table();}
+function_definition:    declaration_specifiers declarator               {new_function_defs($1, $2);}
+                        compound_statement                              //{printf("CURRENT SCOPE: %d\n", curr_scope->s_type);}
 ;                 
 
 statement:        compound_statement                                    
@@ -127,7 +80,7 @@ decl_or_stmt_list:      decl_or_stmt
       |                 decl_or_stmt_list decl_or_stmt
 ;
 
-decl_or_stmt:     declaration                      
+decl_or_stmt:     declaration                  
       |           statement
 ;
 
@@ -361,50 +314,7 @@ constant_expression: conditional_expression
 
 
 // Declarations 6.7
-declaration:            declaration_specifiers init_declarator_list ';'                   {     
-                                                                                                // Check if storage class should be assumed as AUTO
-                                                                                                if ((curr_scope->s_type == PROTOTYPE_SCOPE || curr_scope->s_type == FUNC_SCOPE || curr_scope->s_type == BLOCK_SCOPE) 
-                                                                                                     && $2->top->next_type->type != FUNCTION_TYPE)    // To verify we aren't setting a function node to have auto storage class... 
-                                                                                                      $2->top->ident.s_class = AUTO_S; 
-
-                                                                                                // Check for explicit storage class node
-                                                                                                if ($1->top->type == S_CLASS){
-                                                                                                      // Check if storage class is valid 
-                                                                                                      int tmp = $1->top->scalar.s_class;
-                                                                                                      if ((tmp == AUTO_S || tmp == REGISTER_S) && curr_scope->s_type == GLOBAL_SCOPE){
-                                                                                                            yyerror("INVALID STORAGE CLASS SPECIFIER IN GLOBAL SCOPE");
-                                                                                                            exit(2);
-                                                                                                      }
-
-                                                                                                      // Update storage class before removing if function
-                                                                                                      $2->top->ident.s_class = $1->top->scalar.s_class;
-                                                                                                      $1->top = $1->top->next_type;
-                                                                                                }
-
-                                                                                                $2->tail->next_type = $1->top; 
-
-
-                                                                                                // If function, save return type
-                                                                                                struct type_node * tmp = $2->top->next_type;
-                                                                                                if (tmp->type == FUNCTION_TYPE){
-                                                                                                      tmp->func_node.return_type = tmp->next_type;
-                                                                                                }
-
-                                                                                                // Check if type is valid
-                                                                                                int r = check_type_specifier($1->top);
-                                                                                                if (!r){
-                                                                                                      yyerror("INVALID TYPE SPECIFIER");
-                                                                                                      exit(2);
-                                                                                                }
-
-                                                                                                // Add to symbol table
-                                                                                                add_symbol_entry($2->top->ident.name, tmp, $2->top->ident.n_space, 
-                                                                                                                 $2->top->ident.s_class, DECL);
-
-                                                                                                // Change this if you want to get prototypes working for real
-                                                                                                if (curr_scope->s_type == PROTOTYPE_SCOPE)
-                                                                                                      close_outer_scope();
-                                                                                          }
+declaration:            declaration_specifiers init_declarator_list ';'                   {new_declaration($1, $2);}
       |                 declaration_specifiers  ';'                                             
 ;
 
@@ -564,24 +474,12 @@ direct_declarator:      IDENT                                                   
                                                                                           $1->tail = tmp;
                                                                                           $$ = $1; 
                                                                                     }
-      |                 direct_declarator '(' ')'                                   {
-                                                                                          // Could be definition 
-                                                                                          // Change namespace to func
-                                                                                          $1->top->ident.n_space = FUNC_S;
-                                                                                          $1->top->ident.s_class = EXTERN_S;
-                                                                                          struct type_node * tmp = push_next_type(FUNCTION_TYPE, $1->tail, NULL);
-                                                                                          $1->tail = tmp;
-                                                                                          $$ = $1;
-                                                                                    }
-      |                 direct_declarator '(' parameter_type_list ')'               {
-                                                                                          // Assume will always be declaration in our compiler
-                                                                                          $1->top->ident.n_space = FUNC_S;
-                                                                                          $1->top->ident.s_class = EXTERN_S;
-                                                                                          struct type_node * tmp = push_next_type(FUNCTION_TYPE, $1->tail, NULL);
-                                                                                          $1->tail = tmp;
-                                                                                          $$ = $1;
-
-                                                                                          // close_outer_scope();
+      |                 direct_declarator '(' ')'                                   {$$ = create_function_node($1);}
+      |                 direct_declarator   '('                                     {create_new_scope(PROTOTYPE_SCOPE);}
+                        parameter_type_list ')'                                     {
+                                                                                          $$ = create_function_node($1);
+                                                                                          while (curr_scope->outer->s_type == PROTOTYPE_SCOPE)
+                                                                                                close_outer_scope(); 
                                                                                     }
 ;
 
@@ -614,15 +512,14 @@ parameter_type_list:    parameter_list
 parameter_list:         parameter_declaration                                       {
                                                                                           // make_symbol_table_proto_or_member(enum scope_type t)
                                                                                           // Add to symbol table
-                                                                                          create_new_scope(PROTOTYPE_SCOPE);
+                                                                                          // create_new_scope(PROTOTYPE_SCOPE);
                                                                                           add_symbol_entry($1->top->ident.name, $1->top->next_type, $1->top->ident.n_space, AUTO_S, DECL);
-
-                                                                                          // print_declaration(curr_scope->head, curr_scope);
+                                                                                          // print_symbol_table();
 
                                                                                     }
       |                 parameter_list ',' parameter_declaration                    {
                                                                                           add_symbol_entry($3->top->ident.name, $3->top->next_type, $3->top->ident.n_space, AUTO_S, DECL);
-
+                                                                                          // print_symbol_table();
                                                                                           // print_declaration(curr_scope->head, curr_scope);
                                                                   
                                                                                     }

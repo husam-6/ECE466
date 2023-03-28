@@ -1,5 +1,6 @@
 #include "parser.h"
 #include "type.h"
+#include "parser.tab.h"
 
 void print_type(struct type_node * head, int depth){
     if (head == NULL)
@@ -92,13 +93,27 @@ struct top_tail * make_tt_node(){
 struct top_tail * create_scalar_node(enum num_type arith){
     struct top_tail * tt = init_tt_node(SCALAR_TYPE);
     tt->top->scalar.arith_type = arith;
+    tt->top->scalar.s_class = EXTERN_S;     // Default to extern, change later on
     return tt; 
 }
 
+// Allocate memory for a storage class node
 struct top_tail * create_s_class_node(enum storage_class s_class){
     struct top_tail * tt = init_tt_node(S_CLASS);
     tt->top->scalar.s_class = s_class;
     return tt; 
+}
+
+// Helper to allocate memory and initialize a function node
+struct top_tail * create_function_node(struct top_tail * direct_declarator){
+    // Could be definition 
+    // Change namespace to func
+    direct_declarator->top->ident.n_space = FUNC_S;
+    direct_declarator->top->ident.s_class = EXTERN_S;
+    struct type_node * tmp = push_next_type(FUNCTION_TYPE, direct_declarator->tail, NULL);
+    tmp->func_node.return_type = create_scalar_node(I)->top;         // Default to int return type for a function
+    direct_declarator->tail = tmp;
+    return direct_declarator;
 }
 
 // Initalize first top_tail node
@@ -217,4 +232,102 @@ int check_type_specifier(struct type_node * head){
 
 
     return 0;
+}
+
+void new_function_defs(struct top_tail * specifiers, struct top_tail * declarator){
+    // Remove temporary storage class node if it exists
+    if (specifiers->top->type == S_CLASS){
+        // Check if storage class is valid for a function...
+        if (specifiers->top->scalar.s_class == AUTO_S || specifiers->top->scalar.s_class == REGISTER_S){
+                yyerror("INVALID STORAGE CLASS FOR FUNCTION");
+                exit(2);
+        }
+        declarator->top->ident.s_class = specifiers->top->scalar.s_class;
+        specifiers->top = specifiers->top->next_type;
+    }
+
+    // Check if storage class is valid for a function...
+    if (specifiers->top->scalar.s_class == AUTO_S || specifiers->top->scalar.s_class == REGISTER_S){
+        yyerror("INVALID STORAGE CLASS FOR FUNCTION");
+        exit(2);
+    }
+
+    // Chain types
+    declarator->tail->next_type = specifiers->top;
+    if (declarator->tail->type == FUNCTION_TYPE)
+        declarator->tail->func_node.return_type = specifiers->top;
+
+
+    // Tmp var for functions, top points to identifier type node
+    struct type_node * tmp_func = declarator->top->next_type; 
+
+    // Save function return type (next type gets saved in function node)
+    tmp_func->func_node.return_type = tmp_func->next_type;  
+    declarator->top->ident.s_class = EXTERN_S;
+
+    // Check if type is valid
+    int r = check_type_specifier(specifiers->top);
+    if (!r){
+        yyerror("INVALID TYPE SPECIFIER,");
+        exit(2);
+    }
+
+    // Save parameter list in function node (if we have one...)
+    if (curr_scope->s_type == PROTOTYPE_SCOPE){
+        curr_scope->head = reverse(curr_scope->head);
+        tmp_func->func_node.param_head = curr_scope->head;
+    }
+
+    add_symbol_entry(declarator->top->ident.name, declarator->top->next_type, declarator->top->ident.n_space, declarator->top->ident.s_class, DEF);
+
+    // print_symbol_table();
+
+    // create_new_scope();
+}
+
+
+void new_declaration(struct top_tail * specifiers, struct top_tail * declarator){
+    // Check if storage class should be assumed as AUTO
+    if ((curr_scope->s_type == PROTOTYPE_SCOPE || curr_scope->s_type == FUNC_SCOPE || curr_scope->s_type == BLOCK_SCOPE) 
+            && declarator->top->ident.n_space != FUNC_S){    // To verify we aren't setting a function node to have auto storage class... 
+            declarator->top->ident.s_class = AUTO_S; 
+    }
+
+    // Check for explicit storage class node
+    if (specifiers->top->type == S_CLASS){
+            // Check if storage class is valid 
+            int tmp = specifiers->top->scalar.s_class;
+            if ((tmp == AUTO_S || tmp == REGISTER_S) && curr_scope->s_type == GLOBAL_SCOPE){
+                yyerror("INVALID STORAGE CLASS SPECIFIERS IN GLOBAL SCOPE");
+                exit(2);
+            }
+
+            // Update storage class before removing if function
+            declarator->top->ident.s_class = specifiers->top->scalar.s_class;
+            specifiers->top = specifiers->top->next_type;
+    }
+
+    declarator->tail->next_type = specifiers->top; 
+
+
+    // If function, save return type
+    struct type_node * tmp = declarator->top->next_type;
+    if (tmp->type == FUNCTION_TYPE){
+            tmp->func_node.return_type = tmp->next_type;
+    }
+
+    // Check if type is valid
+    int r = check_type_specifier(specifiers->top);
+    if (!r){
+            yyerror("INVALID TYPE SPECIFIER");
+            exit(2);
+    }
+
+    // Add to symbol table
+    add_symbol_entry(declarator->top->ident.name, tmp, declarator->top->ident.n_space, 
+                        declarator->top->ident.s_class, DECL);
+
+    // Change this if you want to get prototypes working for real
+    // if (curr_scope->s_type == PROTOTYPE_SCOPE)
+    //         close_outer_scope();
 }

@@ -52,11 +52,10 @@ char * print_def_decl(enum symbol_kind k){
 
 void print_scope_symbols(struct scope * curr_scope){
         struct astnode_symbol * tmp = curr_scope->head; 
-        while (tmp->next != NULL){
+        while (tmp != NULL){
             print_declaration(tmp, curr_scope); 
             tmp = tmp->next; 
         }
-        print_declaration(tmp, curr_scope);
 }
 
 
@@ -64,11 +63,11 @@ void print_scope_symbols(struct scope * curr_scope){
 void print_symbol_table(){
     printf("------------\tPRINTING SYMBOL TABLE...\t------------\n"); 
     struct scope * tmp_scope = curr_scope;
-    while(tmp_scope->outer != NULL){
+    while(tmp_scope != NULL){
         print_scope_symbols(tmp_scope);
         tmp_scope = tmp_scope->outer;
+        printf("GOING OT OUTER SCOPE...\n");
     }
-    print_scope_symbols(tmp_scope);
     printf("------------\tEND OF SYMBOL TABLE\t------------\n");
 
 }
@@ -96,7 +95,6 @@ int check_types(struct type_node * type_1, struct type_node * type_2){
     if (type_1->type != type_2->type)
         return 0; 
     
-
     // Arrays
     if (type_1->type == ARRAY_TYPE){
         if (type_1->size != type_2->size)
@@ -135,11 +133,9 @@ int check_types(struct type_node * type_1, struct type_node * type_2){
 int valid_redecl(struct astnode_symbol * first, struct astnode_symbol * second){
     // If functions, check if the return types are the same
     if (first->type->type == FUNCTION_TYPE){
-        if (first->s_class == second->s_class){      // Must have matching storage class
-            return check_types(first->type->func_node.return_type, second->type->func_node.return_type);
-        }
-        else
+        if (first->s_class != second->s_class)
             return 0; 
+        return check_types(first->type->func_node.return_type, second->type->func_node.return_type);
     }
 
     // If variable with extern (assume extern is always the first type node)
@@ -196,8 +192,9 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
 {
     struct scope * tmp_scope = curr_scope;
     int proto = 0;
-    if (curr_scope->s_type == PROTOTYPE_SCOPE && n_space == FUNC_S){
-        tmp_scope = tmp_scope->outer; 
+    if ((curr_scope->s_type == PROTOTYPE_SCOPE && n_space == FUNC_S) || (curr_scope->s_type == FUNC_SCOPE && n_space == FUNC_S)){
+        while(tmp_scope->outer != NULL)
+            tmp_scope = tmp_scope->outer; 
         proto = 1; 
     }
 
@@ -233,10 +230,6 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
                 exit(2);
             }
             return; 
-        }
-        else{
-            yyerror("INVALID REDECLARATION");                   // Still should check for valid redeclarations
-            exit(2);
         }
     }
     
@@ -276,9 +269,12 @@ void create_new_scope(enum scope_type s_type){
             tmp = make_new_scope(FUNC_SCOPE);
     }
     else if(curr_scope->s_type == PROTOTYPE_SCOPE){
-        // Just change prototype scope to now be functions cope
-        curr_scope->s_type = FUNC_SCOPE;
-        return;
+        if (s_type != PROTOTYPE_SCOPE){
+            // Just change prototype scope to now be functions cope
+            curr_scope->s_type = FUNC_SCOPE;
+            return;
+        }
+        tmp = make_new_scope(PROTOTYPE_SCOPE);
     }
     tmp->outer = curr_scope;
     curr_scope = tmp;

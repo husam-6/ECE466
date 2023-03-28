@@ -28,12 +28,17 @@ struct scalar_type{
 struct top_tail * make_tt_node();
 struct top_tail * create_scalar_node(enum num_type arith);
 struct top_tail * create_s_class_node(enum storage_class s_class);
+struct top_tail * create_function_node(struct top_tail * direct_declarator);
 struct top_tail * init_tt_node();
+
+struct type_node * make_type_node(enum Type type);
 struct type_node * push_next_type(enum Type type, struct type_node *prev, struct type_node * next);
 void print_type(struct type_node * type, int depth);
-struct type_node * make_type_node(enum Type type);
 int check_type_specifier(struct type_node * head);
 
+// For declarations and function definitions
+void new_function_defs(struct top_tail * specifiers, struct top_tail * declarator);
+void new_declaration(struct top_tail * specifiers, struct top_tail * declarator);
 
 // Function type node - includes return type and linked list of parameters
 struct function_type {
