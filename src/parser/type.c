@@ -237,6 +237,8 @@ int check_type_specifier(struct type_node * head){
 }
 
 void new_function_defs(struct top_tail * specifiers, struct top_tail * declarator){
+    declarator->top->ident.s_class = EXTERN_S;                                // Functions should be extern by default
+    
     // Remove temporary storage class node if it exists
     if (specifiers->top->type == S_CLASS){
         // Check if storage class is valid for a function...
@@ -244,6 +246,7 @@ void new_function_defs(struct top_tail * specifiers, struct top_tail * declarato
                 yyerror("INVALID STORAGE CLASS FOR FUNCTION");
                 exit(2);
         }
+        // Save storage class info
         declarator->top->ident.s_class = specifiers->top->scalar.s_class;
         specifiers->top = specifiers->top->next_type;
     }
@@ -256,17 +259,20 @@ void new_function_defs(struct top_tail * specifiers, struct top_tail * declarato
 
     // Chain types
     if (declarator->tail->type == FUNCTION_TYPE){
+        // Check if return value is currently null
         if (declarator->tail->func_node.return_type == NULL){
             declarator->tail->func_node.return_type = specifiers->top;
         }
         else{
             struct type_node * tmp_return_type = declarator->tail->func_node.return_type;
+            // Append to end (not keeping track of tail properly here)
             while(tmp_return_type->next_type != NULL)
                 tmp_return_type = tmp_return_type->next_type;
             tmp_return_type->next_type = specifiers->top;
         }
     }
     else{
+        // If its not a function, just chain the types...
         declarator->tail->next_type = specifiers->top;
     }
 
@@ -275,7 +281,6 @@ void new_function_defs(struct top_tail * specifiers, struct top_tail * declarato
     struct type_node * tmp_func = declarator->top->next_type; 
     if (tmp_func->func_node.return_type == NULL)
         tmp_func->func_node.return_type = create_scalar_node(I)->top;         // Default to int return type for a function
-    declarator->top->ident.s_class = EXTERN_S;
 
     // Check if type is valid
     int r = check_type_specifier(specifiers->top);
@@ -302,10 +307,6 @@ void new_function_defs(struct top_tail * specifiers, struct top_tail * declarato
     }
 
     add_symbol_entry(declarator->top->ident.name, declarator->top->next_type, declarator->top->ident.n_space, declarator->top->ident.s_class, DEF);
-
-    // print_symbol_table();
-
-    // create_new_scope();
 }
 
 
@@ -334,10 +335,12 @@ void new_declaration(struct top_tail * specifiers, struct top_tail * declarator,
 
     // Chain types
     if (declarator->tail->type == FUNCTION_TYPE){
+        // Check if null... 
         if (declarator->tail->func_node.return_type == NULL){
             declarator->tail->func_node.return_type = specifiers->top;
         }
         else{
+            // Add to end if there already is a return type (again not keeping track of tail, should fix)
             struct type_node * tmp_return_type = declarator->tail->func_node.return_type;
             while(tmp_return_type->next_type != NULL)
                 tmp_return_type = tmp_return_type->next_type;
@@ -345,7 +348,7 @@ void new_declaration(struct top_tail * specifiers, struct top_tail * declarator,
         }
     }
     else
-        declarator->tail->next_type = specifiers->top; 
+        declarator->tail->next_type = specifiers->top;      // If its just a regular node, append types
 
 
     struct type_node * tmp = declarator->top->next_type;
@@ -362,8 +365,4 @@ void new_declaration(struct top_tail * specifiers, struct top_tail * declarator,
     // Add to symbol table
     add_symbol_entry(declarator->top->ident.name, tmp, declarator->top->ident.n_space, 
                         declarator->top->ident.s_class, DECL);
-
-    // Change this if you want to get prototypes working for real
-    // if (curr_scope->s_type == PROTOTYPE_SCOPE)
-    //         close_outer_scope();
 }

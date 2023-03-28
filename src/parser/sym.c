@@ -9,6 +9,7 @@ struct astnode_symbol * make_symbol_node() {
     return node;
 }
 
+// Helper functions for printing symbol table elements
 char * print_s_class(enum storage_class s_class){
     switch(s_class){
         case (AUTO_S):              {return "AUTO";};
