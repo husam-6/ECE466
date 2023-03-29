@@ -38,7 +38,7 @@ int check_type_specifier(struct type_node * head);
 
 // For declarations and function definitions
 void new_function_defs(struct top_tail * specifiers, struct top_tail * declarator);
-void new_declaration(struct top_tail * specifiers, struct top_tail * declarator, enum symbol_kind kind);
+void new_declaration(struct top_tail * specifiers, struct top_tail * declarator, int param);
 
 // Function type node - includes return type and linked list of parameters
 struct function_type {

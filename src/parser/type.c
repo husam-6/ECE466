@@ -292,16 +292,6 @@ void new_function_defs(struct top_tail * specifiers, struct top_tail * declarato
 
     // Save parameter list in function node (if we have one...)
     if (curr_scope->s_type == PROTOTYPE_SCOPE){
-        // Check if arguments are valid)
-        struct astnode_symbol * tmp = curr_scope->head; 
-        while (tmp != NULL){
-            if (tmp->type->type == FUNCTION_TYPE){
-                yyerror("CANNOT ACCEPT A FUNCTION AS AN ARGUMENT");
-                exit(2);
-            }
-            tmp = tmp->next; 
-            
-        }
         curr_scope->head = reverse(curr_scope->head);
         tmp_func->func_node.param_head = curr_scope->head;
     }
@@ -310,8 +300,8 @@ void new_function_defs(struct top_tail * specifiers, struct top_tail * declarato
 }
 
 
-void new_declaration(struct top_tail * specifiers, struct top_tail * declarator, enum symbol_kind kind){
-    if (kind == DECL && curr_scope->s_type == PROTOTYPE_SCOPE)
+void new_declaration(struct top_tail * specifiers, struct top_tail * declarator, int param){
+    if (param == 0 && curr_scope->s_type == PROTOTYPE_SCOPE)
         close_outer_scope();
     // Check if storage class should be assumed as AUTO
     if ((curr_scope->s_type == PROTOTYPE_SCOPE || curr_scope->s_type == FUNC_SCOPE || curr_scope->s_type == BLOCK_SCOPE) 

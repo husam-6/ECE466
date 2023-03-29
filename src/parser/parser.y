@@ -314,7 +314,7 @@ constant_expression: conditional_expression
 
 
 // Declarations 6.7
-declaration:            declaration_specifiers init_declarator_list ';'                   {new_declaration($1, $2, DECL);}
+declaration:            declaration_specifiers init_declarator_list ';'                   {new_declaration($1, $2, 0);}
       |                 declaration_specifiers  ';'                                             
 ;
 
@@ -530,7 +530,13 @@ parameter_list:         parameter_declaration                                   
 ;
 
 // Assume function declarations only take unknonw arguments, this just accepts it and allows for function definitions
-parameter_declaration:  declaration_specifiers declarator                           {new_declaration($1, $2, DEF);}
+parameter_declaration:  declaration_specifiers declarator                           {
+                                                                                          if ($2->top->ident.n_space == FUNC_S){
+                                                                                                yyerror("CANNOT ACCEPT A FUNCTION AS AN ARGUMENT");
+                                                                                                exit(2);
+                                                                                          }
+                                                                                          new_declaration($1, $2, 1);
+                                                                                    }
 ;
 
 /* identifier_list:        IDENT
