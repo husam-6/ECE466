@@ -72,8 +72,8 @@ void print_symbol_table(){
     struct scope * tmp_scope = curr_scope;
     while(tmp_scope != NULL){
         print_scope_symbols(tmp_scope);
+        printf("EXITING %s SCOPE...\n", print_scope(tmp_scope->s_type));
         tmp_scope = tmp_scope->outer;
-        printf("GOING OT OUTER SCOPE...\n");
     }
     printf("------------\tEND OF SYMBOL TABLE\t------------\n");
 
@@ -291,13 +291,13 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
     // Already in table
     if (in_table == 1){
         // Check if the redeclaration is valid
-        if (symbol_k == DECL && n_space != TAG_S){
-            if (!valid_redecl(symbol_found, new_symbol)){
+        if (symbol_k == DECL){
+            if (!valid_redecl(symbol_found, new_symbol) && n_space != TAG_S){
                 // print_symbol(new_symbol, 0); 
                 yyerror("INVALID REDECLARATION");                   // Still should check for valid redeclarations
                 exit(2);
             }
-            return; 
+
         }
         if (symbol_k == DEF && symbol_found->symbol_k == DEF){
             // if were redefining a tag but in a new scope, its valid
@@ -311,11 +311,8 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
             struct astnode_symbol * tmp = symbol_found->next; 
             (*symbol_found) = (*new_symbol);
             symbol_found->next = tmp; 
-            print_symbol(symbol_found, 0);
-            // symbol)->symbol_k = DEF; 
             return; 
         }
-
         // Declaring a previously defined symbol?
         if ((n_space == TAG_S) && (symbol_k == DECL && symbol_found->symbol_k == DEF)){
             if (symbol_found->scope == tmp_scope->s_type)
