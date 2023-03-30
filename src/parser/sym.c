@@ -84,6 +84,12 @@ void print_struct_symbol(struct astnode_symbol * sym, struct scope * stored_in){
 
     printf("\t-%s %s, at %s:%d,", print_union_struct(sym->type->stu_node.stu_type), sym->name, sym->file_name, sym->line_num);
     printf(" in Scope: %s\n", print_scope(stored_in->s_type));
+    // printf("-With members: \n");
+    // struct astnode_symbol * tmp = sym->type->stu_node.mini_head; 
+    // while (tmp != NULL){
+    //     print_symbol(tmp, curr_scope);
+    //     tmp = tmp->next;
+    // }
     if (sym->symbol_k == DECL){
         printf("\t-with Storage Class: %s, Namespace: %s\n", print_s_class(sym->s_class), print_namespace(sym->n_space));
     }   
@@ -206,6 +212,21 @@ int check_for_symbol(char * ident, enum namespace n_space, struct scope * scope,
     return 0;
 }
 
+// Search entire symbol table for an identifier
+// Returns 2 if table was empty when called
+// Returns 1 if the entry is in the table
+// Returns 0 if it isnt
+int search_all_tabs(char * ident, enum namespace n_space, struct scope * tmp_scope, struct astnode_symbol ** symbol_found){
+    while(check_for_symbol(ident, n_space, tmp_scope, symbol_found) != 1 && tmp_scope->outer != NULL){
+        tmp_scope = tmp_scope->outer; 
+    }
+    int in_table = check_for_symbol(ident, n_space, tmp_scope, symbol_found);
+    if (in_table == 1){
+        return 1; 
+    }
+    return 0; 
+}
+
 // Add symbol to symbol table
 void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_space, 
                       enum storage_class s_class, enum symbol_kind symbol_k)
@@ -228,6 +249,12 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
 
     struct astnode_symbol * symbol_found;
     int in_table = check_for_symbol(ident, n_space, tmp_scope, &symbol_found);     // Only checks in current scope for now
+
+    if (n_space == TAG_S){
+        int in_table = search_all_tabs(ident, n_space, tmp_scope, &symbol_found);
+        // print_symbol(symbol_found, curr_scope);
+    }
+
     // int in_table = check_for_symbol(ident, n_space, tmp_scope, NULL);     // Only checks in current scope for now
 
     struct astnode_symbol * new_symbol = make_symbol_node(); 
@@ -250,9 +277,11 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
 
     // Already in table
     if (in_table == 1){
+        if (n_space == TAG_S){
+            return; 
+        }
         // Check if the redeclaration is valid
-        // printf("TESTING: IDENT %s\n", symbol_found->name);
-        if (symbol_k == DECL){
+        else if (symbol_k == DECL){
             if (!valid_redecl(symbol_found, new_symbol)){
                 // print_symbol(new_symbol, tmp_scope); 
                 yyerror("INVALID REDECLARATION");                   // Still should check for valid redeclarations
@@ -274,7 +303,6 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
             return; 
         }
     }
-    
     tmp_scope->head = new_symbol; 
 
     // Print the newly inputted symbol 

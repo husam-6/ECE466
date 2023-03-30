@@ -13,6 +13,7 @@ enum scope_type{
 
 // For declarations...
 int check_for_symbol();
+int search_all_tabs();
 void add_symbol_entry();
 void create_scope();
 void print_symbol_table();

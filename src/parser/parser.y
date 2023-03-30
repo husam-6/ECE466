@@ -46,7 +46,8 @@
 %type <tt> declarator declaration_specifiers declaration init_declarator
 %type <tt> init_declarator_list type_specifier pointer direct_declarator parameter_declaration parameter_list
 /* %type <ll_p> function_arguments */
-%type<tt> storage_class_specifier function_specifier type_qualifier struct_or_union struct_or_union_specifier specifier_qualifier_list struct_declarator_list
+%type<tt> storage_class_specifier function_specifier type_qualifier struct_or_union struct_or_union_specifier 
+%type<tt> specifier_qualifier_list struct_declarator_list struct_declarator
 %type <ll_p> function_arguments
 
 
@@ -316,11 +317,10 @@ constant_expression: conditional_expression
 // Declarations 6.7
 declaration:            declaration_specifiers init_declarator_list ';'                   {new_declaration($1, $2, 0);}
       |                 declaration_specifiers  ';'                                       {
-                                                                                                if (curr_scope->s_type == PROTOTYPE_SCOPE || curr_scope->s_type == FUNC_SCOPE || curr_scope->s_type == BLOCK_SCOPE)
-                                                                                                      $1->top->ident.s_class = AUTO_S;
+                                                                                                // if (curr_scope->s_type == PROTOTYPE_SCOPE || curr_scope->s_type == FUNC_SCOPE || curr_scope->s_type == BLOCK_SCOPE)
+                                                                                                //       $1->top->ident.s_class = AUTO_S;
                                                                                                 
-
-                                                                                                add_symbol_entry($1->top->stu_node.ident, $1->top, TAG_S, $1->top->scalar.s_class, DECL);
+                                                                                                // add_symbol_entry($1->top->stu_node.ident, $1->top, TAG_S, $1->top->scalar.s_class, DECL);
                                                                                           } //Forward Declaration
 ;
 
@@ -377,7 +377,7 @@ type_specifier:   VOID                                                          
       |           UNSIGNED                                                          {$$ = create_scalar_node(U);}
       /* |           _BOOL                                                             {yyerror("Unimplemented");}
       |           _COMPLEX                                                          {yyerror("Unimplemented");} */
-      |           struct_or_union_specifier                                         
+      |           struct_or_union_specifier
       //|           enum_specifier
       //|           typedef_name
 ;
@@ -385,23 +385,30 @@ type_specifier:   VOID                                                          
 struct_or_union_specifier:    struct_or_union IDENT '{'                             {
                                                                                           $1->top->stu_node.ident = $2;
                                                                                           $1->top->stu_node.complete = INCOMPLETE;
+                                                                                          if (curr_scope->s_type == PROTOTYPE_SCOPE || curr_scope->s_type == FUNC_SCOPE ||
+                                                                                          curr_scope->s_type == BLOCK_SCOPE)
+                                                                                                      $1->top->ident.s_class = AUTO_S;
                                                                                           add_symbol_entry($2, $1->top, TAG_S, NON_VAR, DEF);
+                                                                                          $1->top->stu_node.refers_to = curr_scope->head; 
                                                                                           create_new_scope(MEMBER_S);
                                                                                     } 
                               struct_declaration_list '}'                           {
-                                                                                          $1->top->stu_node.complete = COMPLETE;
+                                                                                          // Mark the struct ndoeo as complete (get just installed symbol from symbol table)
                                                                                           struct astnode_symbol * just_installed; 
-                                                                                          check_for_symbol($2, TAG_S, curr_scope->outer, &just_installed);
+                                                                                          $1->top->stu_node.complete = COMPLETE;
+                                                                                          
+                                                                                          search_all_tabs($2, TAG_S, curr_scope->outer, &just_installed);
+                                                                                          // Update symbol to be complete, save members in mini symbol table
                                                                                           just_installed->type->stu_node.complete = COMPLETE;
                                                                                           just_installed->type->stu_node.mini_head = curr_scope->head; 
-
                                                                                           close_outer_scope();
+                                                                                          $$ = $1;
                                                                                     }// Install as complete
       |                       struct_or_union IDENT                                 {
                                                                                           $1->top->stu_node.ident = $2;
                                                                                           $1->top->stu_node.complete = INCOMPLETE;
                                                                                           $$ = $1;
-                                                                                          // add_symbol_entry($2, $1->top, TAG_S, NON_VAR, DECL);
+                                                                                          add_symbol_entry($2, $1->top, TAG_S, NON_VAR, DECL);
                                                                                     } 
       /* |                       struct_or_union '{' struct_declaration_list '}'       // Install as complete (without identifier yet) */
 ;
