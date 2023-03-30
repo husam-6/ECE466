@@ -10,6 +10,7 @@ enum Type{
     FUNCTION_TYPE, 
     SCALAR_TYPE, 
     IDENT_TYPE,
+    STRUCT_UNION_TYPE,
     S_CLASS
 };
 
@@ -29,6 +30,7 @@ struct top_tail * make_tt_node();
 struct top_tail * create_scalar_node(enum num_type arith);
 struct top_tail * create_s_class_node(enum storage_class s_class);
 struct top_tail * create_function_node(struct top_tail * direct_declarator);
+struct top_tail * create_stu_node();
 struct top_tail * init_tt_node();
 
 struct type_node * make_type_node(enum Type type);
@@ -47,9 +49,31 @@ struct function_type {
 
 };
 
+// Struct to help keep track of top and tail of linked list of types
 struct top_tail{
     struct type_node * top; 
     struct type_node * tail; 
+};
+
+enum forward {
+    INCOMPLETE = 0,
+    COMPLETE = 1, 
+};
+
+enum stu_type {
+    STRUCT_TYPE, 
+    UNION_TYPE
+};
+
+// Struct for struct or unions
+struct struct_union_type{
+    enum stu_type stu_type;
+    enum forward complete;
+    char * ident;
+    struct astnode_symbol * refers_to; 
+
+    // Mini symbol table for struct members
+    struct astnode_symbol * mini_head; 
 };
 
 // Node to represent a type
@@ -59,10 +83,9 @@ struct type_node{
     union{
         struct ident_type ident;
         struct scalar_type scalar; 
-        // enum num_type arith_type;
         int size;
         struct function_type func_node;
-        // struct struct_union_type struct_union_node;
+        struct struct_union_type stu_node;
     };
 };
 

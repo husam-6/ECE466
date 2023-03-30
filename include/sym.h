@@ -16,7 +16,8 @@ int check_for_symbol();
 void add_symbol_entry();
 void create_scope();
 void print_symbol_table();
-void print_declaration();
+void print_symbol();
+char * print_union_struct();
 
 // For scopes
 struct scope * make_new_scope(enum scope_type s_type);
@@ -54,8 +55,9 @@ struct astnode_symbol {
     enum namespace n_space;
     enum symbol_kind symbol_k;  
     enum storage_class s_class;     //Only for variable declarations (-1 if not)
-    int line_num; 
-    
+    int line_num;
+    char * file_name;
+
     // Next item in symbol table
     struct astnode_symbol * next;
 };

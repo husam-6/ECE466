@@ -1,6 +1,7 @@
 #include "parser.h"
 #include "type.h"
 #include "parser.tab.h"
+#include <string.h>
 
 void print_type(struct type_node * head, int depth){
     if (head == NULL)
@@ -51,6 +52,21 @@ void print_type(struct type_node * head, int depth){
             printf("STORAGE CLASS: %s\n", print_s_class(head->scalar.s_class));
             print_type(head->next_type, depth+1);
             break;
+        }
+        case STRUCT_UNION_TYPE:{
+            n_tabs(depth);
+            printf("%s %s ", print_union_struct(head->stu_node.stu_type), head->stu_node.ident);
+            if (head->stu_node.complete == INCOMPLETE)
+                printf("(incomplete)\n");
+            else{
+                printf("(defined at %s:%d)\n", head->stu_node.refers_to->file_name, head->stu_node.refers_to->line_num);
+                // printf("-With members: \n");
+                // print_type(head->stu_node.mini_head, depth+1);
+            }
+            print_type(head->next_type, depth+1);
+
+
+            break; 
         }
         default: {
             fprintf(stderr, "Unknown type node encountered...%d\n", head->type);
@@ -105,6 +121,14 @@ struct top_tail * create_s_class_node(enum storage_class s_class){
     return tt; 
 }
 
+// Allocate memory for a struct/union type node
+struct top_tail * create_stu_node(enum stu_type type){
+    struct top_tail * tt = init_tt_node(STRUCT_UNION_TYPE);
+    tt->top->stu_node.complete = INCOMPLETE;
+    tt->top->stu_node.stu_type = type; 
+    return tt; 
+}
+
 // Helper to allocate memory and initialize a function node
 struct top_tail * create_function_node(struct top_tail * direct_declarator){
     // Could be definition 
@@ -153,6 +177,9 @@ struct type_node * push_next_type(enum Type type, struct type_node * prev, struc
 // Returns 1 if valid
 // Returns 0 if invalid
 int check_type_specifier(struct type_node * head){
+    if (head->type == STRUCT_UNION_TYPE){
+        return 1;
+    }
     int tmp = head->scalar.arith_type;
     
     // If just a basic type, valid
@@ -236,6 +263,7 @@ int check_type_specifier(struct type_node * head){
     return 0;
 }
 
+// Prepare and add a new function definiton to the symbol table
 void new_function_defs(struct top_tail * specifiers, struct top_tail * declarator){
     declarator->top->ident.s_class = EXTERN_S;                                // Functions should be extern by default
     
@@ -299,10 +327,39 @@ void new_function_defs(struct top_tail * specifiers, struct top_tail * declarato
     add_symbol_entry(declarator->top->ident.name, declarator->top->next_type, declarator->top->ident.n_space, declarator->top->ident.s_class, DEF);
 }
 
+void struct_union_decl(struct top_tail * specifiers, struct top_tail * declarator){
+    struct astnode_symbol * refers_to; 
+    
+    // Look for the struct type
+    int in_table = check_for_symbol(specifiers->top->stu_node.ident, TAG_S, curr_scope, &refers_to);
 
-void new_declaration(struct top_tail * specifiers, struct top_tail * declarator, int param){
+    // Not in table, so declare a an incomplete struct type here
+    if (in_table == 2 || in_table == 0){
+        add_symbol_entry(specifiers->top->stu_node.ident, specifiers->top, TAG_S, NON_VAR, declarator->top->ident.s_class, DECL);
+        specifiers->top->stu_node.refers_to = curr_scope->head; 
+        // yyerror("INVALID STRUCT DECLARATION");
+        // exit(2);
+    }
+    
+    // Point the type of the new struct being declared to the one in the symbol table
+    if (in_table == 1)
+        specifiers->top->stu_node.refers_to = refers_to; 
+
+    // Chain types together
+    declarator->tail->next_type = specifiers->top;
+
+    add_symbol_entry(declarator->top->ident.name, declarator->top->next_type, declarator->top->ident.n_space, declarator->top->ident.s_class, DECL);
+}
+
+// Prepare and add a new declaration to the symbol table
+void new_declaration(struct top_tail * specifiers, struct top_tail * declarator, int param){    
+    if (specifiers->top->type == STRUCT_UNION_TYPE){
+        struct_union_decl(specifiers, declarator);
+        return;
+    }
     if (param == 0 && curr_scope->s_type == PROTOTYPE_SCOPE)
         close_outer_scope();
+
     // Check if storage class should be assumed as AUTO
     if ((curr_scope->s_type == PROTOTYPE_SCOPE || curr_scope->s_type == FUNC_SCOPE || curr_scope->s_type == BLOCK_SCOPE) 
             && declarator->top->ident.n_space != FUNC_S){    // To verify we aren't setting a function node to have auto storage class... 
@@ -347,7 +404,7 @@ void new_declaration(struct top_tail * specifiers, struct top_tail * declarator,
 
     // Check if type is valid
     int r = check_type_specifier(specifiers->top);
-    if (!r){
+    if (!r && declarator->top->ident.n_space != NON_VAR){
             yyerror("INVALID TYPE SPECIFIER");
             exit(2);
     }
