@@ -316,12 +316,7 @@ constant_expression: conditional_expression
 
 // Declarations 6.7
 declaration:            declaration_specifiers init_declarator_list ';'                   {new_declaration($1, $2, 0);}
-      |                 declaration_specifiers  ';'                                       {
-                                                                                                // if (curr_scope->s_type == PROTOTYPE_SCOPE || curr_scope->s_type == FUNC_SCOPE || curr_scope->s_type == BLOCK_SCOPE)
-                                                                                                //       $1->top->ident.s_class = AUTO_S;
-                                                                                                
-                                                                                                // add_symbol_entry($1->top->stu_node.ident, $1->top, TAG_S, $1->top->scalar.s_class, DECL);
-                                                                                          } //Forward Declaration
+      |                 declaration_specifiers  ';'                                       
 ;
 
 declaration_specifiers: storage_class_specifier declaration_specifiers                    {
@@ -375,8 +370,8 @@ type_specifier:   VOID                                                          
       |           DOUBLE                                                            {$$ = create_scalar_node(D);}
       |           SIGNED                                                            {$$ = create_scalar_node(S);}
       |           UNSIGNED                                                          {$$ = create_scalar_node(U);}
-      /* |           _BOOL                                                             {yyerror("Unimplemented");}
-      |           _COMPLEX                                                          {yyerror("Unimplemented");} */
+      |           _BOOL                                                             {yyerror("UNIMPLEMENTED"); exit(2);}
+      |           _COMPLEX                                                          {yyerror("UNIMPLEMENTED"); exit(2);}
       |           struct_or_union_specifier
       //|           enum_specifier
       //|           typedef_name
@@ -402,6 +397,8 @@ struct_or_union_specifier:    struct_or_union IDENT '{'                         
                                                                                           just_installed->type->stu_node.complete = COMPLETE;
                                                                                           just_installed->type->stu_node.mini_head = curr_scope->head; 
                                                                                           close_outer_scope();
+                                                                                          // print_symbol(just_installed, curr_scope);
+                                                                                          // print_symbol_table();
                                                                                           $$ = $1;
                                                                                     }// Install as complete
       |                       struct_or_union IDENT                                 {
@@ -410,7 +407,7 @@ struct_or_union_specifier:    struct_or_union IDENT '{'                         
                                                                                           $$ = $1;
                                                                                           add_symbol_entry($2, $1->top, TAG_S, NON_VAR, DECL);
                                                                                     } 
-      /* |                       struct_or_union '{' struct_declaration_list '}'       // Install as complete (without identifier yet) */
+      |                       struct_or_union '{' struct_declaration_list '}'       {yyerror("UNIMPLEMENTED"); exit(2);}
 ;
 
 // 6.7.2.1
@@ -441,9 +438,9 @@ struct_declarator:      declarator
 ;
 
 // 6.7.3
-type_qualifier:         CONST                                                       {yyerror("qualifiers unimplemented");}
-      |                 RESTRICT                                                    {yyerror("qualifiers unimplemented");}
-      |                 VOLATILE                                                    {yyerror("qualifiers unimplemented");}
+type_qualifier:         CONST                                                       //{yyerror("qualifiers unimplemented");}
+      |                 RESTRICT                                                    //{yyerror("qualifiers unimplemented");}
+      |                 VOLATILE                                                    //{yyerror("qualifiers unimplemented");}
 ;
 
 // 6.7.4
@@ -519,10 +516,9 @@ direct_declarator:      IDENT                                                   
                                                                                     }
 ;
 
-pointer:                '*' type_qualifier_list                                     {yyerror("Unimplemented - qualifiers optional"); $$ = init_tt_node(POINTER_TYPE);}
+pointer:                '*' type_qualifier_list                                     {$$ = init_tt_node(POINTER_TYPE);}
       |                 '*'                                                         {$$ = init_tt_node(POINTER_TYPE);}
       |                 '*' type_qualifier_list pointer                             {
-                                                                                          yyerror("Unimplemented - qualifiers optional");
                                                                                           // Nested pointers
                                                                                           struct type_node * tmp = push_next_type(POINTER_TYPE, $3->tail , NULL);
                                                                                           $3->tail = tmp; 
@@ -545,20 +541,7 @@ parameter_type_list:    parameter_list
       |                 parameter_list ',' ELLIPSIS
 ;
 
-parameter_list:         parameter_declaration                                       {
-                                                                                          // make_symbol_table_proto_or_member(enum scope_type t)
-                                                                                          // Add to symbol table
-                                                                                          // create_new_scope(PROTOTYPE_SCOPE);
-                                                                                          // add_symbol_entry($1->top->ident.name, $1->top->next_type, $1->top->ident.n_space, AUTO_S, DECL);
-                                                                                          // print_symbol_table();
-
-                                                                                    }
-      |                 parameter_list ',' parameter_declaration                    {
-                                                                                          // add_symbol_entry($3->top->ident.name, $3->top->next_type, $3->top->ident.n_space, AUTO_S, DECL);
-                                                                                          // print_symbol_table();
-                                                                                          // print_declaration(curr_scope->head, curr_scope);
-                                                                  
-                                                                                    }
+parameter_list:         parameter_declaration                                       
 ;
 
 // Assume function declarations only take unknonw arguments, this just accepts it and allows for function definitions

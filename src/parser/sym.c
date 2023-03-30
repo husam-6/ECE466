@@ -84,15 +84,17 @@ void print_struct_symbol(struct astnode_symbol * sym, struct scope * stored_in){
 
     printf("\t-%s %s, at %s:%d,", print_union_struct(sym->type->stu_node.stu_type), sym->name, sym->file_name, sym->line_num);
     printf(" in Scope: %s\n", print_scope(stored_in->s_type));
-    // printf("-With members: \n");
-    // struct astnode_symbol * tmp = sym->type->stu_node.mini_head; 
-    // while (tmp != NULL){
-    //     print_symbol(tmp, curr_scope);
-    //     tmp = tmp->next;
-    // }
     if (sym->symbol_k == DECL){
         printf("\t-with Storage Class: %s, Namespace: %s\n", print_s_class(sym->s_class), print_namespace(sym->n_space));
-    }   
+    }
+    // if (sym->type->stu_node.mini_head != NULL){
+    //     printf("-With members: \n");
+    //     struct astnode_symbol * tmp = sym->type->stu_node.mini_head; 
+    //     while (tmp != NULL){
+    //         print_symbol(tmp, curr_scope);
+    //         tmp = tmp->next;
+    //     }
+    // }
 }
 
 // Prints given declaration (astnode_symbol) (takes in a given symbol and the scope from which it came from)
@@ -277,11 +279,8 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
 
     // Already in table
     if (in_table == 1){
-        if (n_space == TAG_S){
-            return; 
-        }
         // Check if the redeclaration is valid
-        else if (symbol_k == DECL){
+        if (symbol_k == DECL && n_space != TAG_S){
             if (!valid_redecl(symbol_found, new_symbol)){
                 // print_symbol(new_symbol, tmp_scope); 
                 yyerror("INVALID REDECLARATION");                   // Still should check for valid redeclarations
@@ -302,6 +301,10 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
             // symbol)->symbol_k = DEF; 
             return; 
         }
+
+        // Declaring a previously defined symbol?
+        if ((n_space == FUNC_S || n_space == TAG_S) && (symbol_k == DECL && symbol_found->symbol_k == DEF))
+            return; 
     }
     tmp_scope->head = new_symbol; 
 
