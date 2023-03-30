@@ -60,7 +60,7 @@ char * print_union_struct(enum stu_type stu){
 void print_scope_symbols(struct scope * curr_scope){
         struct astnode_symbol * tmp = curr_scope->head; 
         while (tmp != NULL){
-            print_symbol(tmp, curr_scope); 
+            print_symbol(tmp, 0); 
             tmp = tmp->next; 
         }
 }
@@ -79,35 +79,41 @@ void print_symbol_table(){
 
 }
 
-void print_struct_symbol(struct astnode_symbol * sym, struct scope * stored_in){
+void print_struct_members(struct astnode_symbol * mini_head){
+    while (mini_head != NULL){
+        print_symbol(mini_head, 2);
+        mini_head = mini_head->next;
+    }
+}
+
+void print_struct_symbol(struct astnode_symbol * sym){
     printf("%s\n", print_def_decl(sym->symbol_k));
 
     printf("\t-%s %s, at %s:%d,", print_union_struct(sym->type->stu_node.stu_type), sym->name, sym->file_name, sym->line_num);
-    printf(" in Scope: %s\n", print_scope(stored_in->s_type));
+    printf(" in Scope: %s\n", print_scope(sym->scope));
     if (sym->symbol_k == DECL){
         printf("\t-with Storage Class: %s, Namespace: %s\n", print_s_class(sym->s_class), print_namespace(sym->n_space));
     }
-    // if (sym->type->stu_node.mini_head != NULL){
-    //     printf("-With members: \n");
-    //     struct astnode_symbol * tmp = sym->type->stu_node.mini_head; 
-    //     while (tmp != NULL){
-    //         print_symbol(tmp, curr_scope);
-    //         tmp = tmp->next;
-    //     }
-    // }
+    if (sym->type->stu_node.mini_head != NULL){
+        printf("\t-With members: \n");
+        print_struct_members(sym->type->stu_node.mini_head);
+    }
 }
 
 // Prints given declaration (astnode_symbol) (takes in a given symbol and the scope from which it came from)
-void print_symbol(struct astnode_symbol * sym, struct scope * stored_in){
+void print_symbol(struct astnode_symbol * sym, int tabs){
     if (sym->type->type == STRUCT_UNION_TYPE && sym->n_space == TAG_S){
-        print_struct_symbol(sym, stored_in);
+        print_struct_symbol(sym);
         return;
     }
+    n_tabs(tabs);
     printf("%s\n", print_def_decl(sym->symbol_k));
+    n_tabs(tabs);
     printf("\t- Symbol Ident: %s, Storage Class: %s, Namespace: %s, Scope: %s\n", 
-            sym->name, print_s_class(sym->s_class), print_namespace(sym->n_space), print_scope(stored_in->s_type));
+            sym->name, print_s_class(sym->s_class), print_namespace(sym->n_space), print_scope(sym->scope));
+    n_tabs(tabs);
     printf("\t- Declared in file %s:%d, with the following type: \n", sym->file_name, sym->line_num);
-    print_type(sym->type, 2);
+    print_type(sym->type, 2 + tabs);
 }
 
 
@@ -159,6 +165,9 @@ int check_types(struct type_node * type_1, struct type_node * type_2){
 // Returns 1 if valid
 // Returns 0 if not
 int valid_redecl(struct astnode_symbol * first, struct astnode_symbol * second){
+    if (first->scope == MEMBER_SCOPE)
+        return 0; 
+
     // If functions, check if the return types are the same
     if (first->type->type == FUNCTION_TYPE){
         if (first->s_class != second->s_class)
@@ -180,6 +189,7 @@ int valid_redecl(struct astnode_symbol * first, struct astnode_symbol * second){
     if (first->type->type != S_CLASS && second->type->type != S_CLASS)
         return check_types(first->type, second->type);
 
+
     return 0; 
 }
 
@@ -189,7 +199,7 @@ int valid_redecl(struct astnode_symbol * first, struct astnode_symbol * second){
 // Returns 0 if it isnt
 int check_for_symbol(char * ident, enum namespace n_space, struct scope * scope, struct astnode_symbol ** symbol_found){
     struct astnode_symbol * tmp; 
-    tmp = scope->head; 
+    tmp = scope->head;
     if (tmp == NULL)
         return 2; 
 
@@ -220,7 +230,7 @@ int check_for_symbol(char * ident, enum namespace n_space, struct scope * scope,
 // Returns 0 if it isnt
 int search_all_tabs(char * ident, enum namespace n_space, struct scope * tmp_scope, struct astnode_symbol ** symbol_found){
     while(check_for_symbol(ident, n_space, tmp_scope, symbol_found) != 1 && tmp_scope->outer != NULL){
-        tmp_scope = tmp_scope->outer; 
+        tmp_scope = tmp_scope->outer;
     }
     int in_table = check_for_symbol(ident, n_space, tmp_scope, symbol_found);
     if (in_table == 1){
@@ -250,11 +260,11 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
     }
 
     struct astnode_symbol * symbol_found;
-    int in_table = check_for_symbol(ident, n_space, tmp_scope, &symbol_found);     // Only checks in current scope for now
+    int in_table;
+    in_table = check_for_symbol(ident, n_space, tmp_scope, &symbol_found);     // Only checks in current scope for now
 
     if (n_space == TAG_S){
-        int in_table = search_all_tabs(ident, n_space, tmp_scope, &symbol_found);
-        // print_symbol(symbol_found, curr_scope);
+        in_table = search_all_tabs(ident, n_space, tmp_scope, &symbol_found);
     }
 
     // int in_table = check_for_symbol(ident, n_space, tmp_scope, NULL);     // Only checks in current scope for now
@@ -275,41 +285,48 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
     new_symbol->symbol_k = symbol_k; 
     new_symbol->s_class = s_class;
     new_symbol->line_num = line_num;  
-    new_symbol->file_name = file_name;  
+    new_symbol->file_name = file_name;
+    new_symbol->scope = tmp_scope->s_type; 
 
     // Already in table
     if (in_table == 1){
         // Check if the redeclaration is valid
         if (symbol_k == DECL && n_space != TAG_S){
             if (!valid_redecl(symbol_found, new_symbol)){
-                // print_symbol(new_symbol, tmp_scope); 
+                // print_symbol(new_symbol, 0); 
                 yyerror("INVALID REDECLARATION");                   // Still should check for valid redeclarations
                 exit(2);
             }
             return; 
         }
         if (symbol_k == DEF && symbol_found->symbol_k == DEF){
-            yyerror("INVALID REDEFINITION");                   // Still should check for valid redeclarations
-            exit(2);
+            // if were redefining a tag but in a new scope, its valid
+            if (n_space != TAG_S || (n_space == TAG_S && symbol_found->scope == tmp_scope->s_type)){
+                yyerror("INVALID REDEFINITION");                   // Still should check for valid redeclarations
+                exit(2);
+            }
         }
         // If we are defining a previously declared symbol
         if ((n_space == FUNC_S || n_space == TAG_S) && (symbol_k == DEF && symbol_found->symbol_k == DECL)){
             struct astnode_symbol * tmp = symbol_found->next; 
             (*symbol_found) = (*new_symbol);
             symbol_found->next = tmp; 
-            print_symbol(symbol_found, tmp_scope);
+            print_symbol(symbol_found, 0);
             // symbol)->symbol_k = DEF; 
             return; 
         }
 
         // Declaring a previously defined symbol?
-        if ((n_space == FUNC_S || n_space == TAG_S) && (symbol_k == DECL && symbol_found->symbol_k == DEF))
-            return; 
+        if ((n_space == TAG_S) && (symbol_k == DECL && symbol_found->symbol_k == DEF)){
+            if (symbol_found->scope == tmp_scope->s_type)
+                return; 
+            
+        }
     }
     tmp_scope->head = new_symbol; 
 
     // Print the newly inputted symbol 
-    print_symbol(new_symbol, tmp_scope);
+    print_symbol(new_symbol, 0);
 
     // Update curr_scope if it was altered
     if (proto)

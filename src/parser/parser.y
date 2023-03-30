@@ -74,7 +74,7 @@ statement:        compound_statement
       |           expression ';'                                        {print_ast($1, 0);}
 ;                 
 
-compound_statement:     '{'   {create_new_scope();}   decl_or_stmt_list '}' {close_outer_scope();}                                           
+compound_statement:     '{'   {create_new_scope();}   decl_or_stmt_list '}' {print_symbol_table(); close_outer_scope();}                                           
 ;
 
 decl_or_stmt_list:      decl_or_stmt 
@@ -316,7 +316,7 @@ constant_expression: conditional_expression
 
 // Declarations 6.7
 declaration:            declaration_specifiers init_declarator_list ';'                   {new_declaration($1, $2, 0);}
-      |                 declaration_specifiers  ';'                                       
+      |                 declaration_specifiers  ';'                                       {print_symbol_table(); }              
 ;
 
 declaration_specifiers: storage_class_specifier declaration_specifiers                    {
@@ -391,6 +391,7 @@ struct_or_union_specifier:    struct_or_union IDENT '{'                         
                                                                                           // Mark the struct ndoeo as complete (get just installed symbol from symbol table)
                                                                                           struct astnode_symbol * just_installed; 
                                                                                           $1->top->stu_node.complete = COMPLETE;
+                                                                                          $1->top->stu_node.ident = $2;
                                                                                           
                                                                                           search_all_tabs($2, TAG_S, curr_scope->outer, &just_installed);
                                                                                           // Update symbol to be complete, save members in mini symbol table

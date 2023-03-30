@@ -8,10 +8,10 @@ vpath %.c src/lexer
 vpath %.y src/parser
 vpath %.l src/lexer
 FILE=ptest
-CXXFLAGS=-I./include -I./build -Wall -Wextra
+CXXFLAGS=-I./include -I./build -Wall -Wextra -fsanitize=undefined
 BUILD = build
 
-all: parser.tab.c lex.yy.c ast.c lex_help.c sym.c type.c main.c
+all: parser.tab.c lex.yy.c ast.c lex_help.c sym.c type.c main.c die-util.c
 	gcc $(CXXFLAGS) $^ -ll -o build/a.out
 
 $(BUILD)/parser.tab.c: parser.y

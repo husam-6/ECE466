@@ -37,6 +37,7 @@ struct astnode * create_binary(int op_type, int op, struct astnode *left, struct
 struct astnode * create_ternary(int op_type, struct astnode *left, struct astnode *middle, struct astnode *right);
 void n_tabs(int n);
 char * print_datatype(int type);
+void die(const char *msg);
 
 
 // For debugging, print the ast symbolically 

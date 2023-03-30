@@ -60,7 +60,7 @@ void print_type(struct type_node * head, int depth){
                 printf("(incomplete)\n");
             }
             else{
-                printf("(defined at %s:%d)\n", head->stu_node.refers_to->file_name, head->stu_node.refers_to->line_num);
+                printf("(defined at %s:%d in %s scope)\n", head->stu_node.refers_to->file_name, head->stu_node.refers_to->line_num, print_scope(head->stu_node.refers_to->scope));
             }
             print_type(head->next_type, depth+1);
 
@@ -329,8 +329,10 @@ void new_function_defs(struct top_tail * specifiers, struct top_tail * declarato
 void struct_union_decl(struct top_tail * specifiers, struct top_tail * declarator){
     struct astnode_symbol * refers_to; 
     
+    // printf("HERE?\n");
     // Look for the struct type
     int in_table = search_all_tabs(specifiers->top->stu_node.ident, TAG_S, curr_scope, &refers_to);
+
 
     // Not in table, so declare a an incomplete struct type here
     if (in_table == 2 || in_table == 0){
@@ -339,7 +341,6 @@ void struct_union_decl(struct top_tail * specifiers, struct top_tail * declarato
         // yyerror("INVALID STRUCT DECLARATION");
         // exit(2);
     }
-    
     // Point the type of the new struct being declared to the one in the symbol table
     if (in_table == 1){
         specifiers->top->stu_node.refers_to = refers_to; 
@@ -353,7 +354,6 @@ void struct_union_decl(struct top_tail * specifiers, struct top_tail * declarato
 
 // Prepare and add a new declaration to the symbol table
 void new_declaration(struct top_tail * specifiers, struct top_tail * declarator, int param){    
-
     if (specifiers->top->type == STRUCT_UNION_TYPE){
         struct_union_decl(specifiers, declarator);
         return;
