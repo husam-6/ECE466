@@ -1,0 +1,32 @@
+DECLARATION
+	- Symbol Ident: a, Storage Class: EXTERN, Namespace: VAR, Scope: GLOBAL
+	- Declared in file ptests/scope.c:1, with the following type: 
+		SCALAR TYPE NODE: int
+DEFINITION
+	- Symbol Ident: f, Storage Class: EXTERN, Namespace: FUNC, Scope: GLOBAL
+	- Declared in file ptests/scope.c:4, with the following type: 
+		FUNCTION TYPE NODE
+			RETURN TYPE:
+				SCALAR TYPE NODE: int
+			PARAMETERS:
+				Unknown arguments
+DECLARATION
+	- Symbol Ident: a, Storage Class: AUTO, Namespace: VAR, Scope: FUNCTION
+	- Declared in file ptests/scope.c:5, with the following type: 
+		SCALAR TYPE NODE: int
+DECLARATION
+	- Symbol Ident: a, Storage Class: AUTO, Namespace: VAR, Scope: BLOCK
+	- Declared in file ptests/scope.c:7, with the following type: 
+		SCALAR TYPE NODE: int
+DECLARATION
+	- Symbol Ident: b, Storage Class: AUTO, Namespace: VAR, Scope: BLOCK
+	- Declared in file ptests/scope.c:8, with the following type: 
+		SCALAR TYPE NODE: int
+DECLARATION
+	- Symbol Ident: b, Storage Class: AUTO, Namespace: VAR, Scope: FUNCTION
+	- Declared in file ptests/scope.c:10, with the following type: 
+		SCALAR TYPE NODE: int
+DECLARATION
+	- Symbol Ident: b, Storage Class: EXTERN, Namespace: VAR, Scope: GLOBAL
+	- Declared in file ptests/scope.c:13, with the following type: 
+		SCALAR TYPE NODE: int
