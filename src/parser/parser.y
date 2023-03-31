@@ -75,7 +75,7 @@ statement:        compound_statement
 ;                 
 
 compound_statement:     '{'   {create_new_scope();}   decl_or_stmt_list '}'   {
-                                                                                    print_symbol_table();
+                                                                                    // print_symbol_table();
                                                                                     close_outer_scope();
                                                                               }                                           
 ;
@@ -552,6 +552,7 @@ parameter_type_list:    parameter_list
 ;
 
 parameter_list:         parameter_declaration                                       
+      |                 parameter_list ',' parameter_declaration                                       
 ;
 
 // Assume function declarations only take unknonw arguments, this just accepts it and allows for function definitions

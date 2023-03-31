@@ -311,6 +311,7 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
             struct astnode_symbol * tmp = symbol_found->next; 
             (*symbol_found) = (*new_symbol);
             symbol_found->next = tmp; 
+            print_symbol(symbol_found, 0);
             return; 
         }
         // Declaring a previously defined symbol?
