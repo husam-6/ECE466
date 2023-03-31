@@ -1,28 +1,19 @@
-/* You'll need to comment out the next 4 lines and the final closing brace */
-/* to test for assignment 2.  These declarations are here to create a */
-/* syntactically valid pile of C code should you care to test this */
-/* with gcc or clang */
 
-// int *z; 
-// static int *f[3];
-// int ****a; 
-
-// static long int *** main(int a, int b){
-//     long int *f; 
-// }
-
-static int a(); 
+static long int *(**(*a)[5])(); 
 // static int a();
-// int b();
+int b();
+int b(int a);
+extern long long int *(*c)[5]; 
+extern long long int *(*c)[5];
+
 int main(){
-    extern int a; 
+    register int a; 
 }
 
-volatile signed short s3;
+// volatile signed short s3;
 
-// static unsigned char f; 
-// // long long fibonacci(int n);
-// // int a;
+static unsigned char f;
+long long fibonacci(int n);
 
 extern long int *** m(long long ***a, short int *b){
     long int *f; 
@@ -36,11 +27,8 @@ extern long int *** m(long long ***a, short int *b){
     int f();
 }
 
-// int main(){
-//     int extern a;   // still minor bug where storage specifier goes after... this is technically valid
-// }
+int (**(* bar)[5])[6];
 
-// int a; 
 // long long int *(**f[])[10];
 // int **p;
 // int *p[10];
@@ -49,7 +37,6 @@ extern long int *** m(long long ***a, short int *b){
 // int *(* bar)[5][6];
 // int (*(**(* bar)))[5][6];
 // int *(* bar)[5][5];
-// int (**(* bar)[5])[5];
 // long int **op;
 // long double (**(* bar)[5])[4];
 // int *(*p)[5];

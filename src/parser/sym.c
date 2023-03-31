@@ -297,6 +297,7 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
                 yyerror("INVALID REDECLARATION");                   // Still should check for valid redeclarations
                 exit(2);
             }
+            return; 
 
         }
         if (symbol_k == DEF && symbol_found->symbol_k == DEF){

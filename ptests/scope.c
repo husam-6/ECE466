@@ -1,6 +1,6 @@
 int a;
 
-int f(void)
+int f()
 {
 	int a;
 	{

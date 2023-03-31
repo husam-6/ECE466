@@ -1,29 +1,21 @@
-int f();
-int h(int);
-
-int f(i)	/* non-prototype definition should be compat with prev decl */
-double i;	/* compiler shouldn't notice this error */
-{
- int j;
+// int f(); 
+int xyz(int*[], char){
+	int a; 
 }
 
-void (*g(double d))(int,char)
-{
- int f();
- int g();	/* gcc complains about this but I think this g should
-			hide the name g in global scope */
-	_whatis g;		/* _whatis is my debug extension */
-
+// static void (*(*f(int (*(*a)[5])(int a,  char c), double (*d)[5], int x))(int a,char b))(int asdf){
+static int f(int (*(*a)[5])(int a,  char c), double (*d)[5]){
+	int bruh; 
+	// unsigned long long haha; 
 }
-
-int h(int x)
-{
- int h;		/* gcc does NOT complain about this */
+void (*(*g(	double d))[])(int a, char b){
+	int g; 
+	int a;
+	int b; 
+	// a +++ b;
 }
-
-kr(i,j,k)
-double k;
+void (*(*x(double d))(int a,char b))(int asdf)
 {
-	_whatis i;
-	_whatis k;
+	int x;
+	int g;
 }

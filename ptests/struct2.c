@@ -1,4 +1,4 @@
-/* This is a torture-test of struct tag scoping rules */
+// /* This is a torture-test of struct tag scoping rules */
 
 struct s1 {
 	int a;
@@ -24,3 +24,8 @@ void f(void)
 		
 	struct s1 s1;		/* Not a dup defn! */
 }
+
+// struct s1; 
+// struct s1{
+// 	int a; 
+// };
