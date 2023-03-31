@@ -21,7 +21,7 @@ $(BUILD)/lex.yy.c: lexer.l parser.tab.c
 	flex --outfile=$(BUILD)/lex.yy.c $<
 
 test: all
-	gcc -E ptests/$(FILE).c | ./$(BUILD)/a.out >ptests/test.out 2>ptests/test.err
+	gcc -E ptests/$(FILE).c | ./$(BUILD)/a.out >ptests/output/$(FILE).out 2>ptests/output/$(FILE).err
 
 print: all
 	gcc -E ptests/$(FILE).c | ./$(BUILD)/a.out

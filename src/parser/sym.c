@@ -291,7 +291,7 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
     // Already in table
     if (in_table == 1){
         // Check if the redeclaration is valid
-        if (symbol_k == DECL){
+        if (symbol_k == DECL && strcmp(ident, "1UNDEF")){
             if (!valid_redecl(symbol_found, new_symbol) && n_space != TAG_S){
                 // print_symbol(new_symbol, 0); 
                 yyerror("INVALID REDECLARATION");                   // Still should check for valid redeclarations

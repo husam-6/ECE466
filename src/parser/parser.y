@@ -8,6 +8,7 @@
    // Function prototypes
    void yyerror(const char* msg);
    int yylex();
+   int abstract_count;
 }
 
 %token IDENT CHARLIT STRING NUMBER INDSEL PLUSPLUS MINUSMINUS SHL SHR
@@ -48,6 +49,7 @@
 /* %type <ll_p> function_arguments */
 %type<tt> storage_class_specifier function_specifier type_qualifier struct_or_union struct_or_union_specifier 
 %type<tt> specifier_qualifier_list struct_declarator_list struct_declarator
+%type<tt> type_name abstract_declarator direct_abstract_declarator parameter_type_list
 %type <ll_p> function_arguments
 
 
@@ -397,6 +399,7 @@ struct_or_union_specifier:    struct_or_union IDENT '{'                         
                                                                                           $1->top->stu_node.ident = $2;
                                                                                           
                                                                                           search_all_tabs($2, TAG_S, curr_scope->outer, &just_installed);
+                                                                                          
                                                                                           // Update symbol to be complete, save members in mini symbol table
                                                                                           just_installed->type->stu_node.complete = COMPLETE;
                                                                                           just_installed->type->stu_node.mini_head = curr_scope->head; 
@@ -563,6 +566,27 @@ parameter_declaration:  declaration_specifiers declarator                       
                                                                                           }
                                                                                           new_declaration($1, $2, 1);
                                                                                     }
+      |                 declaration_specifiers abstract_declarator                  {
+                                                                                          // Create dummy ident node
+                                                                                          struct top_tail * node = init_tt_node(IDENT_TYPE);
+                                                                                          node->top->ident.name = "1UNDEF";
+                                                                                          node->top->ident.s_class = AUTO_S;
+                                                                                          node->top->ident.n_space = VAR_S; 
+                                                                                          node->top->next_type = $2->top; 
+                                                                                          
+                                                                                          new_declaration($1, node, 1);
+
+                                                                                    }
+      |                 declaration_specifiers                                      {
+                                                                                          // Create dummy ident node
+                                                                                          struct top_tail * node = init_tt_node(IDENT_TYPE);
+                                                                                          node->top->ident.name = "1UNDEF";
+                                                                                          node->top->ident.s_class = AUTO_S;
+                                                                                          node->top->ident.n_space = VAR_S; 
+                                                                                          
+                                                                                          new_declaration($1, node, 1);
+                                                                                          
+                                                                                    }
 ;
 
 /* identifier_list:        IDENT
@@ -570,26 +594,46 @@ parameter_declaration:  declaration_specifiers declarator                       
 ; */
 
 // 6.7.6
-type_name:              specifier_qualifier_list abstract_declarator
+type_name:              specifier_qualifier_list abstract_declarator                            {$$ = $2;}
       |                 specifier_qualifier_list
 ;
 
-abstract_declarator:    pointer
-      |                 pointer direct_abstract_declarator
+abstract_declarator:    pointer                                                                 
+      |                 pointer direct_abstract_declarator                                      {
+                                                                                                      if ($2->tail->type == FUNCTION_TYPE){
+                                                                                                            $2->tail->func_node.return_type = $1->top;
+                                                                                                      }
+                                                                                                      else
+                                                                                                            $2->tail->next_type = $1->top;
+                                                                                                      
+                                                                                                      // Update tail node (end of declarator now)
+                                                                                                      $2->tail = $1->tail; 
+                                                                                                      $$ = $2;
+                                                                                                }
       |                 direct_abstract_declarator
 ;
 
-direct_abstract_declarator:   '(' abstract_declarator ')'
-      |                       direct_abstract_declarator '[' assignment_expression ']'
-      |                       direct_abstract_declarator '['  ']'
-      |                       '[' assignment_expression ']'
-      |                       '['  ']'
-      |                       direct_abstract_declarator '[' '*' ']'
-      |                       '[' '*' ']'
-      |                       direct_abstract_declarator '(' parameter_type_list ')'
-      |                       direct_abstract_declarator '('  ')'
-      |                       '(' parameter_type_list ')'
-      |                       '('  ')'
+direct_abstract_declarator:   '(' abstract_declarator ')'                                       {$$ = $2;}
+      |                       direct_abstract_declarator '['  ']'                               {
+                                                                                                      // Add array type node
+                                                                                                      struct type_node * tmp = push_next_type(ARRAY_TYPE, $1->tail, NULL);
+                                                                                                      tmp->size = -1;         // Make size -1 for now to distinguish between known and unknown sizes
+                                                                                                      
+                                                                                                      // Update tail node to be latest added node, return end of the declarator (ident)
+                                                                                                      $1->tail = tmp;
+                                                                                                      $$ = $1; 
+                                                                                                }
+      |                       '['  ']'                                                          {$$ = init_tt_node(ARRAY_TYPE);}
+      |                       direct_abstract_declarator '('                                    {create_new_scope(PROTOTYPE_SCOPE);} parameter_type_list ')'          
+                                                                                                {
+                                                                                                      $$ = create_function_node($1);
+                                                                                                      // if ($$->top->type != )
+                                                                                                      while (curr_scope->outer->s_type == PROTOTYPE_SCOPE)
+                                                                                                            close_outer_scope(); 
+                                                                                                }
+      |                       direct_abstract_declarator '('  ')'                               {$$ = create_function_node($1);}
+      |                       '(' parameter_type_list ')'                                       {$$ = $2;}
+      |                       '('  ')'                                                          {$$ = init_tt_node(FUNCTION_TYPE);}
 ;
 
 /* block_item:             declaration

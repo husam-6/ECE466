@@ -265,7 +265,7 @@ int check_type_specifier(struct type_node * head){
 // Prepare and add a new function definiton to the symbol table
 void new_function_defs(struct top_tail * specifiers, struct top_tail * declarator){
     declarator->top->ident.s_class = EXTERN_S;                                // Functions should be extern by default
-    
+
     // Remove temporary storage class node if it exists
     if (specifiers->top->type == S_CLASS){
         // Check if storage class is valid for a function...
@@ -318,7 +318,7 @@ void new_function_defs(struct top_tail * specifiers, struct top_tail * declarato
 
 
     // Save parameter list in function node (if we have one...)
-    if (curr_scope->s_type == PROTOTYPE_SCOPE){
+    if (curr_scope->s_type == PROTOTYPE_SCOPE && curr_scope->head != NULL){
         curr_scope->head = reverse(curr_scope->head);
         tmp_func->func_node.param_head = curr_scope->head;
     }
