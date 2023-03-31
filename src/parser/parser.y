@@ -573,6 +573,7 @@ parameter_declaration:  declaration_specifiers declarator                       
                                                                                           node->top->ident.s_class = AUTO_S;
                                                                                           node->top->ident.n_space = VAR_S; 
                                                                                           node->top->next_type = $2->top; 
+                                                                                          node->tail = $2->tail; 
                                                                                           
                                                                                           new_declaration($1, node, 1);
 
@@ -623,7 +624,7 @@ direct_abstract_declarator:   '(' abstract_declarator ')'                       
                                                                                                       $1->tail = tmp;
                                                                                                       $$ = $1; 
                                                                                                 }
-      |                       '['  ']'                                                          {$$ = init_tt_node(ARRAY_TYPE);}
+      |                       '['  ']'                                                          {$$ = init_tt_node(ARRAY_TYPE); $$->top->size = -1;}
       |                       direct_abstract_declarator '('                                    {create_new_scope(PROTOTYPE_SCOPE);} parameter_type_list ')'          
                                                                                                 {
                                                                                                       $$ = create_function_node($1);
