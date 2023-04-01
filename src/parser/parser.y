@@ -68,7 +68,13 @@ declaration_or_fndef:         declaration                                       
 // Declaration Specifier int, extern int
 // Declarator is the ident and any pointers/array info
 // Compound statement is everything in the brackets
-function_definition:    declaration_specifiers declarator               {new_function_defs($1, $2);}
+function_definition:    declaration_specifiers declarator               {
+                                                                              if ($2->top == NULL || $2->top->next_type == NULL || $2->top->next_type->type != FUNCTION_TYPE) {
+                                                                                    yyerror("INVALID FUNCTION DEFINITION");
+                                                                                    exit(2);
+                                                                              };
+                                                                              new_function_defs($1, $2);
+                                                                        }
                         compound_statement                              //{printf("CURRENT SCOPE: %d\n", curr_scope->s_type);}
 ;                 
 
