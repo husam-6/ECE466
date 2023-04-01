@@ -291,8 +291,8 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
     // Already in table
     if (in_table == 1){
         // Check if the redeclaration is valid
-        if (symbol_k == DECL && strcmp(ident, "1UNDEF")){
-            if (!valid_redecl(symbol_found, new_symbol) && n_space != TAG_S){
+        if (symbol_k == DECL && strcmp(ident, "1UNDEF") && n_space != TAG_S){
+            if (!valid_redecl(symbol_found, new_symbol)){
                 // print_symbol(new_symbol, 0); 
                 yyerror("INVALID REDECLARATION");                   // Still should check for valid redeclarations
                 exit(2);
@@ -315,9 +315,12 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
             print_symbol(symbol_found, 0);
             return; 
         }
-        // Declaring a previously defined symbol?
-        if ((n_space == TAG_S) && (symbol_k == DECL && symbol_found->symbol_k == DEF)){
-            if (symbol_found->scope == tmp_scope->s_type)
+        if (n_space == TAG_S){
+            // Declaring a previously defined symbol?
+            if (symbol_k == DECL && symbol_found->symbol_k == DEF && (symbol_found->scope == tmp_scope->s_type))
+                return; 
+            // Declaring previously declared symbol?
+            if (symbol_k == DECL && symbol_found->symbol_k == DECL && symbol_found->scope == tmp_scope->s_type)
                 return; 
             
         }

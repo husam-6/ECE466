@@ -327,7 +327,15 @@ constant_expression: conditional_expression
 
 // Declarations 6.7
 declaration:            declaration_specifiers init_declarator_list ';'                   {new_declaration($1, $2, 0);}
-      |                 declaration_specifiers  ';'                                       {add_symbol_entry($1->top->stu_node.ident, $1->top, TAG_S, NON_VAR, DECL);}              
+      |                 declaration_specifiers  ';'                                       {
+                                                                                                if ($1->top->type == STRUCT_UNION_TYPE)
+                                                                                                      add_symbol_entry($1->top->stu_node.ident, $1->top, TAG_S, NON_VAR, DECL);
+                                                                                                else{
+                                                                                                      yyerror("INVALID DECLARATION");
+                                                                                                      exit(2);
+                                                                                                }
+                                                                                                
+                                                                                          }              
 ;
 
 declaration_specifiers: storage_class_specifier declaration_specifiers                    {
