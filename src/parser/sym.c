@@ -183,10 +183,10 @@ int valid_redecl(struct astnode_symbol * first, struct astnode_symbol * second){
         
         return check_types(first->type->next_type, second->type);
     }
-
+    
 
     // variables with no storage class specifier and no initializer are valid if types match 
-    if (first->type->type != S_CLASS && second->type->type != S_CLASS)
+    if (first->type->type != S_CLASS && second->type->type != S_CLASS && curr_scope->s_type == GLOBAL_SCOPE)
         return check_types(first->type, second->type);
 
 

@@ -172,6 +172,12 @@ struct type_node * push_next_type(enum Type type, struct type_node * prev, struc
     return node;
 }
 
+struct decl_list * make_decl_list_node(struct top_tail * item){
+    struct decl_list *list = (struct decl_list *)malloc(sizeof(struct decl_list));
+    list->item = item;
+    return list;
+}
+
 
 // Returns 1 if valid
 // Returns 0 if invalid

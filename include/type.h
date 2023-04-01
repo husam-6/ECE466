@@ -32,6 +32,7 @@ struct top_tail * create_s_class_node(enum storage_class s_class);
 struct top_tail * create_function_node(struct top_tail * direct_declarator);
 struct top_tail * create_stu_node();
 struct top_tail * init_tt_node();
+struct decl_list * make_decl_list_node();
 
 struct type_node * make_type_node(enum Type type);
 struct type_node * push_next_type(enum Type type, struct type_node *prev, struct type_node * next);
@@ -53,6 +54,12 @@ struct function_type {
 struct top_tail{
     struct type_node * top; 
     struct type_node * tail; 
+};
+
+// For declaration lists
+struct decl_list{
+    struct top_tail * item; 
+    struct decl_list * next_decl; 
 };
 
 enum forward {

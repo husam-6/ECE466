@@ -33,6 +33,7 @@
       struct linked_list *ll_p;
       struct type_node *type_p;
       struct top_tail *tt; 
+      struct decl_list * dl;
 };
 
 
@@ -45,12 +46,13 @@
 %type <astnode_p> exclusive_OR_expression inclusive_OR_expression logical_AND_expression logical_OR_expression conditional_expression
 %type <astnode_p> assignment_expression expression function_call // expression_list
 %type <tt> declarator declaration_specifiers declaration init_declarator
-%type <tt> init_declarator_list type_specifier pointer direct_declarator parameter_declaration parameter_list
+%type <tt> type_specifier pointer direct_declarator parameter_declaration parameter_list
 /* %type <ll_p> function_arguments */
 %type<tt> storage_class_specifier function_specifier type_qualifier struct_or_union struct_or_union_specifier 
 %type<tt> specifier_qualifier_list struct_declarator_list struct_declarator
 %type<tt> type_name abstract_declarator direct_abstract_declarator parameter_type_list
 %type <ll_p> function_arguments
+%type <dl> init_declarator_list; 
 
 
 %%
@@ -326,7 +328,13 @@ constant_expression: conditional_expression
 
 
 // Declarations 6.7
-declaration:            declaration_specifiers init_declarator_list ';'                   {new_declaration($1, $2, 0);}
+declaration:            declaration_specifiers init_declarator_list ';'                   {
+                                                                                                struct decl_list * tmp = $2; 
+                                                                                                while(tmp != NULL){
+                                                                                                      new_declaration($1, tmp->item, 0);
+                                                                                                      tmp = tmp->next_decl; 
+                                                                                                }
+                                                                                          }
       |                 declaration_specifiers  ';'                                       {
                                                                                                 if ($1->top->type == STRUCT_UNION_TYPE)
                                                                                                       add_symbol_entry($1->top->stu_node.ident, $1->top, TAG_S, NON_VAR, DECL);
@@ -364,8 +372,12 @@ declaration_specifiers: storage_class_specifier declaration_specifiers          
 ;
 
 // for now require declarations to be on separate lines...
-init_declarator_list:   init_declarator                                                   //{printf("name: %s, node type: %d\n", $1->ident, $1->type);}
-      /* |                 init_declarator_list ',' init_declarator                          //{printf("name: %s, node type: %d\n", $1->ident, $1->type);} */
+init_declarator_list:   init_declarator                                                   {$$ = make_decl_list_node($1);}
+      |                 init_declarator_list ',' init_declarator                          {
+                                                                                                struct decl_list * tmp = make_decl_list_node($3);
+                                                                                                tmp->next_decl = $1;
+                                                                                                $$ = tmp;
+                                                                                          }
 ;
 
 init_declarator:        declarator
