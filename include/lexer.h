@@ -6,6 +6,8 @@
 #include <ctype.h>
 #include <math.h>
 
+extern char* strdup(const char*);
+
 // Function to test lexer
 int lex_tester();
 
