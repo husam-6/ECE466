@@ -163,7 +163,15 @@ void print_ast(struct astnode * head, int depth){
         }
         case IDENT_NODE:{
             n_tabs(depth);
-            printf("IDENT %s\n", head->ident.name);
+            struct astnode_symbol * tmp = head->ident.sym;
+            if (tmp != NULL){
+                printf("%s identifier %s defined @ %s:%d\n", print_namespace(tmp->n_space), head->ident.name, tmp->file_name, tmp->line_num);
+            }
+            else{
+                printf("identifier %s\n", head->ident.name);
+                // fprintf(stderr, "USE OF UNDECLARED IDENTIFIER\n");
+                // exit(2);
+            }
             break;
         }
         case CHAR_LIT:{
@@ -192,27 +200,34 @@ struct astnode * make_ast_node(int type) {
 
 // Helper function to create unary node
 struct astnode * create_unary(int op_type, int op, struct astnode *expr){
-      // Set up type vars
-      struct astnode * node = make_ast_node(UNARY_NODE);
-      node->unary.operator_type = op_type; 
-      node->unary.operator = op;
+    // Set up type vars
+    struct astnode * node = make_ast_node(UNARY_NODE);
+    node->unary.operator_type = op_type; 
+    node->unary.operator = op;
 
-      // Assign child
-      node->unary.expr = expr;
-      return node;
+    // Assign child
+    node->unary.expr = expr;
+    return node;
 }
 
 // Helper function to create binary node
 struct astnode * create_binary(int op_type, int op, struct astnode *left, struct astnode *right){
-      // Assign node and operator type
-      struct astnode * node = make_ast_node(BINARY_NODE);
-      node->binary.operator_type = op_type;
-      node->binary.operator = op;
-      
-      // Assign children
-      node->binary.left = left;
-      node->binary.right = right;
-      return node; 
+    if (left->type == IDENT_NODE && op_type != SELECT){
+        if (op_type == SELECT)
+            resolve_identifier(left->ident.name, TAG_S, left);
+        else
+            resolve_identifier(left->ident.name, VAR_S, left);
+    }
+
+    // Assign node and operator type
+    struct astnode * node = make_ast_node(BINARY_NODE);
+    node->binary.operator_type = op_type;
+    node->binary.operator = op;
+    
+    // Assign children
+    node->binary.left = left;
+    node->binary.right = right;
+    return node; 
 }
 
 // Helper function to create ternary node
@@ -233,11 +248,10 @@ struct astnode * create_ternary(int op_type, struct astnode *left, struct astnod
 // Helper function to create ternary node
 struct astnode * create_fn_node(struct astnode *postfix, struct linked_list *head){
     struct astnode * node = make_ast_node(FN_CALL);
-
-    // if (postfix->type != IDENT_NODE){
-    //     yyerror("INVALID FUNCTION CALL");
-    //     exit(2);
-    // }
+    
+    // resolve in symbol table
+    if (postfix->type == IDENT_NODE)
+        resolve_identifier(postfix->ident.name, FUNC_S, postfix);
 
     // Save function identifier and head of linked list
     node->fncall.postfix = postfix;
@@ -269,4 +283,16 @@ void push_ll(struct linked_list *head, struct astnode *expr){
     head->next = create_ll_node(expr);
 }
 
+void resolve_identifier(char * ident, enum namespace n_space, struct astnode * node){
+    struct astnode_symbol * sym; 
+    int in_table = search_all_tabs(ident, n_space, curr_scope, &sym);
 
+    // Point to struct in symbol table
+    if (in_table == 1)
+          node->ident.sym = sym;
+    else{
+          yyerror("USE OF UNDECLARED IDENTIFIER");
+          fprintf(stderr, "IDENTIFIER: %s\n", ident);
+          exit(2);
+    }
+}

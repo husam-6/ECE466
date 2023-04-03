@@ -67,6 +67,12 @@ void print_type(struct type_node * head, int depth){
 
             break; 
         }
+        case LABEL_TYPE:{
+            n_tabs(depth);
+            printf("LABEL TYPE NODE\n");
+            print_type(head->next_type, depth+1);
+            break;
+        }
         default: {
             fprintf(stderr, "Unknown type node encountered...%d\n", head->type);
             exit(2);

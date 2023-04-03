@@ -74,21 +74,6 @@ primary_expression:   IDENT                                             {
                                                                               struct astnode *node = make_ast_node(IDENT_NODE);
                                                                               node->ident.name = $1;
                                                                               $$ = node;
-
-                                                                              // struct astnode_symbol * sym; 
-                                                                              // int in_table = search_all_tabs($1, VAR_S, curr_scope, &sym);
-
-                                                                              // // Point to struct in symbol table
-                                                                              // if (in_table == 1){
-                                                                              //       struct astnode *node = make_ast_node(IDENT_NODE);
-                                                                              //       node->sym = sym;
-                                                                              //       $$ = node; 
-                                                                              // }
-                                                                              // else{
-                                                                              //       yyerror("USE OF UNDECLARED IDENTIFIER");
-                                                                              //       fprintf(stderr, "IDENTIFIER: %s\n", $1);
-                                                                              //       exit(2);
-                                                                              // }
                                                                         }       
       |               NUMBER                                            {
                                                                            // Number node (struct stays the same)
@@ -131,7 +116,7 @@ postfix_expression:  primary_expression
                                                                               $$ = create_binary(SELECT, '.', $1, ident);
 
                                                                         }
-      |              postfix_expression INDSEL IDENT                    {
+      |              postfix_expression INDSEL IDENT                    {     
                                                                               // Ident node
                                                                               struct astnode *ident = make_ast_node(IDENT_NODE);
                                                                               ident->ident.name = $3;
@@ -393,13 +378,17 @@ struct_or_union_specifier:    struct_or_union IDENT '{'                         
                                                                                           if (curr_scope->s_type == PROTOTYPE_SCOPE || curr_scope->s_type == FUNC_SCOPE ||
                                                                                           curr_scope->s_type == BLOCK_SCOPE)
                                                                                                       $1->top->ident.s_class = AUTO_S;
+                                                                                          
                                                                                           add_symbol_entry($2, $1->top, TAG_S, NON_VAR, DEF);
                                                                                           $1->top->stu_node.refers_to = curr_scope->head; 
+
                                                                                           create_new_scope(MEMBER_S);
                                                                                     } 
                               struct_declaration_list '}'                           {
                                                                                           // Mark the struct ndoeo as complete (get just installed symbol from symbol table)
                                                                                           struct astnode_symbol * just_installed; 
+
+                                                                                          // Install as complete
                                                                                           $1->top->stu_node.complete = COMPLETE;
                                                                                           $1->top->stu_node.ident = $2;
                                                                                           
@@ -409,16 +398,19 @@ struct_or_union_specifier:    struct_or_union IDENT '{'                         
                                                                                           just_installed->type->stu_node.complete = COMPLETE;
                                                                                           just_installed->type->stu_node.mini_head = curr_scope->head; 
                                                                                           close_outer_scope();
+                                                                                          $$ = $1;
+
                                                                                           // print_symbol(just_installed, curr_scope);
                                                                                           // print_symbol_table();
-                                                                                          $$ = $1;
-                                                                                    }// Install as complete
+                                                                                    }
       |                       struct_or_union IDENT                                 {
                                                                                           $1->top->stu_node.ident = $2;
                                                                                           $1->top->stu_node.complete = INCOMPLETE;
                                                                                           $$ = $1;
+
                                                                                           struct astnode_symbol * found; 
                                                                                           int in_table = search_all_tabs($2, TAG_S, curr_scope, &found);
+                                                                                          
                                                                                           // If not in table...
                                                                                           if (in_table != 1)
                                                                                                 add_symbol_entry($2, $1->top, TAG_S, NON_VAR, DECL);
@@ -651,29 +643,26 @@ direct_abstract_declarator:   '(' abstract_declarator ')'                       
 declaration_or_fndef_list:    declaration_or_fndef                                        //{print_symbol_table();}
       |                       declaration_or_fndef_list declaration_or_fndef              //{print_symbol_table();}             // For debugging printing symbol table at top level
 
-declaration_or_fndef:         declaration                                                 {
-                                                                                                // print_type(top, 0);
-                                                                                                // print_type(tail, 0);
-                                                                                          }
+declaration_or_fndef:         declaration                                                 
       |                       function_definition
 ;
 
 // Declaration Specifier int, extern int
 // Declarator is the ident and any pointers/array info
 // Compound statement is everything in the brackets
-function_definition:    declaration_specifiers declarator               {
-                                                                              if ($2->top == NULL || $2->top->next_type == NULL || $2->top->next_type->type != FUNCTION_TYPE) {
-                                                                                    yyerror("INVALID FUNCTION DEFINITION");
-                                                                                    exit(2);
-                                                                              };
-                                                                              new_function_defs($1, $2);
-                                                                        }
+function_definition:    declaration_specifiers declarator                     {
+                                                                                    if ($2->top == NULL || $2->top->next_type == NULL || $2->top->next_type->type != FUNCTION_TYPE) {
+                                                                                          yyerror("INVALID FUNCTION DEFINITION");
+                                                                                          exit(2);
+                                                                                    };
+                                                                                    new_function_defs($1, $2);
+                                                                              }
                         compound_statement                              //{printf("CURRENT SCOPE: %d\n", curr_scope->s_type);}
 ;                 
 
 // 6.8
 statement:              compound_statement                                    
-      |                 expression_statement                                        {print_ast($1, 0);}
+      |                 expression_statement                                                {print_ast($1, 0);}
       |                 labeled_statement
       |                 selection_statement
       |                 iteration_statement
@@ -681,7 +670,7 @@ statement:              compound_statement
 ;
 
 // 6.8.1
-labeled_statement:      IDENT ':' statement
+labeled_statement:      IDENT ':'         {struct type_node * tt = make_type_node(LABEL_TYPE); add_symbol_entry($1, tt, LABEL_S, NON_VAR, DEF);}     statement
       |                 CASE constant_expression ':' statement
       |                 DEFAULT ':' statement
 

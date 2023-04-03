@@ -11,7 +11,8 @@ enum Type{
     SCALAR_TYPE, 
     IDENT_TYPE,
     STRUCT_UNION_TYPE,
-    S_CLASS
+    S_CLASS,
+    LABEL_TYPE
 };
 
 struct ident_type{
