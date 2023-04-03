@@ -11,6 +11,11 @@
    int abstract_count;
 }
 
+/* To resolve if statement conflicts (recall lecture notes 2) */
+%left IF
+%left ELSE
+
+/* Tokens */
 %token IDENT CHARLIT STRING NUMBER INDSEL PLUSPLUS MINUSMINUS SHL SHR
 %token LTEQ GTEQ EQEQ NOTEQ LOGAND LOGOR ELLIPSIS AUTO TIMESEQ DIVEQ MODEQ
 %token PLUSEQ MINUSEQ SHLEQ SHREQ ANDEQ OREQ XOREQ BREAK CASE CHAR CONST
@@ -37,14 +42,19 @@
 };
 
 
+/* Tokens */
 %type <ident> IDENT 
 %type <token> LTEQ GTEQ EQEQ NOTEQ LOGAND LOGOR TIMESEQ DIVEQ MODEQ PLUSEQ
 %type <token> MINUSEQ SHLEQ SHREQ ANDEQ XOREQ OREQ assignment_operator
 %type <op_type> unary_operator
+
+/* Expressions */
 %type <astnode_p> primary_expression postfix_expression unary_expression cast_expression multiplicative_expression
 %type <astnode_p> additive_expression shift_expression relational_expression equality_expression AND_expression
 %type <astnode_p> exclusive_OR_expression inclusive_OR_expression logical_AND_expression logical_OR_expression conditional_expression
 %type <astnode_p> assignment_expression expression function_call expression_statement
+
+/* Declarations */
 %type <tt> declarator declaration_specifiers declaration init_declarator
 %type <tt> type_specifier pointer direct_declarator parameter_declaration parameter_list
 /* %type <ll_p> function_arguments */
@@ -56,90 +66,6 @@
 
 
 %%
-// Top Level (From Hak)
-declaration_or_fndef_list:    declaration_or_fndef                                        //{print_symbol_table();}
-      |                       declaration_or_fndef_list declaration_or_fndef              //{print_symbol_table();}             // For debugging printing symbol table at top level
-
-declaration_or_fndef:         declaration                                                 {
-                                                                                                // print_type(top, 0);
-                                                                                                // print_type(tail, 0);
-                                                                                          }
-      |                       function_definition
-;
-
-// Declaration Specifier int, extern int
-// Declarator is the ident and any pointers/array info
-// Compound statement is everything in the brackets
-function_definition:    declaration_specifiers declarator               {
-                                                                              if ($2->top == NULL || $2->top->next_type == NULL || $2->top->next_type->type != FUNCTION_TYPE) {
-                                                                                    yyerror("INVALID FUNCTION DEFINITION");
-                                                                                    exit(2);
-                                                                              };
-                                                                              new_function_defs($1, $2);
-                                                                        }
-                        compound_statement                              //{printf("CURRENT SCOPE: %d\n", curr_scope->s_type);}
-;                 
-
-// 6.8
-statement:              compound_statement                                    
-      |                 expression_statement                                        {print_ast($1, 0);}
-      |                 labeled_statement
-      |                 selection_statement
-      |                 iteration_statement
-      |                 jump_statement      
-;
-
-// 6.8.1
-labeled_statement:      IDENT ':' statement
-      |                 CASE constant_expression ':' statement
-      |                 DEFAULT ':' statement
-
-
-// 6.8.2
-compound_statement:     '{'   {create_new_scope();}   decl_or_stmt_list '}'   {
-                                                                                    // print_symbol_table();
-                                                                                    close_outer_scope();
-                                                                              }                                           
-;
-
-// 6.8.3
-expression_statement:   expression ';'
-      |                 ';'
-
-// 6.8.4
-selection_statement:    IF '(' expression ')' statement
-      |                 IF '(' expression ')' statement ELSE statement
-      |                 SWITCH '('  expression ')' statement
-
-
-// 6.8.5
-iteration_statement:    WHILE '(' expression ')' statement
-      |                 DO statement WHILE '(' expression ')'
-      |                 FOR '(' expression ';' expression ';' expression ';' ')' statement
-      |                 FOR '(' ';' expression ';' expression ';' ')' statement
-      |                 FOR '(' ';' ';' expression ';' ')' statement
-      |                 FOR '(' ';' ';' ';' ')' statement
-      |                 FOR '(' expression ';' ';' expression ';' ')' statement
-      |                 FOR '(' expression ';' ';' ';' ')' statement
-      |                 FOR '(' expression ';' expression ';' ';' ')' statement
-      /* |                 FOR '(' declaration expression ';' expression ')' statement */
-
-
-// 6.8.6
-jump_statement:         GOTO IDENT ';'
-      |                 CONTINUE ';'
-      |                 BREAK ';'
-      |                 RETURN expression ';'
-      |                 RETURN ';'
-
-decl_or_stmt_list:      decl_or_stmt 
-      |                 decl_or_stmt_list decl_or_stmt
-;
-
-decl_or_stmt:     declaration                  
-      |           statement
-;
-
 
 // Expressions 6.5.1
 primary_expression:   IDENT                                             {
@@ -425,7 +351,6 @@ declaration_specifiers: storage_class_specifier declaration_specifiers          
       |                 function_specifier
 ;
 
-// for now require declarations to be on separate lines...
 init_declarator_list:   init_declarator                                                   {$$ = make_decl_list_node($1);}
       |                 init_declarator_list ',' init_declarator                          {
                                                                                                 struct decl_list * tmp = make_decl_list_node($3);
@@ -722,7 +647,88 @@ direct_abstract_declarator:   '(' abstract_declarator ')'                       
 ; */
 
 
+// Top Level (From Hak)
+declaration_or_fndef_list:    declaration_or_fndef                                        //{print_symbol_table();}
+      |                       declaration_or_fndef_list declaration_or_fndef              //{print_symbol_table();}             // For debugging printing symbol table at top level
+
+declaration_or_fndef:         declaration                                                 {
+                                                                                                // print_type(top, 0);
+                                                                                                // print_type(tail, 0);
+                                                                                          }
+      |                       function_definition
+;
+
+// Declaration Specifier int, extern int
+// Declarator is the ident and any pointers/array info
+// Compound statement is everything in the brackets
+function_definition:    declaration_specifiers declarator               {
+                                                                              if ($2->top == NULL || $2->top->next_type == NULL || $2->top->next_type->type != FUNCTION_TYPE) {
+                                                                                    yyerror("INVALID FUNCTION DEFINITION");
+                                                                                    exit(2);
+                                                                              };
+                                                                              new_function_defs($1, $2);
+                                                                        }
+                        compound_statement                              //{printf("CURRENT SCOPE: %d\n", curr_scope->s_type);}
+;                 
+
+// 6.8
+statement:              compound_statement                                    
+      |                 expression_statement                                        {print_ast($1, 0);}
+      |                 labeled_statement
+      |                 selection_statement
+      |                 iteration_statement
+      |                 jump_statement      
+;
+
+// 6.8.1
+labeled_statement:      IDENT ':' statement
+      |                 CASE constant_expression ':' statement
+      |                 DEFAULT ':' statement
 
 
+// 6.8.2
+compound_statement:     '{'   {create_new_scope();}   decl_or_stmt_list '}'   {
+                                                                                    // print_symbol_table();
+                                                                                    close_outer_scope();
+                                                                              }                                           
+;
+
+// 6.8.3
+expression_statement:   expression ';'
+      |                 ';'
+
+// 6.8.4
+selection_statement:    IF '(' expression ')' statement                       %prec IF
+      |                 IF '(' expression ')' statement ELSE statement        %prec ELSE
+      |                 SWITCH '('  expression ')' statement
+
+
+// 6.8.5
+iteration_statement:    WHILE '(' expression ')' statement
+      |                 DO statement WHILE '(' expression ')'
+      |                 FOR '(' expression ';' expression ';' expression ';' ')' statement
+      |                 FOR '(' ';' expression ';' expression ';' ')' statement
+      |                 FOR '(' ';' ';' expression ';' ')' statement
+      |                 FOR '(' ';' ';' ';' ')' statement
+      |                 FOR '(' expression ';' ';' expression ';' ')' statement
+      |                 FOR '(' expression ';' ';' ';' ')' statement
+      |                 FOR '(' expression ';' expression ';' ';' ')' statement
+      /* |                 FOR '(' declaration expression ';' expression ')' statement */
+
+
+// 6.8.6
+jump_statement:         GOTO IDENT ';'
+      |                 CONTINUE ';'
+      |                 BREAK ';'
+      |                 RETURN expression ';'
+      |                 RETURN ';'
+
+decl_or_stmt_list:      decl_or_stmt 
+      |                 decl_or_stmt_list decl_or_stmt
+;
+
+decl_or_stmt:     declaration                  
+      |           statement
+;
 
 %%
