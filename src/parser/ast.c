@@ -1,87 +1,8 @@
 // Helper file for functions related to bison parser
 #include "parser.h"
 #include "parser.tab.h"
-
-
-// ast node helper function
-struct astnode * make_ast_node(int type) {
-      struct astnode *node = (struct astnode *)malloc(sizeof(struct astnode));
-      node->type = type; 
-      return node;
-}
-
-// Helper function to create unary node
-struct astnode * create_unary(int op_type, int op, struct astnode *expr){
-      // Set up type vars
-      struct astnode * node = make_ast_node(UNARY_NODE);
-      node->unary.operator_type = op_type; 
-      node->unary.operator = op;
-
-      // Assign child
-      node->unary.expr = expr;
-      return node;
-}
-
-// Helper function to create binary node
-struct astnode * create_binary(int op_type, int op, struct astnode *left, struct astnode *right){
-      // Assign node and operator type
-      struct astnode * node = make_ast_node(BINARY_NODE);
-      node->binary.operator_type = op_type;
-      node->binary.operator = op;
-      
-      // Assign children
-      node->binary.left = left;
-      node->binary.right = right;
-      return node; 
-}
-
-// Helper function to create ternary node
-struct astnode * create_ternary(int op_type, struct astnode *left, struct astnode *middle, struct astnode *right){
-    struct astnode * node = make_ast_node(TERNARY_NODE);
-    // Node and op type
-    node->ternary.operator_type = op_type;
-
-    // Children pointers
-    node->ternary.left = left;
-    node->ternary.middle = middle;
-    node->ternary.right = right;
-
-    return node;
-      
-}
-
-// Helper function to create ternary node
-struct astnode * create_fn_node(struct astnode *postfix, struct linked_list *head){
-    struct astnode * node = make_ast_node(FN_CALL);
-
-    // Save function identifier and head of linked list
-    node->fncall.postfix = postfix;
-    node->fncall.head = head;
-
-    return node;
-}
-
-// Create linked list
-struct linked_list * create_ll_node(struct astnode *expr){
-    struct linked_list *head = (struct linked_list *)malloc(sizeof(struct linked_list));
-    head->expr = expr; 
-    head->next = NULL;
-    head->num_args = 1;  
-    return head; 
-}
-
-// Append to linked list at end (loop even though its inefficient)
-void push_ll(struct linked_list *head, struct astnode *expr){
-    head->num_args++; 
-    // Loop to end
-    while (head->next != NULL){
-        head = head->next; 
-    }
-
-    // Once at end, add new node 
-    head->next = create_ll_node(expr);
-}
-
+#include "sym.h"
+#include "type.h"
 
 // Helper function for tabs 
 void n_tabs(int n){
@@ -93,21 +14,16 @@ void n_tabs(int n){
 
 void print_fn_args(struct linked_list *head, int depth){
     int arg_i = 1;
-    while (head->next != NULL){
-        n_tabs(depth);
-        printf("arg %d=\n", arg_i);
-        print_ast(head->expr, depth + 1);
+    while (head != NULL){
+        if (head->expr != NULL){
+            n_tabs(depth);
+            printf("arg %d=\n", arg_i);
+            print_ast(head->expr, depth + 1);
+        }
         head = head->next; 
         arg_i++;
     }
-    n_tabs(depth);
-    printf("arg %d=\n", arg_i);
-    print_ast(head->expr, depth + 1);
 }
-
-
-
-
 
 // operator helper function
 void print_operator(int operator) {
@@ -201,7 +117,7 @@ void print_ast(struct astnode * head, int depth){
             n_tabs(depth);
             printf("FNCALL, %d arguments\n", head->fncall.head->num_args);
             print_ast(head->fncall.postfix, depth + 1);
-            print_fn_args(head->fncall.head, depth);
+            print_fn_args(head->fncall.head, depth + 1);
             break;
         }
         case UNARY_NODE:{
@@ -247,7 +163,7 @@ void print_ast(struct astnode * head, int depth){
         }
         case IDENT_NODE:{
             n_tabs(depth);
-            printf("IDENT %s\n", head->ident);
+            printf("IDENT %s\n", head->ident.name);
             break;
         }
         case CHAR_LIT:{
@@ -266,3 +182,91 @@ void print_ast(struct astnode * head, int depth){
         }
     }
 }
+
+// ast node helper function
+struct astnode * make_ast_node(int type) {
+      struct astnode *node = (struct astnode *)malloc(sizeof(struct astnode));
+      node->type = type; 
+      return node;
+}
+
+// Helper function to create unary node
+struct astnode * create_unary(int op_type, int op, struct astnode *expr){
+      // Set up type vars
+      struct astnode * node = make_ast_node(UNARY_NODE);
+      node->unary.operator_type = op_type; 
+      node->unary.operator = op;
+
+      // Assign child
+      node->unary.expr = expr;
+      return node;
+}
+
+// Helper function to create binary node
+struct astnode * create_binary(int op_type, int op, struct astnode *left, struct astnode *right){
+      // Assign node and operator type
+      struct astnode * node = make_ast_node(BINARY_NODE);
+      node->binary.operator_type = op_type;
+      node->binary.operator = op;
+      
+      // Assign children
+      node->binary.left = left;
+      node->binary.right = right;
+      return node; 
+}
+
+// Helper function to create ternary node
+struct astnode * create_ternary(int op_type, struct astnode *left, struct astnode *middle, struct astnode *right){
+    struct astnode * node = make_ast_node(TERNARY_NODE);
+    // Node and op type
+    node->ternary.operator_type = op_type;
+
+    // Children pointers
+    node->ternary.left = left;
+    node->ternary.middle = middle;
+    node->ternary.right = right;
+
+    return node;
+      
+}
+
+// Helper function to create ternary node
+struct astnode * create_fn_node(struct astnode *postfix, struct linked_list *head){
+    struct astnode * node = make_ast_node(FN_CALL);
+
+    // if (postfix->type != IDENT_NODE){
+    //     yyerror("INVALID FUNCTION CALL");
+    //     exit(2);
+    // }
+
+    // Save function identifier and head of linked list
+    node->fncall.postfix = postfix;
+    node->fncall.head = head;
+
+    return node;
+}
+
+// Create linked list
+struct linked_list * create_ll_node(struct astnode *expr){
+    struct linked_list *head = (struct linked_list *)malloc(sizeof(struct linked_list));
+    head->expr = expr; 
+    head->next = NULL;
+    head->num_args = 0;
+    if (expr != NULL)
+        head->num_args = 1;
+    return head; 
+}
+
+// Append to linked list at end (loop even though its inefficient)
+void push_ll(struct linked_list *head, struct astnode *expr){
+    head->num_args++; 
+    // Loop to end
+    while (head->next != NULL){
+        head = head->next; 
+    }
+
+    // Once at end, add new node 
+    head->next = create_ll_node(expr);
+}
+
+

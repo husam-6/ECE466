@@ -44,7 +44,7 @@
 %type <astnode_p> primary_expression postfix_expression unary_expression cast_expression multiplicative_expression
 %type <astnode_p> additive_expression shift_expression relational_expression equality_expression AND_expression
 %type <astnode_p> exclusive_OR_expression inclusive_OR_expression logical_AND_expression logical_OR_expression conditional_expression
-%type <astnode_p> assignment_expression expression function_call // expression_list
+%type <astnode_p> assignment_expression expression function_call expression_statement
 %type <tt> declarator declaration_specifiers declaration init_declarator
 %type <tt> type_specifier pointer direct_declarator parameter_declaration parameter_list
 /* %type <ll_p> function_arguments */
@@ -80,15 +80,57 @@ function_definition:    declaration_specifiers declarator               {
                         compound_statement                              //{printf("CURRENT SCOPE: %d\n", curr_scope->s_type);}
 ;                 
 
-statement:        compound_statement                                    
-      |           expression ';'                                        {print_ast($1, 0);}
-;                 
+// 6.8
+statement:              compound_statement                                    
+      |                 expression_statement                                        {print_ast($1, 0);}
+      |                 labeled_statement
+      |                 selection_statement
+      |                 iteration_statement
+      |                 jump_statement      
+;
 
+// 6.8.1
+labeled_statement:      IDENT ':' statement
+      |                 CASE constant_expression ':' statement
+      |                 DEFAULT ':' statement
+
+
+// 6.8.2
 compound_statement:     '{'   {create_new_scope();}   decl_or_stmt_list '}'   {
                                                                                     // print_symbol_table();
                                                                                     close_outer_scope();
                                                                               }                                           
 ;
+
+// 6.8.3
+expression_statement:   expression ';'
+      |                 ';'
+
+// 6.8.4
+selection_statement:    IF '(' expression ')' statement
+      |                 IF '(' expression ')' statement ELSE statement
+      |                 SWITCH '('  expression ')' statement
+
+
+// 6.8.5
+iteration_statement:    WHILE '(' expression ')' statement
+      |                 DO statement WHILE '(' expression ')'
+      |                 FOR '(' expression ';' expression ';' expression ';' ')' statement
+      |                 FOR '(' ';' expression ';' expression ';' ')' statement
+      |                 FOR '(' ';' ';' expression ';' ')' statement
+      |                 FOR '(' ';' ';' ';' ')' statement
+      |                 FOR '(' expression ';' ';' expression ';' ')' statement
+      |                 FOR '(' expression ';' ';' ';' ')' statement
+      |                 FOR '(' expression ';' expression ';' ';' ')' statement
+      /* |                 FOR '(' declaration expression ';' expression ')' statement */
+
+
+// 6.8.6
+jump_statement:         GOTO IDENT ';'
+      |                 CONTINUE ';'
+      |                 BREAK ';'
+      |                 RETURN expression ';'
+      |                 RETURN ';'
 
 decl_or_stmt_list:      decl_or_stmt 
       |                 decl_or_stmt_list decl_or_stmt
@@ -103,10 +145,24 @@ decl_or_stmt:     declaration
 primary_expression:   IDENT                                             {
                                                                               // Identifier node
                                                                               // Look up in symbol table
-                                                                              // Point to struct in symbol table
                                                                               struct astnode *node = make_ast_node(IDENT_NODE);
-                                                                              node->ident = yylval.ident;
-                                                                              $$ = node; 
+                                                                              node->ident.name = $1;
+                                                                              $$ = node;
+
+                                                                              // struct astnode_symbol * sym; 
+                                                                              // int in_table = search_all_tabs($1, VAR_S, curr_scope, &sym);
+
+                                                                              // // Point to struct in symbol table
+                                                                              // if (in_table == 1){
+                                                                              //       struct astnode *node = make_ast_node(IDENT_NODE);
+                                                                              //       node->sym = sym;
+                                                                              //       $$ = node; 
+                                                                              // }
+                                                                              // else{
+                                                                              //       yyerror("USE OF UNDECLARED IDENTIFIER");
+                                                                              //       fprintf(stderr, "IDENTIFIER: %s\n", $1);
+                                                                              //       exit(2);
+                                                                              // }
                                                                         }       
       |               NUMBER                                            {
                                                                            // Number node (struct stays the same)
@@ -127,9 +183,7 @@ primary_expression:   IDENT                                             {
                                                                            node->char_lit = yylval.charlit;
                                                                            $$ = node; 
                                                                         } 
-      |               '(' expression ')'                                {
-                                                                           $$ = $2;
-                                                                        }
+      |               '(' expression ')'                                {$$ = $2;}
 ;
 
 // 6.5.2
@@ -146,7 +200,7 @@ postfix_expression:  primary_expression
       |              postfix_expression '.' IDENT                       {
                                                                               // Ident node
                                                                               struct astnode *ident = make_ast_node(IDENT_NODE);
-                                                                              ident->ident = $3;
+                                                                              ident->ident.name = $3;
 
                                                                               $$ = create_binary(SELECT, '.', $1, ident);
 
@@ -154,7 +208,7 @@ postfix_expression:  primary_expression
       |              postfix_expression INDSEL IDENT                    {
                                                                               // Ident node
                                                                               struct astnode *ident = make_ast_node(IDENT_NODE);
-                                                                              ident->ident = $3;
+                                                                              ident->ident.name = $3;
 
                                                                               // Addition node
                                                                               struct astnode *add = create_binary(BINOP,'+', $1, ident);
@@ -171,7 +225,7 @@ postfix_expression:  primary_expression
 
 function_call:       postfix_expression '(' function_arguments ')'      {$$ = create_fn_node($1 , $3);}
 
-function_arguments:  /*EMPTY*/                                            
+function_arguments:  /*EMPTY*/                                          {$$ = create_ll_node(NULL);}
       |              assignment_expression                              {$$ = create_ll_node($1);}//make linked list, return head
       |              function_arguments ',' assignment_expression       {push_ll($1, $3); $$ = $1;}//add to linked list in front, return head                 
 

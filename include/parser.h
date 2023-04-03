@@ -3,6 +3,7 @@
 
 #include "lexer.h"
 #include "type.h"
+#include "sym.h"
 
 enum op_type{
     BINOP = 0,
@@ -74,6 +75,11 @@ struct astnode_fncall {
     struct linked_list *head;
 };
 
+struct astnode_ident{
+    char * name; 
+    struct astnode_symbol * sym; 
+};
+
 // Function call linked list for arguments
 struct linked_list {
     struct astnode *expr; 
@@ -95,7 +101,8 @@ struct astnode {
             struct astnode_binary binary;
             struct astnode_ternary ternary;
             struct number num;
-            char *ident;
+            // char *ident;
+            struct astnode_ident ident; 
             char char_lit;
             struct string_literal str_lit;
             struct astnode_fncall fncall;

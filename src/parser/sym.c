@@ -229,10 +229,13 @@ int check_for_symbol(char * ident, enum namespace n_space, struct scope * scope,
 // Returns 1 if the entry is in the table
 // Returns 0 if it isnt
 int search_all_tabs(char * ident, enum namespace n_space, struct scope * tmp_scope, struct astnode_symbol ** symbol_found){
-    while(check_for_symbol(ident, n_space, tmp_scope, symbol_found) != 1 && tmp_scope->outer != NULL){
+    int in_table;
+    while((in_table = check_for_symbol(ident, n_space, tmp_scope, symbol_found)) != 1){
         tmp_scope = tmp_scope->outer;
+        if (tmp_scope == NULL)
+            break;
     }
-    int in_table = check_for_symbol(ident, n_space, tmp_scope, symbol_found);
+    // int in_table = check_for_symbol(ident, n_space, tmp_scope, symbol_found);
     if (in_table == 1){
         return 1; 
     }
