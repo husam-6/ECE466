@@ -315,7 +315,7 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
             struct astnode_symbol * tmp = symbol_found->next; 
             (*symbol_found) = (*new_symbol);
             symbol_found->next = tmp; 
-            print_symbol(symbol_found, 0);
+            // print_symbol(symbol_found, 0);
             return; 
         }
         if (n_space == TAG_S){
@@ -331,7 +331,7 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
     tmp_scope->head = new_symbol; 
 
     // Print the newly inputted symbol 
-    print_symbol(new_symbol, 0);
+    // print_symbol(new_symbol, 0);
 
     // Update curr_scope if it was altered
     if (proto)

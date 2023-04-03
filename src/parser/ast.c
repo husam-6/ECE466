@@ -60,9 +60,11 @@ void print_operator(int operator) {
         case '~':           {printf("(~)\n"); break;}
         case '!':           {printf("(!)\n"); break;}
         case ',':           {printf("(,)\n"); break;}
-        case '=':           {printf("\n"); break;}
-        case '.':           {printf("\n"); break;}
-        default:            {fprintf(stderr, "Operator unknown...\n"); break;}
+        case '<':           {printf("(<)\n"); break;}
+        case '>':           {printf("(>)\n"); break;}
+        case '=':           {printf("(=)\n"); break;}
+        case '.':           {printf("(.)\n"); break;}
+        default:            {fprintf(stderr, "Operator unknown...%d\n", operator); break;}
     }
 
 }
@@ -200,6 +202,9 @@ struct astnode * make_ast_node(int type) {
 
 // Helper function to create unary node
 struct astnode * create_unary(int op_type, int op, struct astnode *expr){
+    if (expr->type == IDENT_NODE)
+        resolve_identifier(expr->ident.name, VAR_S, expr);
+
     // Set up type vars
     struct astnode * node = make_ast_node(UNARY_NODE);
     node->unary.operator_type = op_type; 
@@ -212,12 +217,11 @@ struct astnode * create_unary(int op_type, int op, struct astnode *expr){
 
 // Helper function to create binary node
 struct astnode * create_binary(int op_type, int op, struct astnode *left, struct astnode *right){
-    if (left->type == IDENT_NODE && op_type != SELECT){
-        if (op_type == SELECT)
-            resolve_identifier(left->ident.name, TAG_S, left);
-        else
-            resolve_identifier(left->ident.name, VAR_S, left);
-    }
+    if (left->type == IDENT_NODE)
+        resolve_identifier(left->ident.name, VAR_S, left);
+
+    if (right->type == IDENT_NODE && op_type != SELECT && op_type != INDSEL)
+        resolve_identifier(right->ident.name, VAR_S, right);
 
     // Assign node and operator type
     struct astnode * node = make_ast_node(BINARY_NODE);
@@ -235,6 +239,17 @@ struct astnode * create_ternary(int op_type, struct astnode *left, struct astnod
     struct astnode * node = make_ast_node(TERNARY_NODE);
     // Node and op type
     node->ternary.operator_type = op_type;
+
+    if (left->type == IDENT_NODE)
+        resolve_identifier(left->ident.name, VAR_S, left);
+    
+    if (middle->type == IDENT_NODE)
+        resolve_identifier(middle->ident.name, VAR_S, middle);
+
+    if (right->type == IDENT_NODE)
+        resolve_identifier(right->ident.name, VAR_S, right);
+
+
 
     // Children pointers
     node->ternary.left = left;
@@ -283,6 +298,7 @@ void push_ll(struct linked_list *head, struct astnode *expr){
     head->next = create_ll_node(expr);
 }
 
+// Function to search symbol table for an identifier and point an ident node to the symbol
 void resolve_identifier(char * ident, enum namespace n_space, struct astnode * node){
     struct astnode_symbol * sym; 
     int in_table = search_all_tabs(ident, n_space, curr_scope, &sym);
