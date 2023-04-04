@@ -65,8 +65,8 @@
 %type <dl> init_declarator_list; 
 
 /* For loops, while loops, control statements */
-%type <astnode_p> decl_or_stmt statement
-%type <ll_p> compound_statement decl_or_stmt_list
+%type <astnode_p> decl_or_stmt statement iteration_statement compound_statement
+%type <ll_p> decl_or_stmt_list 
 
 
 %%
@@ -646,7 +646,7 @@ direct_abstract_declarator:   '(' abstract_declarator ')'                       
 
 
 // 6.8
-statement:              compound_statement                                    {$$ = make_ast_node(COMPOUND); $$->ds_list = $1; close_outer_scope();}                              
+statement:              compound_statement                                    {$$ = $1; close_outer_scope();}                              
       |                 expression_statement                                  //{print_ast($1, 0);}
       |                 labeled_statement
       |                 selection_statement
@@ -661,7 +661,7 @@ labeled_statement:      IDENT ':'         {struct type_node * tt = make_type_nod
 
 
 // 6.8.2
-compound_statement:     '{'   {create_new_scope();}   decl_or_stmt_list '}'   {$$ = $3;} 
+compound_statement:     '{'   {create_new_scope();}   decl_or_stmt_list '}'   {$$ = make_ast_node(COMPOUND); $$->ds_list = $3;} 
       |                 '{'   '}'                                             {$$ = NULL;}
 ;
 
@@ -678,14 +678,14 @@ selection_statement:    IF '(' expression ')' statement                       %p
 
 // 6.8.5
 iteration_statement:    WHILE '(' expression ')' statement
-      |                 DO statement WHILE '(' expression ')'
-      |                 FOR '(' expression ';' expression ';' expression ';' ')' statement
-      |                 FOR '(' ';' expression ';' expression ';' ')' statement
-      |                 FOR '(' ';' ';' expression ';' ')' statement
-      |                 FOR '(' ';' ';' ';' ')' statement
-      |                 FOR '(' expression ';' ';' expression ';' ')' statement
-      |                 FOR '(' expression ';' ';' ';' ')' statement
-      |                 FOR '(' expression ';' expression ';' ';' ')' statement
+      |                 DO statement WHILE '(' expression ')'                                         
+      |                 FOR '(' expression ';' expression ';' expression ')' statement            {$$ = create_for_loop($3, $5, $9, $7);}
+      |                 FOR '(' ';' expression ';' expression ')' statement                       {$$ = create_for_loop(NULL, $4, $8, $6);}
+      |                 FOR '(' ';' ';' expression ')' statement                                  {$$ = create_for_loop(NULL, NULL, $7, $5);}
+      |                 FOR '(' ';' ';' ')' statement                                             {$$ = create_for_loop(NULL, NULL, $6, NULL);}
+      |                 FOR '(' expression ';' ';' expression ')' statement                       {$$ = create_for_loop($3, NULL, $8, $6);}
+      |                 FOR '(' expression ';' ';' ')' statement                                  {$$ = create_for_loop($3, NULL, $7, NULL);}
+      |                 FOR '(' expression ';' expression ';' ')' statement                       {$$ = create_for_loop($3, $5, $8, NULL);}
       /* |                 FOR '(' declaration expression ';' expression ')' statement */
 
 
@@ -718,7 +718,7 @@ function_definition:    declaration_specifiers declarator                     {
                         compound_statement                                    {
                                                                                     print_symbol_table();
                                                                                     close_outer_scope(); 
-                                                                                    dump_ast($4, 0);
+                                                                                    dump_ast($4->ds_list, 0);
                                                                               }// Dump ast list
 ;                 
 

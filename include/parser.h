@@ -39,6 +39,7 @@ struct astnode * make_ast_node(int type);
 struct astnode * create_unary(int op_type, int op, struct astnode *expr);
 struct astnode * create_binary(int op_type, int op, struct astnode *left, struct astnode *right);
 struct astnode * create_ternary(int op_type, struct astnode *left, struct astnode *middle, struct astnode *right);
+struct astnode * create_for_loop(struct astnode * init, struct astnode * cond, struct astnode * body, struct astnode * inc);
 void resolve_identifier(char * ident, enum namespace n_space, struct astnode * node);
 void n_tabs(int n);
 char * print_datatype(int type);

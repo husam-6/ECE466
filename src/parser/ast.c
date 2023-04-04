@@ -186,10 +186,39 @@ void print_ast(struct astnode * head, int depth){
             printf("STRING %s\n", head->str_lit.content);
             break;
         }
+        case FOR_LOOP: {
+            n_tabs(depth);
+            printf("FOR\n");
+
+            // Initial expression
+            n_tabs(depth+1);
+            printf("INIT:\n");
+            print_ast(head->for_loop.init, depth+2);
+            
+            // Condition
+            n_tabs(depth+1);
+            printf("COND:\n");
+            print_ast(head->for_loop.cond, depth+2);
+            
+            // Body expressions
+            n_tabs(depth+1);
+            printf("BODY:\n");
+            print_ast(head->for_loop.body, depth+2);
+            
+            // Increment
+            n_tabs(depth+1);
+            printf("INCR:\n");
+            print_ast(head->for_loop.inc, depth+2);
+        }
         case DECLARATION:{
             break;
         }
         case COMPOUND:{
+            struct linked_list * tmp = head->ds_list;
+            while(tmp != NULL){
+                print_ast(tmp->expr, depth);
+                tmp = tmp->next;
+            }
             break;
         }
         default:{
@@ -208,7 +237,7 @@ struct astnode * make_ast_node(int type) {
 
 // Helper function to create unary node
 struct astnode * create_unary(int op_type, int op, struct astnode *expr){
-    
+
     // Set up type vars
     struct astnode * node = make_ast_node(UNARY_NODE);
     node->unary.operator_type = op_type; 
@@ -264,9 +293,8 @@ struct astnode * create_for_loop(struct astnode * init, struct astnode * cond, s
     node->for_loop.init = init;
     node->for_loop.cond = cond; 
     node->for_loop.body = body; 
-    node->for_loop.inc = inc; 
-
-    
+    node->for_loop.inc = inc;
+    return node; 
 }
 
 // Create linked list
