@@ -186,6 +186,12 @@ void print_ast(struct astnode * head, int depth){
             printf("STRING %s\n", head->str_lit.content);
             break;
         }
+        case DECLARATION:{
+            break;
+        }
+        case COMPOUND:{
+            break;
+        }
         default:{
             fprintf(stderr, "UNKNOWN NODE TYPE %d\n", head->type);
             break;
@@ -196,7 +202,7 @@ void print_ast(struct astnode * head, int depth){
 // ast node helper function
 struct astnode * make_ast_node(int type) {
       struct astnode *node = (struct astnode *)malloc(sizeof(struct astnode));
-      node->type = type; 
+      node->type = type;
       return node;
 }
 
@@ -268,6 +274,14 @@ struct astnode * create_fn_node(struct astnode *postfix, struct linked_list *hea
     if (postfix->type == IDENT_NODE)
         resolve_identifier(postfix->ident.name, FUNC_S, postfix);
 
+    // Check function call arguments
+    struct linked_list *tmp = head; 
+    while (tmp != NULL && tmp->expr != NULL){
+        if (tmp->expr->type == IDENT_NODE)
+            resolve_identifier(tmp->expr->ident.name, VAR_S, tmp->expr);
+        tmp = tmp->next;
+    }
+
     // Save function identifier and head of linked list
     node->fncall.postfix = postfix;
     node->fncall.head = head;
@@ -311,4 +325,15 @@ void resolve_identifier(char * ident, enum namespace n_space, struct astnode * n
           fprintf(stderr, "IDENTIFIER: %s\n", ident);
           exit(2);
     }
+}
+
+
+void dump_ast(struct linked_list *asthead){
+    printf("AST DUMP\nLIST { \n");
+    int depth = 1; 
+    while(asthead != NULL){
+        print_ast(asthead->expr, depth);
+        asthead = asthead->next;
+    }
+    printf("}\n");
 }

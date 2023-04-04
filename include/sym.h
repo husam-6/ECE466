@@ -18,6 +18,7 @@ void add_symbol_entry();
 void create_scope();
 void print_symbol_table();
 void print_symbol();
+void print_scope_symbols();
 char * print_union_struct();
 char * print_scope();
 char * print_namespace();

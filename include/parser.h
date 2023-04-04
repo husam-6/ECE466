@@ -29,6 +29,9 @@ enum node_type{
     IDENT_NODE,
     CHAR_LIT,
     STR_LIT,
+    FOR_LOOP,
+    DECLARATION,
+    COMPOUND,
 };
 
 // Function prototypes (helper functions for major types of operations)
@@ -81,6 +84,10 @@ struct astnode_ident{
     struct astnode_symbol * sym; 
 };
 
+struct astnode_for{
+
+};
+
 // Function call linked list for arguments
 struct linked_list {
     struct astnode *expr; 
@@ -93,6 +100,8 @@ struct astnode * create_fn_node(struct astnode *postfix, struct linked_list *hea
 struct linked_list * create_ll_node(struct astnode *expr);
 void push_ll(struct linked_list *head, struct astnode *expr);
 
+// Print list of ast's 
+void dump_ast(struct linked_list *asthead);
 
 // Node struct
 struct astnode {
@@ -107,6 +116,7 @@ struct astnode {
             char char_lit;
             struct string_literal str_lit;
             struct astnode_fncall fncall;
+            struct linked_list * ds_list; 
             // struct astnode_symbol tab_entry;
             // struct type_node t_node; 
 

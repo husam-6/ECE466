@@ -8,7 +8,7 @@
    // Function prototypes
    void yyerror(const char* msg);
    int yylex();
-   int abstract_count;
+   struct astnode * asts;
 }
 
 /* To resolve if statement conflicts (recall lecture notes 2) */
@@ -58,11 +58,15 @@
 %type <tt> declarator declaration_specifiers declaration init_declarator
 %type <tt> type_specifier pointer direct_declarator parameter_declaration parameter_list
 /* %type <ll_p> function_arguments */
-%type<tt> storage_class_specifier function_specifier type_qualifier struct_or_union struct_or_union_specifier 
-%type<tt> specifier_qualifier_list struct_declarator_list struct_declarator
-%type<tt> type_name abstract_declarator direct_abstract_declarator parameter_type_list
+%type <tt> storage_class_specifier function_specifier type_qualifier struct_or_union struct_or_union_specifier 
+%type <tt> specifier_qualifier_list struct_declarator_list struct_declarator
+%type <tt> type_name abstract_declarator direct_abstract_declarator parameter_type_list
 %type <ll_p> function_arguments
 %type <dl> init_declarator_list; 
+
+/* For loops, while loops, control statements */
+%type <astnode_p> decl_or_stmt statement
+%type <ll_p> compound_statement decl_or_stmt_list
 
 
 %%
@@ -307,7 +311,6 @@ declaration:            declaration_specifiers init_declarator_list ';'         
                                                                                                       yyerror("INVALID DECLARATION");
                                                                                                       exit(2);
                                                                                                 }
-                                                                                                
                                                                                           }              
 ;
 
@@ -639,30 +642,10 @@ direct_abstract_declarator:   '(' abstract_declarator ')'                       
 ; */
 
 
-// Top Level (From Hak)
-declaration_or_fndef_list:    declaration_or_fndef                                        //{print_symbol_table();}
-      |                       declaration_or_fndef_list declaration_or_fndef              //{print_symbol_table();}             // For debugging printing symbol table at top level
-
-declaration_or_fndef:         declaration                                                 
-      |                       function_definition
-;
-
-// Declaration Specifier int, extern int
-// Declarator is the ident and any pointers/array info
-// Compound statement is everything in the brackets
-function_definition:    declaration_specifiers declarator                     {
-                                                                                    if ($2->top == NULL || $2->top->next_type == NULL || $2->top->next_type->type != FUNCTION_TYPE) {
-                                                                                          yyerror("INVALID FUNCTION DEFINITION");
-                                                                                          exit(2);
-                                                                                    };
-                                                                                    new_function_defs($1, $2);
-                                                                              }
-                        compound_statement                              //{printf("CURRENT SCOPE: %d\n", curr_scope->s_type);}
-;                 
 
 // 6.8
-statement:              compound_statement                                    
-      |                 expression_statement                                                {print_ast($1, 0);}
+statement:              compound_statement                                    {$$ = make_ast_node(COMPOUND); $$->ds_list = $1; close_outer_scope();}                              
+      |                 expression_statement                                  //{print_ast($1, 0);}
       |                 labeled_statement
       |                 selection_statement
       |                 iteration_statement
@@ -670,17 +653,16 @@ statement:              compound_statement
 ;
 
 // 6.8.1
-labeled_statement:      IDENT ':'         {struct type_node * tt = make_type_node(LABEL_TYPE); add_symbol_entry($1, tt, LABEL_S, NON_VAR, DEF);}     statement
+labeled_statement:      IDENT ':'         {struct type_node * tt = make_type_node(LABEL_TYPE); add_symbol_entry($1, tt, LABEL_S, NON_VAR, DEF);}   statement
       |                 CASE constant_expression ':' statement
       |                 DEFAULT ':' statement
 
 
 // 6.8.2
-compound_statement:     '{'   {create_new_scope();}   decl_or_stmt_list '}'   {
-                                                                                    // print_symbol_table();
-                                                                                    close_outer_scope();
-                                                                              }                                           
+compound_statement:     '{'   {create_new_scope();}   decl_or_stmt_list '}'   {$$ = $3;} 
+      |                 '{'   '}'                                             {$$ = NULL;}
 ;
+
 
 // 6.8.3
 expression_statement:   expression ';'
@@ -712,11 +694,37 @@ jump_statement:         GOTO IDENT ';'
       |                 RETURN expression ';'
       |                 RETURN ';'
 
-decl_or_stmt_list:      decl_or_stmt 
-      |                 decl_or_stmt_list decl_or_stmt
+
+// Top Level (From Hak)
+declaration_or_fndef_list:    declaration_or_fndef                                        //{print_symbol_table();}
+      |                       declaration_or_fndef_list declaration_or_fndef              //{print_symbol_table();}             // For debugging printing symbol table at top level
+
+declaration_or_fndef:         declaration                                                 
+      |                       function_definition
 ;
 
-decl_or_stmt:     declaration                  
+// Declaration Specifier int, extern int
+// Declarator is the ident and any pointers/array info
+// Compound statement is everything in the brackets
+function_definition:    declaration_specifiers declarator                     {
+                                                                                    if ($2->top == NULL || $2->top->next_type == NULL || $2->top->next_type->type != FUNCTION_TYPE) {
+                                                                                          yyerror("INVALID FUNCTION DEFINITION");
+                                                                                          exit(2);
+                                                                                    };
+                                                                                    new_function_defs($1, $2);
+                                                                              }
+                        compound_statement                                    {
+                                                                                    print_symbol_table();
+                                                                                    close_outer_scope(); 
+                                                                                    dump_ast($4);
+                                                                              }// Dump ast list
+;                 
+
+decl_or_stmt_list:      decl_or_stmt                                          {$$ = create_ll_node($1);}
+      |                 decl_or_stmt_list decl_or_stmt                        {$$ = $1; push_ll($1, $2);}
+;
+
+decl_or_stmt:     declaration                                                  {$$ = make_ast_node(DECLARATION);} // Dummy astnode for declarations
       |           statement
 ;
 
