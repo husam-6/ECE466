@@ -84,8 +84,11 @@ struct astnode_ident{
     struct astnode_symbol * sym; 
 };
 
-struct astnode_for{
-
+struct astnode_for_loop{
+    struct astnode * init; 
+    struct astnode * cond;
+    struct astnode * body;
+    struct astnode * inc; 
 };
 
 // Function call linked list for arguments
@@ -101,7 +104,7 @@ struct linked_list * create_ll_node(struct astnode *expr);
 void push_ll(struct linked_list *head, struct astnode *expr);
 
 // Print list of ast's 
-void dump_ast(struct linked_list *asthead);
+void dump_ast(struct linked_list *asthead, int tabs);
 
 // Node struct
 struct astnode {
@@ -116,7 +119,8 @@ struct astnode {
             char char_lit;
             struct string_literal str_lit;
             struct astnode_fncall fncall;
-            struct linked_list * ds_list; 
+            struct astnode_for_loop for_loop;  
+            struct linked_list * ds_list;
             // struct astnode_symbol tab_entry;
             // struct type_node t_node; 
 

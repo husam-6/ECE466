@@ -281,6 +281,10 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
         new_symbol->next = tmp_scope->head; // Else push to top of stack
 
 
+    // Change temporary function namespace to variable...
+    if (n_space == FUNC_S)
+        n_space = VAR_S;
+
     // Set variable parameters
     new_symbol->name = ident; 
     new_symbol->type = type; 

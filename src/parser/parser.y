@@ -74,9 +74,11 @@
 // Expressions 6.5.1
 primary_expression:   IDENT                                             {
                                                                               // Identifier node
-                                                                              // Look up in symbol table
                                                                               struct astnode *node = make_ast_node(IDENT_NODE);
                                                                               node->ident.name = $1;
+                                                                              
+                                                                              // Look up in symbol table
+                                                                              resolve_identifier($1, VAR_S, node);
                                                                               $$ = node;
                                                                         }       
       |               NUMBER                                            {
@@ -716,7 +718,7 @@ function_definition:    declaration_specifiers declarator                     {
                         compound_statement                                    {
                                                                                     print_symbol_table();
                                                                                     close_outer_scope(); 
-                                                                                    dump_ast($4);
+                                                                                    dump_ast($4, 0);
                                                                               }// Dump ast list
 ;                 
 

@@ -37,7 +37,7 @@ enum symbol_kind{
 
 enum namespace {
     VAR_S,
-    FUNC_S, 
+    FUNC_S,             // temp namespace...
     TAG_S,
     LABEL_S,
     MEMBER_S

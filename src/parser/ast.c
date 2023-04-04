@@ -208,9 +208,7 @@ struct astnode * make_ast_node(int type) {
 
 // Helper function to create unary node
 struct astnode * create_unary(int op_type, int op, struct astnode *expr){
-    if (expr->type == IDENT_NODE)
-        resolve_identifier(expr->ident.name, VAR_S, expr);
-
+    
     // Set up type vars
     struct astnode * node = make_ast_node(UNARY_NODE);
     node->unary.operator_type = op_type; 
@@ -223,11 +221,6 @@ struct astnode * create_unary(int op_type, int op, struct astnode *expr){
 
 // Helper function to create binary node
 struct astnode * create_binary(int op_type, int op, struct astnode *left, struct astnode *right){
-    if (left->type == IDENT_NODE)
-        resolve_identifier(left->ident.name, VAR_S, left);
-
-    if (right->type == IDENT_NODE && op_type != SELECT && op_type != INDSEL)
-        resolve_identifier(right->ident.name, VAR_S, right);
 
     // Assign node and operator type
     struct astnode * node = make_ast_node(BINARY_NODE);
@@ -246,17 +239,6 @@ struct astnode * create_ternary(int op_type, struct astnode *left, struct astnod
     // Node and op type
     node->ternary.operator_type = op_type;
 
-    if (left->type == IDENT_NODE)
-        resolve_identifier(left->ident.name, VAR_S, left);
-    
-    if (middle->type == IDENT_NODE)
-        resolve_identifier(middle->ident.name, VAR_S, middle);
-
-    if (right->type == IDENT_NODE)
-        resolve_identifier(right->ident.name, VAR_S, right);
-
-
-
     // Children pointers
     node->ternary.left = left;
     node->ternary.middle = middle;
@@ -269,24 +251,22 @@ struct astnode * create_ternary(int op_type, struct astnode *left, struct astnod
 // Helper function to create ternary node
 struct astnode * create_fn_node(struct astnode *postfix, struct linked_list *head){
     struct astnode * node = make_ast_node(FN_CALL);
-    
-    // resolve in symbol table
-    if (postfix->type == IDENT_NODE)
-        resolve_identifier(postfix->ident.name, FUNC_S, postfix);
-
-    // Check function call arguments
-    struct linked_list *tmp = head; 
-    while (tmp != NULL && tmp->expr != NULL){
-        if (tmp->expr->type == IDENT_NODE)
-            resolve_identifier(tmp->expr->ident.name, VAR_S, tmp->expr);
-        tmp = tmp->next;
-    }
 
     // Save function identifier and head of linked list
     node->fncall.postfix = postfix;
     node->fncall.head = head;
 
     return node;
+}
+
+struct astnode * create_for_loop(struct astnode * init, struct astnode * cond, struct astnode * body, struct astnode * inc){
+    struct astnode * node = make_ast_node(FOR_LOOP);    
+    node->for_loop.init = init;
+    node->for_loop.cond = cond; 
+    node->for_loop.body = body; 
+    node->for_loop.inc = inc; 
+
+    
 }
 
 // Create linked list
@@ -328,12 +308,15 @@ void resolve_identifier(char * ident, enum namespace n_space, struct astnode * n
 }
 
 
-void dump_ast(struct linked_list *asthead){
-    printf("AST DUMP\nLIST { \n");
+void dump_ast(struct linked_list *asthead, int tabs){
+    if (tabs == 0)
+        printf("************ AST DUMP ************\nLIST { \n");
     int depth = 1; 
     while(asthead != NULL){
         print_ast(asthead->expr, depth);
         asthead = asthead->next;
     }
     printf("}\n");
+    if (tabs == 0)
+        printf("************ END OF AST DUMP ************\n");
 }
