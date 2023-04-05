@@ -67,16 +67,18 @@ void print_scope_symbols(struct scope * curr_scope){
 
 
 // Print symbol table identifiers
-void print_symbol_table(){
+void print_symbol_table(int children){
     printf("------------\tPRINTING SYMBOL TABLE...\t------------\n"); 
     struct scope * tmp_scope = curr_scope;
     while(tmp_scope != NULL){
         print_scope_symbols(tmp_scope);
         printf("EXITING %s SCOPE...\n", print_scope(tmp_scope->s_type));
-        tmp_scope = tmp_scope->outer;
+        if (children)
+            tmp_scope = tmp_scope->next_child;
+        else
+            tmp_scope = tmp_scope->outer;
     }
     printf("------------\tEND OF SYMBOL TABLE\t------------\n");
-
 }
 
 void print_struct_members(struct astnode_symbol * mini_head){
@@ -375,20 +377,38 @@ void create_new_scope(enum scope_type s_type){
         if (s_type != PROTOTYPE_SCOPE){
             // Just change prototype scope to now be functions cope
             curr_scope->s_type = FUNC_SCOPE;
+
+            // Update prototype variables to func scope
+            struct astnode_symbol * tmp = curr_scope->head; 
+            while (tmp){
+                tmp->scope = FUNC_SCOPE; 
+                tmp = tmp->next;
+            }
             return;
         }
         tmp = make_new_scope(PROTOTYPE_SCOPE);
     }
+    
+    // Save scope under child scope linked list 
+    // Push child scope onto linked list of child scopes
+    if (curr_scope->next_child == NULL)
+        curr_scope->next_child = tmp; 
+    else{
+        tmp->next_child = curr_scope->next_child;
+        curr_scope->next_child = tmp;
+    }
+
     // Push new scope onto stack
     tmp->outer = curr_scope;
     curr_scope = tmp;
+
 }
 
 void close_outer_scope(){
     // For now not freeing any memory...
-    struct scope * tmp = curr_scope; 
+    // struct scope * tmp = curr_scope; 
     curr_scope = curr_scope->outer; 
-    free(tmp);
+    // free(tmp);
 }
 
 // Reverses a given astnode symbol linked list / stack

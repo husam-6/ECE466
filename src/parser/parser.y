@@ -716,7 +716,7 @@ function_definition:    declaration_specifiers declarator                     {
                                                                                     new_function_defs($1, $2);
                                                                               }
                         compound_statement                                    {
-                                                                                    print_symbol_table();
+                                                                                    // print_symbol_table();
                                                                                     close_outer_scope(); 
                                                                                     dump_ast($4->ds_list, 0);
                                                                               }// Dump ast list

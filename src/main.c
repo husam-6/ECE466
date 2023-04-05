@@ -30,4 +30,5 @@ int main(){
 
       print_ast(tmp, 0); */
       yyparse();
+      print_symbol_table(1);
 }

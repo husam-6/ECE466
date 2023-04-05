@@ -74,8 +74,14 @@ extern struct scope * curr_scope;
 
 // Scope struct 
 struct scope {
+    // Scope type and symbol table head for given scope
     enum scope_type s_type; 
     struct astnode_symbol * head;
+
+    // Linked list of any scope seen inside of this scope (to save after popping from stack)
+    struct scope * next_child;
+
+    // Pointer to parent / outer scope
     struct scope * outer;
 };
 
