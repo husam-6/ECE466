@@ -65,7 +65,7 @@
 %type <dl> init_declarator_list; 
 
 /* For loops, while loops, control statements */
-%type <astnode_p> decl_or_stmt statement iteration_statement compound_statement
+%type <astnode_p> decl_or_stmt statement iteration_statement compound_statement selection_statement
 %type <ll_p> decl_or_stmt_list 
 
 
@@ -671,14 +671,14 @@ expression_statement:   expression ';'
       |                 ';'
 
 // 6.8.4
-selection_statement:    IF '(' expression ')' statement                       %prec IF
-      |                 IF '(' expression ')' statement ELSE statement        %prec ELSE
+selection_statement:    IF '(' expression ')' statement                       %prec IF            {$$ = create_if_stmt($5, $3, NULL);}
+      |                 IF '(' expression ')' statement ELSE statement        %prec ELSE          {$$ = create_if_stmt($5, $3, $7);}
       |                 SWITCH '('  expression ')' statement
 
 
 // 6.8.5
 iteration_statement:    WHILE '(' expression ')' statement                                        {$$ = create_while_loop($5, $3, 0);}
-      |                 DO statement WHILE '(' expression ')'                                     {$$ = create_while_loop($2, $5, 1);}
+      |                 DO statement WHILE '(' expression ')' ';'                                 {$$ = create_while_loop($2, $5, 1);}
       |                 FOR '(' expression ';' expression ';' expression ')' statement            {$$ = create_for_loop($3, $5, $9, $7);}
       |                 FOR '(' ';' expression ';' expression ')' statement                       {$$ = create_for_loop(NULL, $4, $8, $6);}
       |                 FOR '(' ';' ';' expression ')' statement                                  {$$ = create_for_loop(NULL, NULL, $7, $5);}

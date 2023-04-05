@@ -236,6 +236,26 @@ void print_ast(struct astnode * head, int depth){
 
             break;
         }
+        case IF_STMT: {
+            n_tabs(depth);
+            printf("IF:\n");
+
+            n_tabs(depth+1);
+            printf("COND:\n");
+            print_ast(head->if_stmt.cond, depth+2);
+
+            n_tabs(depth+1);
+            printf("BODY:\n");
+            print_ast(head->if_stmt.stmt, depth+2);
+
+            if (head->if_stmt.else_stmt){
+                n_tabs(depth+1);
+                printf("ELSE:\n");
+                print_ast(head->if_stmt.else_stmt, depth+2);
+            }
+
+            break;
+        }
         case DECLARATION:{
             break;
         }
@@ -328,6 +348,14 @@ struct astnode * create_while_loop(struct astnode * stmt, struct astnode * cond,
     node->while_loop.stmt = stmt;
     node->while_loop.cond = cond; 
     node->while_loop.do_while = do_while; 
+    return node; 
+}
+
+struct astnode * create_if_stmt(struct astnode * stmt, struct astnode * cond, struct astnode * else_stmt){
+    struct astnode * node = make_ast_node(IF_STMT);
+    node->if_stmt.stmt = stmt;
+    node->if_stmt.cond = cond; 
+    node->if_stmt.else_stmt = else_stmt; 
     return node; 
 }
 
