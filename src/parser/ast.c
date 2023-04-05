@@ -209,6 +209,32 @@ void print_ast(struct astnode * head, int depth){
             n_tabs(depth+1);
             printf("INCR:\n");
             print_ast(head->for_loop.inc, depth+2);
+            break;
+        }
+        case WHILE_LOOP:{
+            n_tabs(depth);
+            if (head->while_loop.do_while == 1){
+                printf("DO:\n");
+                n_tabs(depth+1);
+                printf("BODY:\n");
+                print_ast(head->while_loop.stmt, depth+2);
+
+                n_tabs(depth+1);
+                printf("WHILE / COND:\n");
+                print_ast(head->while_loop.cond, depth+2);
+
+                break;
+            }
+            printf("WHILE:\n");
+            n_tabs(depth+1);
+            printf("COND:\n");
+            print_ast(head->while_loop.cond, depth+2);
+
+            n_tabs(depth+1);
+            printf("BODY:\n");
+            print_ast(head->while_loop.stmt, depth+2);
+
+            break;
         }
         case DECLARATION:{
             break;
@@ -294,6 +320,14 @@ struct astnode * create_for_loop(struct astnode * init, struct astnode * cond, s
     node->for_loop.cond = cond; 
     node->for_loop.body = body; 
     node->for_loop.inc = inc;
+    return node; 
+}
+
+struct astnode * create_while_loop(struct astnode * stmt, struct astnode * cond, int do_while){
+    struct astnode * node = make_ast_node(WHILE_LOOP);
+    node->while_loop.stmt = stmt;
+    node->while_loop.cond = cond; 
+    node->while_loop.do_while = do_while; 
     return node; 
 }
 

@@ -677,8 +677,8 @@ selection_statement:    IF '(' expression ')' statement                       %p
 
 
 // 6.8.5
-iteration_statement:    WHILE '(' expression ')' statement
-      |                 DO statement WHILE '(' expression ')'                                         
+iteration_statement:    WHILE '(' expression ')' statement                                        {$$ = create_while_loop($5, $3, 0);}
+      |                 DO statement WHILE '(' expression ')'                                     {$$ = create_while_loop($2, $5, 1);}
       |                 FOR '(' expression ';' expression ';' expression ')' statement            {$$ = create_for_loop($3, $5, $9, $7);}
       |                 FOR '(' ';' expression ';' expression ')' statement                       {$$ = create_for_loop(NULL, $4, $8, $6);}
       |                 FOR '(' ';' ';' expression ')' statement                                  {$$ = create_for_loop(NULL, NULL, $7, $5);}

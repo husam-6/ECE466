@@ -32,6 +32,7 @@ enum node_type{
     FOR_LOOP,
     DECLARATION,
     COMPOUND,
+    WHILE_LOOP,
 };
 
 // Function prototypes (helper functions for major types of operations)
@@ -40,6 +41,7 @@ struct astnode * create_unary(int op_type, int op, struct astnode *expr);
 struct astnode * create_binary(int op_type, int op, struct astnode *left, struct astnode *right);
 struct astnode * create_ternary(int op_type, struct astnode *left, struct astnode *middle, struct astnode *right);
 struct astnode * create_for_loop(struct astnode * init, struct astnode * cond, struct astnode * body, struct astnode * inc);
+struct astnode * create_while_loop(struct astnode * expr, struct astnode * cond, int do_while);
 void resolve_identifier(char * ident, enum namespace n_space, struct astnode * node);
 void n_tabs(int n);
 char * print_datatype(int type);
@@ -92,6 +94,13 @@ struct astnode_for_loop{
     struct astnode * inc; 
 };
 
+
+struct astnode_while_loop{
+    int do_while;
+    struct astnode * stmt;
+    struct astnode * cond;
+};
+
 // Function call linked list for arguments
 struct linked_list {
     struct astnode *expr; 
@@ -121,6 +130,7 @@ struct astnode {
             struct string_literal str_lit;
             struct astnode_fncall fncall;
             struct astnode_for_loop for_loop;  
+            struct astnode_while_loop while_loop;  
             struct linked_list * ds_list;
             // struct astnode_symbol tab_entry;
             // struct type_node t_node; 

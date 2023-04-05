@@ -11,13 +11,16 @@ FILE=ptest
 CXXFLAGS=-I./include -I./build -Wall -Wextra -fsanitize=undefined
 BUILD = build
 
-all: parser.tab.c lex.yy.c ast.c lex_help.c sym.c type.c main.c die-util.c
+
+all: $(BUILD)/parser.tab.c $(BUILD)/lex.yy.c ast.c lex_help.c sym.c type.c main.c die-util.c
 	gcc $(CXXFLAGS) $^ -ll -o build/a.out
 
 $(BUILD)/parser.tab.c: parser.y
+	mkdir -p $(BUILD)
 	bison -d --report=all --file-prefix=$(BUILD)/parser $^
 
-$(BUILD)/lex.yy.c: lexer.l parser.tab.c
+$(BUILD)/lex.yy.c: lexer.l $(BUILD)/parser.tab.c
+	mkdir -p $(BUILD)
 	flex --outfile=$(BUILD)/lex.yy.c $<
 
 test: all
