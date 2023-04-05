@@ -248,7 +248,9 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
 {
     struct scope * tmp_scope = curr_scope;
     int proto = 0;
-    if ((curr_scope->s_type == PROTOTYPE_SCOPE && n_space == FUNC_S) || (curr_scope->s_type == FUNC_SCOPE && n_space == FUNC_S)){
+
+    // when defining a function, must go in global scope
+    if ((curr_scope->s_type == PROTOTYPE_SCOPE && n_space == FUNC_S)){
         while(tmp_scope->outer != NULL)
             tmp_scope = tmp_scope->outer; 
         proto = 1; 
@@ -315,7 +317,7 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
             }
         }
         // If we are defining a previously declared symbol
-        if ((n_space == FUNC_S || n_space == TAG_S) && (symbol_k == DEF && symbol_found->symbol_k == DECL)){
+        if ((n_space == VAR_S || n_space == TAG_S) && (symbol_k == DEF && symbol_found->symbol_k == DECL)){
             struct astnode_symbol * tmp = symbol_found->next; 
             (*symbol_found) = (*new_symbol);
             symbol_found->next = tmp; 
