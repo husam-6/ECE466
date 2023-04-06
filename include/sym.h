@@ -48,7 +48,7 @@ enum storage_class{
     AUTO_S,
     REGISTER_S, 
     STATIC_S,
-    NON_VAR
+    NA
 };
 
 

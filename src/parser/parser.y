@@ -108,10 +108,10 @@ primary_expression:   IDENT                                             {
 postfix_expression:  primary_expression
       |              postfix_expression '[' expression ']'              {
                                                                               // Addition node
-                                                                              struct astnode *add = create_binary(BINOP,'+', $1, $3);
+                                                                              struct astnode *add = create_binary(BINOP,'+', $1, $3, NULL);
 
                                                                               //Deref node
-                                                                              struct astnode *deref = create_unary(DEREF, '*', add);
+                                                                              struct astnode *deref = create_unary(DEREF, '*', add, NULL);
                                                                               $$ = deref;
                                                                         }
       |              function_call        
@@ -120,7 +120,7 @@ postfix_expression:  primary_expression
                                                                               struct astnode *ident = make_ast_node(IDENT_NODE);
                                                                               ident->ident.name = $3;
 
-                                                                              $$ = create_binary(SELECT, '.', $1, ident);
+                                                                              $$ = create_binary(SELECT, '.', $1, ident, NULL);
 
                                                                         }
       |              postfix_expression INDSEL IDENT                    {     
@@ -129,13 +129,13 @@ postfix_expression:  primary_expression
                                                                               ident->ident.name = $3;
 
                                                                               // Addition node
-                                                                              struct astnode *add = create_binary(BINOP,'+', $1, ident);
+                                                                              struct astnode *add = create_binary(BINOP,'+', $1, ident, NULL);
 
                                                                               //Deref node
-                                                                              $$ = create_unary(DEREF, '*', add);
+                                                                              $$ = create_unary(DEREF, '*', add, NULL);
                                                                         }
-      |              postfix_expression PLUSPLUS                        {$$ = create_unary(UNARY_OP, PLUSPLUS, $1);}
-      |              postfix_expression MINUSMINUS                      {$$ = create_unary(UNARY_OP, MINUSMINUS, $1);}
+      |              postfix_expression PLUSPLUS                        {$$ = create_unary(UNARY_OP, PLUSPLUS, $1, NULL);}
+      |              postfix_expression MINUSMINUS                      {$$ = create_unary(UNARY_OP, MINUSMINUS, $1, NULL);}
       
       /* |              '(' type_name ')' '{' initializer_list '}'
       |              '(' type_name ')' '{' initializer_list ',' '}' */
@@ -156,7 +156,7 @@ unary_expression:    postfix_expression
                                                                               one->num.integer = 1;
 
                                                                               // Set up binary node for ++expr
-                                                                              $$ = create_binary(ASSIGNMENT_COMPOUND, PLUSEQ, $2, one);
+                                                                              $$ = create_binary(ASSIGNMENT_COMPOUND, PLUSEQ, $2, one, NULL);
                                                                         }
       |              MINUSMINUS unary_expression                        {
                                                                               // Set up unary node for --expr
@@ -166,22 +166,22 @@ unary_expression:    postfix_expression
                                                                               one->num.type = I; 
                                                                               one->num.integer = 1;
 
-                                                                              $$ = create_binary(ASSIGNMENT_COMPOUND, MINUSEQ, $2, one); 
+                                                                              $$ = create_binary(ASSIGNMENT_COMPOUND, MINUSEQ, $2, one, NULL); 
                                                                         }
 
       |              unary_operator cast_expression                     {
                                                                               struct astnode *un_op;
                                                                               //Special Case For Deref
                                                                               if ($1 == '*')
-                                                                                    un_op = create_unary(DEREF, $1, $2);
+                                                                                    un_op = create_unary(DEREF, $1, $2, NULL);
                                                                               else
-                                                                                    un_op = create_unary(UNARY_OP, $1, $2);
+                                                                                    un_op = create_unary(UNARY_OP, $1, $2, NULL);
 
                                                                               $$ = un_op;            
 
                                                                         }    
-      |              SIZEOF '(' unary_expression ')'                    {$$= create_unary(SIZEOF_OP, SIZEOF, $3);}
-      |              SIZEOF '(' type_name ')'                           
+      |              SIZEOF '(' unary_expression ')'                    {$$ = create_unary(SIZEOF_OP, SIZEOF, $3, NULL);}
+      |              SIZEOF '(' type_name ')'                           {$$ = create_unary(SIZEOF_OP, SIZEOF, NULL, $3->top);}
 ;
 
 unary_operator:      '&'            {$$ = '&';}
@@ -194,65 +194,65 @@ unary_operator:      '&'            {$$ = '&';}
 
 // 6.5.4
 cast_expression:  unary_expression
-      |           '(' type_name ')' cast_expression
+      |           '(' type_name ')' cast_expression                     {$$ = create_binary(CAST_OP, '(', NULL, $4, $2->top);}
 ;
 
 // 6.5.5
 multiplicative_expression: cast_expression
-      |              multiplicative_expression '*' cast_expression                              {$$ = create_binary(BINOP, '*', $1, $3);}
-      |              multiplicative_expression '/' cast_expression                              {$$ = create_binary(BINOP, '/', $1, $3);}
-      |              multiplicative_expression '%' cast_expression                              {$$ = create_binary(BINOP, '%', $1, $3);}
+      |              multiplicative_expression '*' cast_expression                              {$$ = create_binary(BINOP, '*', $1, $3, NULL);}
+      |              multiplicative_expression '/' cast_expression                              {$$ = create_binary(BINOP, '/', $1, $3, NULL);}
+      |              multiplicative_expression '%' cast_expression                              {$$ = create_binary(BINOP, '%', $1, $3, NULL);}
 ;                       
 
 // 6.5.6                      
 additive_expression: multiplicative_expression                    
-      |              additive_expression '+' multiplicative_expression                          {$$ = create_binary(BINOP, '+', $1, $3);}    
-      |              additive_expression '-' multiplicative_expression                          {$$ = create_binary(BINOP, '-', $1, $3);}
+      |              additive_expression '+' multiplicative_expression                          {$$ = create_binary(BINOP, '+', $1, $3, NULL);}    
+      |              additive_expression '-' multiplicative_expression                          {$$ = create_binary(BINOP, '-', $1, $3, NULL);}
 ;                       
 
 // 6.5.7                      
 shift_expression:    additive_expression                    
-      |              shift_expression SHL additive_expression                                   {$$ = create_binary(ASSIGNMENT_COMPOUND, SHL, $1, $3);}
-      |              shift_expression SHR additive_expression                                   {$$ = create_binary(ASSIGNMENT_COMPOUND, SHR, $1, $3);}
+      |              shift_expression SHL additive_expression                                   {$$ = create_binary(ASSIGNMENT_COMPOUND, SHL, $1, $3, NULL);}
+      |              shift_expression SHR additive_expression                                   {$$ = create_binary(ASSIGNMENT_COMPOUND, SHR, $1, $3, NULL);}
 ;                       
 
 // 6.5.8                      
 relational_expression: shift_expression                     
-      |              relational_expression '<' shift_expression                                 {$$ = create_binary(COMP_OP, '<', $1, $3);}
-      |              relational_expression '>' shift_expression                                 {$$ = create_binary(COMP_OP, '>', $1, $3);}
-      |              relational_expression LTEQ shift_expression                                {$$ = create_binary(COMP_OP, LTEQ, $1, $3);}
-      |              relational_expression GTEQ shift_expression                                {$$ = create_binary(COMP_OP, GTEQ, $1, $3);}
+      |              relational_expression '<' shift_expression                                 {$$ = create_binary(COMP_OP, '<', $1, $3, NULL);}
+      |              relational_expression '>' shift_expression                                 {$$ = create_binary(COMP_OP, '>', $1, $3, NULL);}
+      |              relational_expression LTEQ shift_expression                                {$$ = create_binary(COMP_OP, LTEQ, $1, $3, NULL);}
+      |              relational_expression GTEQ shift_expression                                {$$ = create_binary(COMP_OP, GTEQ, $1, $3, NULL);}
 ;                       
 
 // 6.5.9                      
 equality_expression: relational_expression                        
-      |              equality_expression EQEQ relational_expression                             {$$ = create_binary(COMP_OP, EQEQ, $1, $3);}
-      |              equality_expression NOTEQ relational_expression                            {$$ = create_binary(COMP_OP, NOTEQ, $1, $3);}   
+      |              equality_expression EQEQ relational_expression                             {$$ = create_binary(COMP_OP, EQEQ, $1, $3, NULL);}
+      |              equality_expression NOTEQ relational_expression                            {$$ = create_binary(COMP_OP, NOTEQ, $1, $3, NULL);}   
 ;
 
 // 6.5.10
 AND_expression:      equality_expression
-      |              AND_expression '&' equality_expression                                     {$$ = create_binary(LOGICAL_OP, '&', $1, $3);}
+      |              AND_expression '&' equality_expression                                     {$$ = create_binary(LOGICAL_OP, '&', $1, $3, NULL);}
 ;
 
 // 6.5.11
 exclusive_OR_expression: AND_expression
-      |              exclusive_OR_expression '^' AND_expression                                 {$$ = create_binary(LOGICAL_OP, '^', $1, $3);}
+      |              exclusive_OR_expression '^' AND_expression                                 {$$ = create_binary(LOGICAL_OP, '^', $1, $3, NULL);}
 ;
 
 // 6.5.12
 inclusive_OR_expression: exclusive_OR_expression
-      |              inclusive_OR_expression '|' exclusive_OR_expression                        {$$ = create_binary(LOGICAL_OP, '|', $1, $3);}
+      |              inclusive_OR_expression '|' exclusive_OR_expression                        {$$ = create_binary(LOGICAL_OP, '|', $1, $3, NULL);}
 ;
 
 // 6.5.13
 logical_AND_expression: inclusive_OR_expression
-      |              logical_AND_expression LOGAND inclusive_OR_expression                      {$$ = create_binary(LOGICAL_OP, LOGAND, $1, $3);}
+      |              logical_AND_expression LOGAND inclusive_OR_expression                      {$$ = create_binary(LOGICAL_OP, LOGAND, $1, $3, NULL);}
 ;
 
 // 6.5.14
 logical_OR_expression:  logical_AND_expression
-      |              logical_OR_expression LOGOR logical_AND_expression                         {$$ = create_binary(LOGICAL_OP, LOGOR, $1, $3);}
+      |              logical_OR_expression LOGOR logical_AND_expression                         {$$ = create_binary(LOGICAL_OP, LOGOR, $1, $3, NULL);}
 ;
 
 // 6.5.15
@@ -264,9 +264,9 @@ conditional_expression: logical_OR_expression
 assignment_expression:  conditional_expression 
       |              unary_expression assignment_operator assignment_expression                 {
                                                                                                       if ($2 == '=')
-                                                                                                            $$ = create_binary(ASSIGNMENT, '=', $1, $3);
+                                                                                                            $$ = create_binary(ASSIGNMENT, '=', $1, $3, NULL);
                                                                                                       else
-                                                                                                            $$ = create_binary(ASSIGNMENT_COMPOUND, $2, $1, $3);
+                                                                                                            $$ = create_binary(ASSIGNMENT_COMPOUND, $2, $1, $3, NULL);
 
                                                                                                 }
 ;
@@ -287,7 +287,7 @@ assignment_operator: '='             {$$ = '=';}
 
 // 6.5.17
 expression:          assignment_expression                              
-      |              expression ',' assignment_expression                                 {$$ = create_binary(BINOP, ',', $1, $3);}
+      |              expression ',' assignment_expression                                 {$$ = create_binary(BINOP, ',', $1, $3, NULL);}
 ;
 
 
@@ -309,7 +309,7 @@ declaration:            declaration_specifiers init_declarator_list ';'         
                                                                                           }
       |                 declaration_specifiers  ';'                                       {
                                                                                                 if ($1->top->type == STRUCT_UNION_TYPE)
-                                                                                                      add_symbol_entry($1->top->stu_node.ident, $1->top, TAG_S, NON_VAR, DECL);
+                                                                                                      add_symbol_entry($1->top->stu_node.ident, $1->top, TAG_S, NA, DECL);
                                                                                                 else{
                                                                                                       yyerror("INVALID DECLARATION");
                                                                                                       exit(2);
@@ -385,7 +385,7 @@ struct_or_union_specifier:    struct_or_union IDENT '{'                         
                                                                                           curr_scope->s_type == BLOCK_SCOPE)
                                                                                                       $1->top->ident.s_class = AUTO_S;
                                                                                           
-                                                                                          add_symbol_entry($2, $1->top, TAG_S, NON_VAR, DEF);
+                                                                                          add_symbol_entry($2, $1->top, TAG_S, NA, DEF);
                                                                                           $1->top->stu_node.refers_to = curr_scope->head; 
 
                                                                                           create_new_scope(MEMBER_S);
@@ -419,7 +419,7 @@ struct_or_union_specifier:    struct_or_union IDENT '{'                         
                                                                                           
                                                                                           // If not in table...
                                                                                           if (in_table != 1)
-                                                                                                add_symbol_entry($2, $1->top, TAG_S, NON_VAR, DECL);
+                                                                                                add_symbol_entry($2, $1->top, TAG_S, NA, DECL);
                                                                                           else
                                                                                                 $1->top->stu_node.refers_to = found;            // If it is, point the struct 
                                                                                     } 
@@ -551,7 +551,7 @@ parameter_declaration:  declaration_specifiers declarator                       
                                                                                           new_declaration($1, $2, 1);
                                                                                     }
       |                 declaration_specifiers abstract_declarator                  {
-                                                                                          // Create dummy ident node
+                                                                                          // Create dummy ident node (use 1UNDEF since identifiers cannot start with a number)
                                                                                           $$ = create_ident_type("1UNDEF");
                                                                                           $$->top->next_type = $2->top; 
                                                                                           $$->tail = $2->tail; 
@@ -570,7 +570,7 @@ parameter_declaration:  declaration_specifiers declarator                       
 ; */
 
 // 6.7.6
-type_name:              specifier_qualifier_list abstract_declarator                            {$$ = $2;}
+type_name:              specifier_qualifier_list abstract_declarator                            {$$ = $2; $2->tail->next_type = $1->top; $2->tail = $1->tail;}
       |                 specifier_qualifier_list
 ;
 
@@ -628,7 +628,7 @@ statement:              compound_statement                                      
 ;
 
 // 6.8.1
-labeled_statement:      IDENT ':'                                                               {struct type_node * tt = make_type_node(LABEL_TYPE); add_symbol_entry($1, tt, LABEL_S, NON_VAR, DEF);}  
+labeled_statement:      IDENT ':'                                                               {struct type_node * tt = make_type_node(LABEL_TYPE); add_symbol_entry($1, tt, LABEL_S, NA, DEF);}  
                         statement                                                               {$$ = create_label_node($1, $4);}
       |                 CASE constant_expression ':' statement                                  {$$ = create_case_node($2, $4, CASE_STMT);}
       |                 DEFAULT ':' statement                                                   {$$ = create_case_node(NULL, $3, DEFAULT_STMT);}

@@ -80,6 +80,7 @@ void print_op_type(int op_type) {
         case ADDR_OF:               {printf("ADDRESSOF "); break;}
         case UNARY_OP:              {printf("UNARY OP "); break;}
         case SIZEOF_OP:             {printf("SIZEOF\n"); break;}
+        case CAST_OP:               {printf("CAST\n"); break;}
         case COMP_OP:               {printf("COMPARISON OP "); break;}
         case SELECT:                {printf("SELECT "); break;}
         case LOGICAL_OP:            {printf("LOGICAL OP "); break;}
@@ -135,17 +136,27 @@ void print_ast(struct astnode * head, int depth){
         case UNARY_NODE:{
             n_tabs(depth);
             print_op_type(head->unary.operator_type);
-            if (head->unary.operator_type != SIZEOF_OP)
+            if (head->unary.operator != SIZEOF && !head->unary.abstract){
                 print_operator(head->unary.operator);
-            print_ast(head->unary.expr, depth + 1);
+            }
+            if (!head->unary.abstract)
+                print_ast(head->unary.expr, depth + 1);
+            else{
+                print_type(head->unary.type, depth + 1);
+            }
             break;
         }
         case BINARY_NODE:{
             // printf("TEST = %d\n", head->binary.operator);
             n_tabs(depth);
             print_op_type(head->binary.operator_type);
-            print_operator(head->binary.operator);
-            print_ast(head->binary.left, depth + 1);
+            if (!head->binary.abstract){
+                print_operator(head->binary.operator);
+                print_ast(head->binary.left, depth + 1);
+            }
+            else
+                print_type(head->binary.type, depth + 1);
+
             print_ast(head->binary.right, depth + 1);
             break;
         }
@@ -341,7 +352,7 @@ struct astnode * make_ast_node(int type) {
 }
 
 // Helper function to create unary node
-struct astnode * create_unary(int op_type, int op, struct astnode *expr){
+struct astnode * create_unary(int op_type, int op, struct astnode *expr, struct type_node *type){
 
     // Set up type vars
     struct astnode * node = make_ast_node(UNARY_NODE);
@@ -349,12 +360,17 @@ struct astnode * create_unary(int op_type, int op, struct astnode *expr){
     node->unary.operator = op;
 
     // Assign child
-    node->unary.expr = expr;
+    if (expr)
+        node->unary.expr = expr;
+    else if (type){
+        node->unary.type = type;
+        node->unary.abstract = 1;
+    }
     return node;
 }
 
 // Helper function to create binary node
-struct astnode * create_binary(int op_type, int op, struct astnode *left, struct astnode *right){
+struct astnode * create_binary(int op_type, int op, struct astnode *left, struct astnode *right, struct type_node *type){
 
     // Assign node and operator type
     struct astnode * node = make_ast_node(BINARY_NODE);
@@ -362,7 +378,12 @@ struct astnode * create_binary(int op_type, int op, struct astnode *left, struct
     node->binary.operator = op;
     
     // Assign children
-    node->binary.left = left;
+    if (left)
+        node->binary.left = left;
+    else{
+        node->binary.abstract = 1;
+        node->binary.type = type; 
+    }
     node->binary.right = right;
     return node; 
 }

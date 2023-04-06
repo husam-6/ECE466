@@ -12,7 +12,8 @@ enum op_type{
     DEREF,
     ADDR_OF, 
     UNARY_OP, 
-    SIZEOF_OP, 
+    SIZEOF_OP,
+    CAST_OP, 
     COMP_OP, 
     SELECT,
     LOGICAL_OP,
@@ -58,8 +59,8 @@ enum jump_stmt{
 
 // Function prototypes (helper functions for major types of operations)
 struct astnode * make_ast_node(int type);
-struct astnode * create_unary(int op_type, int op, struct astnode *expr);
-struct astnode * create_binary(int op_type, int op, struct astnode *left, struct astnode *right);
+struct astnode * create_unary(int op_type, int op, struct astnode *expr, struct type_node *type);
+struct astnode * create_binary(int op_type, int op, struct astnode *left, struct astnode *right, struct type_node *type);
 struct astnode * create_ternary(int op_type, struct astnode *left, struct astnode *middle, struct astnode *right);
 struct astnode * create_for_loop(struct astnode * init, struct astnode * cond, struct astnode * body, struct astnode * inc);
 struct astnode * create_while_loop(struct astnode * expr, struct astnode * cond, int do_while);
@@ -81,14 +82,26 @@ void print_ast(struct astnode * node, int depth);
 struct astnode_unary{
     int operator;
     enum op_type operator_type;
-    struct astnode *expr; 
+
+    // Flag if node involves abstract types
+    int abstract; 
+    union{
+        struct type_node *type;
+        struct astnode *expr;
+    };
 };
 
 // Binary operators
 struct astnode_binary {
     int operator;
     enum op_type operator_type;
-    struct astnode *left;
+
+    // Flag if node involves abstract types
+    int abstract; 
+    union{
+        struct type_node *type;
+        struct astnode *left;
+    };
     struct astnode *right;
 };
 

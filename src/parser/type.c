@@ -367,7 +367,7 @@ void struct_union_decl(struct top_tail * specifiers, struct top_tail * declarato
 
     // Not in table, so declare a an incomplete struct type here
     if (in_table == 2 || in_table == 0){
-        add_symbol_entry(specifiers->top->stu_node.ident, specifiers->top, TAG_S, NON_VAR, declarator->top->ident.s_class, DECL);
+        add_symbol_entry(specifiers->top->stu_node.ident, specifiers->top, TAG_S, NA, declarator->top->ident.s_class, DECL);
         specifiers->top->stu_node.refers_to = curr_scope->head; 
         // yyerror("INVALID STRUCT DECLARATION");
         // exit(2);
@@ -436,9 +436,9 @@ void new_declaration(struct top_tail * specifiers, struct top_tail * declarator,
 
     // Check if type is valid
     int r = check_type_specifier(specifiers->top);
-    if (!r && declarator->top->ident.n_space != NON_VAR){
-            yyerror("INVALID TYPE SPECIFIER");
-            exit(2);
+    if (!r && declarator->top->ident.n_space != NA){
+        yyerror("INVALID TYPE SPECIFIER");
+        exit(2);
     }
 
     // Add to symbol table
