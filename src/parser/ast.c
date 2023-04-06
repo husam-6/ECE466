@@ -308,7 +308,7 @@ void print_ast(struct astnode * head, int depth){
 
             if (head->jump.jump_type == GOTO_JUMP){
                 printf("%s ", head->jump.ident.name);
-                if (head->jump.ident.sym)
+                if (head->jump.ident.sym && head->jump.ident.sym->type->complete)
                     printf("(def @ %s:%d)\n", head->jump.ident.sym->file_name, head->jump.ident.sym->line_num);
                 else
                     printf("(undef)\n");

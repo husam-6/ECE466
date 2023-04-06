@@ -8,6 +8,7 @@ vpath %.c src/lexer
 vpath %.y src/parser
 vpath %.l src/lexer
 FILE=ptest
+ASSIGNMENT=hw4
 CXXFLAGS=-I./include -I./build -Wall -Wextra -fsanitize=undefined
 BUILD = build
 
@@ -24,10 +25,10 @@ $(BUILD)/lex.yy.c: lexer.l $(BUILD)/parser.tab.c
 	flex --outfile=$(BUILD)/lex.yy.c $<
 
 test: all
-	gcc -E ptests/$(FILE).c | ./$(BUILD)/a.out >ptests/output/$(FILE).out 2>ptests/output/$(FILE).err
+	gcc -E ptests/$(ASSIGNMENT)/$(FILE).c | ./$(BUILD)/a.out >ptests/$(ASSIGNMENT)/$(ASSIGNMENT)_output/$(FILE).out 2>ptests/$(ASSIGNMENT)/$(ASSIGNMENT)_output/$(FILE).err
 
 print: all
-	gcc -E ptests/$(FILE).c | ./$(BUILD)/a.out
+	gcc -E ptests/$(ASSIGNMENT)/$(FILE).c | ./$(BUILD)/a.out
 
 clean: 
 	rm build/*

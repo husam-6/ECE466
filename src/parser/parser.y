@@ -628,7 +628,7 @@ statement:              compound_statement                                      
 ;
 
 // 6.8.1
-labeled_statement:      IDENT ':'                                                               {struct type_node * tt = make_type_node(LABEL_TYPE); add_symbol_entry($1, tt, LABEL_S, NA, DEF);}  
+labeled_statement:      IDENT ':'                                                               {struct type_node * tt = make_type_node(LABEL_TYPE); tt->complete = 1; add_symbol_entry($1, tt, LABEL_S, NA, DEF);}  
                         statement                                                               {$$ = create_label_node($1, $4);}
       |                 CASE constant_expression ':' statement                                  {$$ = create_case_node($2, $4, CASE_STMT);}
       |                 DEFAULT ':' statement                                                   {$$ = create_case_node(NULL, $3, DEFAULT_STMT);}
@@ -670,6 +670,14 @@ jump_statement:         GOTO IDENT ';'                                          
                                                                                                       $$->jump.jump_type = GOTO_JUMP;
                                                                                                       $$->jump.ident.name = $2; 
                                                                                                       resolve_identifier($2, LABEL_S, &$$->jump.ident.sym);
+
+                                                                                                      // Forward decl of label
+                                                                                                      if (!$$->jump.ident.sym){
+                                                                                                            struct type_node * tt = make_type_node(LABEL_TYPE);
+                                                                                                            tt->complete = 0;
+                                                                                                            add_symbol_entry($2, tt, LABEL_S, NA, DECL);
+                                                                                                            resolve_identifier($2, LABEL_S, &$$->jump.ident.sym);
+                                                                                                      }
                                                                                                   }
       |                 CONTINUE ';'                                                              {$$ = make_ast_node(JUMP_NODE); $$->jump.jump_type = CONTINUE_JUMP;}
       |                 BREAK ';'                                                                 {$$ = make_ast_node(JUMP_NODE); $$->jump.jump_type = BREAK_JUMP;}
@@ -701,7 +709,7 @@ function_definition:    declaration_specifiers declarator                     {
                                                                                     new_function_defs($1, $2);
                                                                               }
                         compound_statement                                    {
-                                                                                    print_symbol_table(0);
+                                                                                    // print_symbol_table(0);
                                                                                     close_outer_scope(); 
                                                                                     dump_ast($4->ds_list, 0);
                                                                               }// Dump ast list

@@ -95,6 +95,7 @@ struct type_node{
         int size;
         struct function_type func_node;
         struct struct_union_type stu_node;
+        int complete;
     };
 };
 
