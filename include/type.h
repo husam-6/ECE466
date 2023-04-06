@@ -33,6 +33,7 @@ struct top_tail * create_s_class_node(enum storage_class s_class);
 struct top_tail * create_function_node(struct top_tail * direct_declarator);
 struct top_tail * create_stu_node();
 struct top_tail * init_tt_node();
+struct top_tail * create_ident_type();
 struct decl_list * make_decl_list_node();
 
 struct type_node * make_type_node(enum Type type);

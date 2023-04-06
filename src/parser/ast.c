@@ -109,6 +109,16 @@ char * print_datatype(int type){
     }
 }
 
+char * print_jump_type(enum jump_stmt jump_type){
+    switch(jump_type){
+        case GOTO_JUMP:         {return "GOTO"; break;} 
+        case CONTINUE_JUMP:     {return "CONTINUE"; break;} 
+        case BREAK_JUMP:        {return "BREAK"; break;}
+        case RETURN_JUMP:       {return "RETURN"; break;}
+        default:                {fprintf(stderr, "Unknown jump type...\n"); return ""; break;}
+    }
+}
+
 
 void print_ast(struct astnode * head, int depth){
     
@@ -170,7 +180,7 @@ void print_ast(struct astnode * head, int depth){
                 printf("%s identifier %s defined @ %s:%d\n", print_namespace(tmp->n_space), head->ident.name, tmp->file_name, tmp->line_num);
             }
             else{
-                printf("identifier %s\n", head->ident.name);
+                printf("undef identifier %s\n", head->ident.name);
                 // fprintf(stderr, "USE OF UNDECLARED IDENTIFIER\n");
                 // exit(2);
             }
@@ -238,7 +248,10 @@ void print_ast(struct astnode * head, int depth){
         }
         case IF_STMT: {
             n_tabs(depth);
-            printf("IF:\n");
+            if (head->if_stmt.cond_type == IF_NODE)
+                printf("IF:\n");
+            else
+                printf("SWITCH:\n");
 
             n_tabs(depth+1);
             printf("COND:\n");
@@ -253,10 +266,53 @@ void print_ast(struct astnode * head, int depth){
                 printf("ELSE:\n");
                 print_ast(head->if_stmt.else_stmt, depth+2);
             }
-
             break;
         }
-        case DECLARATION:{
+        case LABEL_NODE:{
+            n_tabs(depth);
+            printf("LABEL(%s):\n", head->label.name);
+            print_ast(head->label.stmt, depth+1);
+            break;
+        }
+        case CASE_NODE:{
+            n_tabs(depth);
+            if (head->case_n.case_type == CASE_STMT){
+                printf("CASE:\n");
+
+                n_tabs(depth+1);
+                printf("EXPR:\n");
+                print_ast(head->case_n.expr, depth+2);
+            }
+            else
+                printf("DEFAULT:\n");
+            
+            n_tabs(depth+1);
+            printf("STMT:\n");
+            print_ast(head->case_n.stmt, depth+2);
+            break;
+        }
+        case JUMP_NODE:{
+            n_tabs(depth);
+            printf("%s ", print_jump_type(head->jump.jump_type));
+
+            if (head->jump.jump_type == GOTO_JUMP){
+                printf("%s ", head->jump.ident.name);
+                if (head->jump.ident.sym)
+                    printf("(def @ %s:%d)\n", head->jump.ident.sym->file_name, head->jump.ident.sym->line_num);
+                else
+                    printf("(undef)\n");
+                break;
+            }
+            else if (head->jump.jump_type == RETURN_JUMP){
+                printf("\n");
+                if (head->jump.expr){
+                    n_tabs(depth+1);
+                    printf("EXPR:\n");
+                    print_ast(head->jump.expr, depth+2);
+                }
+                break;
+            }
+            printf("\n");
             break;
         }
         case COMPOUND:{
@@ -265,6 +321,9 @@ void print_ast(struct astnode * head, int depth){
                 print_ast(tmp->expr, depth);
                 tmp = tmp->next;
             }
+            break;
+        }
+        case DECLARATION:{
             break;
         }
         default:{
@@ -351,11 +410,28 @@ struct astnode * create_while_loop(struct astnode * stmt, struct astnode * cond,
     return node; 
 }
 
-struct astnode * create_if_stmt(struct astnode * stmt, struct astnode * cond, struct astnode * else_stmt){
+struct astnode * create_if_stmt(struct astnode * stmt, struct astnode * cond, struct astnode * else_stmt, enum switch_or_if cond_type){
     struct astnode * node = make_ast_node(IF_STMT);
+    node->if_stmt.cond_type = cond_type;
     node->if_stmt.stmt = stmt;
     node->if_stmt.cond = cond; 
     node->if_stmt.else_stmt = else_stmt; 
+    return node; 
+}
+
+
+struct astnode * create_label_node(char * name, struct astnode * stmt){
+    struct astnode * node = make_ast_node(LABEL_NODE);
+    node->label.name = name;
+    node->label.stmt = stmt;
+    return node; 
+}
+
+struct astnode * create_case_node(struct astnode * expr, struct astnode * stmt, enum case_default case_type){
+    struct astnode * node = make_ast_node(CASE_NODE);
+    node->case_n.expr = expr;
+    node->case_n.stmt = stmt;
+    node->case_n.case_type = case_type; 
     return node; 
 }
 
@@ -383,14 +459,14 @@ void push_ll(struct linked_list *head, struct astnode *expr){
 }
 
 // Function to search symbol table for an identifier and point an ident node to the symbol
-void resolve_identifier(char * ident, enum namespace n_space, struct astnode * node){
+void resolve_identifier(char * ident, enum namespace n_space, struct astnode_symbol ** node){
     struct astnode_symbol * sym; 
     int in_table = search_all_tabs(ident, n_space, curr_scope, &sym);
 
     // Point to struct in symbol table
     if (in_table == 1)
-          node->ident.sym = sym;
-    else{
+          (*node) = sym;
+    else if (n_space == VAR_S){
           yyerror("USE OF UNDECLARED IDENTIFIER");
           fprintf(stderr, "IDENTIFIER: %s\n", ident);
           exit(2);

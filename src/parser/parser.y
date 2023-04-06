@@ -64,8 +64,9 @@
 %type <ll_p> function_arguments
 %type <dl> init_declarator_list; 
 
-/* For loops, while loops, control statements */
+/* For loops, while loops, control statements, labeled statements */
 %type <astnode_p> decl_or_stmt statement iteration_statement compound_statement selection_statement
+%type <astnode_p> labeled_statement constant_expression jump_statement
 %type <ll_p> decl_or_stmt_list 
 
 
@@ -78,7 +79,7 @@ primary_expression:   IDENT                                             {
                                                                               node->ident.name = $1;
                                                                               
                                                                               // Look up in symbol table
-                                                                              resolve_identifier($1, VAR_S, node);
+                                                                              resolve_identifier($1, VAR_S, &node->ident.sym);
                                                                               $$ = node;
                                                                         }       
       |               NUMBER                                            {
@@ -478,26 +479,7 @@ declarator:             pointer direct_declarator                               
 
 // Assume array declarations are either empty or constant
 // Assume function declarations take unknown args
-direct_declarator:      IDENT                                                       {
-                                                                                          // Identifier node
-                                                                                          struct type_node * node = make_type_node(IDENT_TYPE);
-                                                                                          node->ident.name = $1;
-
-                                                                                          // Save namespace + s_class (change later if applicable)
-                                                                                          node->ident.n_space = VAR_S;
-
-                                                                                          // Default to EXTERN - edit later 
-                                                                                          node->ident.s_class = EXTERN_S;
-
-                                                                                          if (curr_scope->s_type == FUNC_SCOPE || curr_scope->s_type == PROTOTYPE_SCOPE)
-                                                                                                node->ident.s_class = AUTO_S;
-
-                                                                                          // Set top and tail nodes
-                                                                                          struct top_tail * tt = make_tt_node(); 
-                                                                                          tt->top = node; 
-                                                                                          tt->tail = node; 
-                                                                                          $$ = tt;
-                                                                                    }           
+direct_declarator:      IDENT                                                       {$$ = create_ident_type($1);}           
       |                 '(' declarator ')'                                          {$$ = $2;}
       |                 direct_declarator '['  ']'                                  {
                                                                                           // Add array type node
@@ -570,25 +552,16 @@ parameter_declaration:  declaration_specifiers declarator                       
                                                                                     }
       |                 declaration_specifiers abstract_declarator                  {
                                                                                           // Create dummy ident node
-                                                                                          struct top_tail * node = init_tt_node(IDENT_TYPE);
-                                                                                          node->top->ident.name = "1UNDEF";
-                                                                                          node->top->ident.s_class = AUTO_S;
-                                                                                          node->top->ident.n_space = VAR_S; 
-                                                                                          node->top->next_type = $2->top; 
-                                                                                          node->tail = $2->tail; 
-                                                                                          
-                                                                                          new_declaration($1, node, 1);
+                                                                                          $$ = create_ident_type("1UNDEF");
+                                                                                          $$->top->next_type = $2->top; 
+                                                                                          $$->tail = $2->tail; 
+                                                                                          new_declaration($1, $$, 1);
 
                                                                                     }
       |                 declaration_specifiers                                      {
                                                                                           // Create dummy ident node
-                                                                                          struct top_tail * node = init_tt_node(IDENT_TYPE);
-                                                                                          node->top->ident.name = "1UNDEF";
-                                                                                          node->top->ident.s_class = AUTO_S;
-                                                                                          node->top->ident.n_space = VAR_S; 
-                                                                                          
-                                                                                          new_declaration($1, node, 1);
-                                                                                          
+                                                                                          $$ = create_ident_type("1UNDEF");
+                                                                                          new_declaration($1, $$, 1);
                                                                                     }
 ;
 
@@ -646,7 +619,7 @@ direct_abstract_declarator:   '(' abstract_declarator ')'                       
 
 
 // 6.8
-statement:              compound_statement                                    {$$ = $1; close_outer_scope();}                              
+statement:              compound_statement                                                      {$$ = $1; close_outer_scope();}                              
       |                 expression_statement                                  //{print_ast($1, 0);}
       |                 labeled_statement
       |                 selection_statement
@@ -655,14 +628,15 @@ statement:              compound_statement                                    {$
 ;
 
 // 6.8.1
-labeled_statement:      IDENT ':'         {struct type_node * tt = make_type_node(LABEL_TYPE); add_symbol_entry($1, tt, LABEL_S, NON_VAR, DEF);}   statement
-      |                 CASE constant_expression ':' statement
-      |                 DEFAULT ':' statement
+labeled_statement:      IDENT ':'                                                               {struct type_node * tt = make_type_node(LABEL_TYPE); add_symbol_entry($1, tt, LABEL_S, NON_VAR, DEF);}  
+                        statement                                                               {$$ = create_label_node($1, $4);}
+      |                 CASE constant_expression ':' statement                                  {$$ = create_case_node($2, $4, CASE_STMT);}
+      |                 DEFAULT ':' statement                                                   {$$ = create_case_node(NULL, $3, DEFAULT_STMT);}
 
 
 // 6.8.2
-compound_statement:     '{'   {create_new_scope();}   decl_or_stmt_list '}'   {$$ = make_ast_node(COMPOUND); $$->ds_list = $3;} 
-      |                 '{'   '}'                                             {$$ = NULL;}
+compound_statement:     '{'   {create_new_scope();}   decl_or_stmt_list '}'                     {$$ = make_ast_node(COMPOUND); $$->ds_list = $3;} 
+      |                 '{'   {create_new_scope();}         '}'                                 {$$ = make_ast_node(COMPOUND); $$->ds_list = NULL;}
 ;
 
 
@@ -671,9 +645,9 @@ expression_statement:   expression ';'
       |                 ';'
 
 // 6.8.4
-selection_statement:    IF '(' expression ')' statement                       %prec IF            {$$ = create_if_stmt($5, $3, NULL);}
-      |                 IF '(' expression ')' statement ELSE statement        %prec ELSE          {$$ = create_if_stmt($5, $3, $7);}
-      |                 SWITCH '('  expression ')' statement
+selection_statement:    IF '(' expression ')' statement                       %prec IF            {$$ = create_if_stmt($5, $3, NULL, IF_NODE);}
+      |                 IF '(' expression ')' statement ELSE statement        %prec ELSE          {$$ = create_if_stmt($5, $3, $7, IF_NODE);}
+      |                 SWITCH '('  expression ')' statement                                      {$$ = create_if_stmt($5, $3, NULL, SWITCH_NODE);}
 
 
 // 6.8.5
@@ -690,11 +664,22 @@ iteration_statement:    WHILE '(' expression ')' statement                      
 
 
 // 6.8.6
-jump_statement:         GOTO IDENT ';'
-      |                 CONTINUE ';'
-      |                 BREAK ';'
-      |                 RETURN expression ';'
-      |                 RETURN ';'
+jump_statement:         GOTO IDENT ';'                                                            {
+                                                                                                      // Create jump node, save identifier info
+                                                                                                      $$ = make_ast_node(JUMP_NODE);
+                                                                                                      $$->jump.jump_type = GOTO_JUMP;
+                                                                                                      $$->jump.ident.name = $2; 
+                                                                                                      resolve_identifier($2, LABEL_S, &$$->jump.ident.sym);
+                                                                                                  }
+      |                 CONTINUE ';'                                                              {$$ = make_ast_node(JUMP_NODE); $$->jump.jump_type = CONTINUE_JUMP;}
+      |                 BREAK ';'                                                                 {$$ = make_ast_node(JUMP_NODE); $$->jump.jump_type = BREAK_JUMP;}
+      |                 RETURN expression ';'                                                     {
+                                                                                                      // Create return node, save expression
+                                                                                                      $$ = make_ast_node(JUMP_NODE);
+                                                                                                      $$->jump.jump_type = RETURN_JUMP;
+                                                                                                      $$->jump.expr = $2;
+                                                                                                  }
+      |                 RETURN ';'                                                                {$$ = make_ast_node(JUMP_NODE); $$->jump.jump_type = RETURN_JUMP;}
 
 
 // Top Level (From Hak)
@@ -716,7 +701,7 @@ function_definition:    declaration_specifiers declarator                     {
                                                                                     new_function_defs($1, $2);
                                                                               }
                         compound_statement                                    {
-                                                                                    // print_symbol_table();
+                                                                                    print_symbol_table(0);
                                                                                     close_outer_scope(); 
                                                                                     dump_ast($4->ds_list, 0);
                                                                               }// Dump ast list

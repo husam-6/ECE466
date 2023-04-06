@@ -134,6 +134,25 @@ struct top_tail * create_stu_node(enum stu_type type){
     return tt; 
 }
 
+// Allocate memory for a identifier type node
+struct top_tail * create_ident_type(char * name){
+    // Set top and tail nodes
+    struct top_tail * tt = init_tt_node(IDENT_TYPE); 
+
+    tt->top->ident.name = name;
+
+    // Save namespace + s_class (change later if applicable)
+    tt->top->ident.n_space = VAR_S;
+
+    // Default to EXTERN - edit later 
+    tt->top->ident.s_class = EXTERN_S;
+
+    if (curr_scope->s_type == FUNC_SCOPE || curr_scope->s_type == PROTOTYPE_SCOPE)
+        tt->top->ident.s_class = AUTO_S;
+
+    return tt; 
+}
+
 // Helper to allocate memory and initialize a function node
 struct top_tail * create_function_node(struct top_tail * direct_declarator){
     // Could be definition 
