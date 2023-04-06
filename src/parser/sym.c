@@ -16,7 +16,7 @@ char * print_s_class(enum storage_class s_class){
         case (REGISTER_S):          {return "REGISTER";};
         case (EXTERN_S):            {return "EXTERN";};
         case (STATIC_S):            {return "STATIC";};
-        case (NON_VAR):             {return "NON_VAR";};
+        case (NA):                  {return "N/A";};
         default:                    {return "UNKNOWN";}
     } 
 }
@@ -67,16 +67,18 @@ void print_scope_symbols(struct scope * curr_scope){
 
 
 // Print symbol table identifiers
-void print_symbol_table(){
+void print_symbol_table(int children){
     printf("------------\tPRINTING SYMBOL TABLE...\t------------\n"); 
     struct scope * tmp_scope = curr_scope;
     while(tmp_scope != NULL){
         print_scope_symbols(tmp_scope);
         printf("EXITING %s SCOPE...\n", print_scope(tmp_scope->s_type));
-        tmp_scope = tmp_scope->outer;
+        if (children)
+            tmp_scope = tmp_scope->next_child;
+        else
+            tmp_scope = tmp_scope->outer;
     }
     printf("------------\tEND OF SYMBOL TABLE\t------------\n");
-
 }
 
 void print_struct_members(struct astnode_symbol * mini_head){
@@ -183,10 +185,10 @@ int valid_redecl(struct astnode_symbol * first, struct astnode_symbol * second){
         
         return check_types(first->type->next_type, second->type);
     }
-
+    
 
     // variables with no storage class specifier and no initializer are valid if types match 
-    if (first->type->type != S_CLASS && second->type->type != S_CLASS)
+    if (first->type->type != S_CLASS && second->type->type != S_CLASS && curr_scope->s_type == GLOBAL_SCOPE)
         return check_types(first->type, second->type);
 
 
@@ -229,10 +231,13 @@ int check_for_symbol(char * ident, enum namespace n_space, struct scope * scope,
 // Returns 1 if the entry is in the table
 // Returns 0 if it isnt
 int search_all_tabs(char * ident, enum namespace n_space, struct scope * tmp_scope, struct astnode_symbol ** symbol_found){
-    while(check_for_symbol(ident, n_space, tmp_scope, symbol_found) != 1 && tmp_scope->outer != NULL){
+    int in_table;
+    while((in_table = check_for_symbol(ident, n_space, tmp_scope, symbol_found)) != 1){
         tmp_scope = tmp_scope->outer;
+        if (tmp_scope == NULL)
+            break;
     }
-    int in_table = check_for_symbol(ident, n_space, tmp_scope, symbol_found);
+    // int in_table = check_for_symbol(ident, n_space, tmp_scope, symbol_found);
     if (in_table == 1){
         return 1; 
     }
@@ -245,7 +250,9 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
 {
     struct scope * tmp_scope = curr_scope;
     int proto = 0;
-    if ((curr_scope->s_type == PROTOTYPE_SCOPE && n_space == FUNC_S) || (curr_scope->s_type == FUNC_SCOPE && n_space == FUNC_S)){
+
+    // when defining a function, must go in global scope
+    if ((curr_scope->s_type == PROTOTYPE_SCOPE && n_space == FUNC_S)){
         while(tmp_scope->outer != NULL)
             tmp_scope = tmp_scope->outer; 
         proto = 1; 
@@ -278,6 +285,10 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
         new_symbol->next = tmp_scope->head; // Else push to top of stack
 
 
+    // Change temporary function namespace to variable...
+    if (n_space == FUNC_S)
+        n_space = VAR_S;
+
     // Set variable parameters
     new_symbol->name = ident; 
     new_symbol->type = type; 
@@ -308,11 +319,11 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
             }
         }
         // If we are defining a previously declared symbol
-        if ((n_space == FUNC_S || n_space == TAG_S) && (symbol_k == DEF && symbol_found->symbol_k == DECL)){
+        if ((n_space == VAR_S || n_space == TAG_S || n_space == LABEL_S) && (symbol_k == DEF && symbol_found->symbol_k == DECL)){
             struct astnode_symbol * tmp = symbol_found->next; 
             (*symbol_found) = (*new_symbol);
             symbol_found->next = tmp; 
-            print_symbol(symbol_found, 0);
+            // print_symbol(symbol_found, 0);
             return; 
         }
         if (n_space == TAG_S){
@@ -328,7 +339,7 @@ void add_symbol_entry(char * ident, struct type_node * type, enum namespace n_sp
     tmp_scope->head = new_symbol; 
 
     // Print the newly inputted symbol 
-    print_symbol(new_symbol, 0);
+    // print_symbol(new_symbol, 0);
 
     // Update curr_scope if it was altered
     if (proto)
@@ -366,20 +377,38 @@ void create_new_scope(enum scope_type s_type){
         if (s_type != PROTOTYPE_SCOPE){
             // Just change prototype scope to now be functions cope
             curr_scope->s_type = FUNC_SCOPE;
+
+            // Update prototype variables to func scope
+            struct astnode_symbol * tmp = curr_scope->head; 
+            while (tmp){
+                tmp->scope = FUNC_SCOPE; 
+                tmp = tmp->next;
+            }
             return;
         }
         tmp = make_new_scope(PROTOTYPE_SCOPE);
     }
+    
+    // Save scope under child scope linked list 
+    // Push child scope onto linked list of child scopes
+    if (curr_scope->next_child == NULL)
+        curr_scope->next_child = tmp; 
+    else{
+        tmp->next_child = curr_scope->next_child;
+        curr_scope->next_child = tmp;
+    }
+
     // Push new scope onto stack
     tmp->outer = curr_scope;
     curr_scope = tmp;
+
 }
 
 void close_outer_scope(){
     // For now not freeing any memory...
-    struct scope * tmp = curr_scope; 
+    // struct scope * tmp = curr_scope; 
     curr_scope = curr_scope->outer; 
-    free(tmp);
+    // free(tmp);
 }
 
 // Reverses a given astnode symbol linked list / stack

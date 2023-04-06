@@ -8,9 +8,14 @@
    // Function prototypes
    void yyerror(const char* msg);
    int yylex();
-   int abstract_count;
+   struct astnode * asts;
 }
 
+/* To resolve if statement conflicts (recall lecture notes 2) */
+%left IF
+%left ELSE
+
+/* Tokens */
 %token IDENT CHARLIT STRING NUMBER INDSEL PLUSPLUS MINUSMINUS SHL SHR
 %token LTEQ GTEQ EQEQ NOTEQ LOGAND LOGOR ELLIPSIS AUTO TIMESEQ DIVEQ MODEQ
 %token PLUSEQ MINUSEQ SHLEQ SHREQ ANDEQ OREQ XOREQ BREAK CASE CHAR CONST
@@ -33,78 +38,49 @@
       struct linked_list *ll_p;
       struct type_node *type_p;
       struct top_tail *tt; 
+      struct decl_list * dl;
 };
 
 
+/* Tokens */
 %type <ident> IDENT 
 %type <token> LTEQ GTEQ EQEQ NOTEQ LOGAND LOGOR TIMESEQ DIVEQ MODEQ PLUSEQ
 %type <token> MINUSEQ SHLEQ SHREQ ANDEQ XOREQ OREQ assignment_operator
 %type <op_type> unary_operator
+
+/* Expressions */
 %type <astnode_p> primary_expression postfix_expression unary_expression cast_expression multiplicative_expression
 %type <astnode_p> additive_expression shift_expression relational_expression equality_expression AND_expression
 %type <astnode_p> exclusive_OR_expression inclusive_OR_expression logical_AND_expression logical_OR_expression conditional_expression
-%type <astnode_p> assignment_expression expression function_call // expression_list
+%type <astnode_p> assignment_expression expression function_call expression_statement
+
+/* Declarations */
 %type <tt> declarator declaration_specifiers declaration init_declarator
-%type <tt> init_declarator_list type_specifier pointer direct_declarator parameter_declaration parameter_list
+%type <tt> type_specifier pointer direct_declarator parameter_declaration parameter_list
 /* %type <ll_p> function_arguments */
-%type<tt> storage_class_specifier function_specifier type_qualifier struct_or_union struct_or_union_specifier 
-%type<tt> specifier_qualifier_list struct_declarator_list struct_declarator
-%type<tt> type_name abstract_declarator direct_abstract_declarator parameter_type_list
+%type <tt> storage_class_specifier function_specifier type_qualifier struct_or_union struct_or_union_specifier 
+%type <tt> specifier_qualifier_list struct_declarator_list struct_declarator
+%type <tt> type_name abstract_declarator direct_abstract_declarator parameter_type_list
 %type <ll_p> function_arguments
+%type <dl> init_declarator_list; 
+
+/* For loops, while loops, control statements, labeled statements */
+%type <astnode_p> decl_or_stmt statement iteration_statement compound_statement selection_statement
+%type <astnode_p> labeled_statement constant_expression jump_statement
+%type <ll_p> decl_or_stmt_list 
 
 
 %%
-// Top Level (From Hak)
-declaration_or_fndef_list:    declaration_or_fndef                                        //{print_symbol_table();}
-      |                       declaration_or_fndef_list declaration_or_fndef              //{print_symbol_table();}             // For debugging printing symbol table at top level
-
-declaration_or_fndef:         declaration                                                 {
-                                                                                                // print_type(top, 0);
-                                                                                                // print_type(tail, 0);
-                                                                                          }
-      |                       function_definition
-;
-
-// Declaration Specifier int, extern int
-// Declarator is the ident and any pointers/array info
-// Compound statement is everything in the brackets
-function_definition:    declaration_specifiers declarator               {
-                                                                              if ($2->top == NULL || $2->top->next_type == NULL || $2->top->next_type->type != FUNCTION_TYPE) {
-                                                                                    yyerror("INVALID FUNCTION DEFINITION");
-                                                                                    exit(2);
-                                                                              };
-                                                                              new_function_defs($1, $2);
-                                                                        }
-                        compound_statement                              //{printf("CURRENT SCOPE: %d\n", curr_scope->s_type);}
-;                 
-
-statement:        compound_statement                                    
-      |           expression ';'                                        {print_ast($1, 0);}
-;                 
-
-compound_statement:     '{'   {create_new_scope();}   decl_or_stmt_list '}'   {
-                                                                                    // print_symbol_table();
-                                                                                    close_outer_scope();
-                                                                              }                                           
-;
-
-decl_or_stmt_list:      decl_or_stmt 
-      |                 decl_or_stmt_list decl_or_stmt
-;
-
-decl_or_stmt:     declaration                  
-      |           statement
-;
-
 
 // Expressions 6.5.1
 primary_expression:   IDENT                                             {
                                                                               // Identifier node
-                                                                              // Look up in symbol table
-                                                                              // Point to struct in symbol table
                                                                               struct astnode *node = make_ast_node(IDENT_NODE);
-                                                                              node->ident = yylval.ident;
-                                                                              $$ = node; 
+                                                                              node->ident.name = $1;
+                                                                              
+                                                                              // Look up in symbol table
+                                                                              resolve_identifier($1, VAR_S, &node->ident.sym);
+                                                                              $$ = node;
                                                                         }       
       |               NUMBER                                            {
                                                                            // Number node (struct stays the same)
@@ -125,43 +101,41 @@ primary_expression:   IDENT                                             {
                                                                            node->char_lit = yylval.charlit;
                                                                            $$ = node; 
                                                                         } 
-      |               '(' expression ')'                                {
-                                                                           $$ = $2;
-                                                                        }
+      |               '(' expression ')'                                {$$ = $2;}
 ;
 
 // 6.5.2
 postfix_expression:  primary_expression
       |              postfix_expression '[' expression ']'              {
                                                                               // Addition node
-                                                                              struct astnode *add = create_binary(BINOP,'+', $1, $3);
+                                                                              struct astnode *add = create_binary(BINOP,'+', $1, $3, NULL);
 
                                                                               //Deref node
-                                                                              struct astnode *deref = create_unary(DEREF, '*', add);
+                                                                              struct astnode *deref = create_unary(DEREF, '*', add, NULL);
                                                                               $$ = deref;
                                                                         }
       |              function_call        
       |              postfix_expression '.' IDENT                       {
                                                                               // Ident node
                                                                               struct astnode *ident = make_ast_node(IDENT_NODE);
-                                                                              ident->ident = $3;
+                                                                              ident->ident.name = $3;
 
-                                                                              $$ = create_binary(SELECT, '.', $1, ident);
+                                                                              $$ = create_binary(SELECT, '.', $1, ident, NULL);
 
                                                                         }
-      |              postfix_expression INDSEL IDENT                    {
+      |              postfix_expression INDSEL IDENT                    {     
                                                                               // Ident node
                                                                               struct astnode *ident = make_ast_node(IDENT_NODE);
-                                                                              ident->ident = $3;
+                                                                              ident->ident.name = $3;
 
                                                                               // Addition node
-                                                                              struct astnode *add = create_binary(BINOP,'+', $1, ident);
+                                                                              struct astnode *add = create_binary(BINOP,'+', $1, ident, NULL);
 
                                                                               //Deref node
-                                                                              $$ = create_unary(DEREF, '*', add);
+                                                                              $$ = create_unary(DEREF, '*', add, NULL);
                                                                         }
-      |              postfix_expression PLUSPLUS                        {$$ = create_unary(UNARY_OP, PLUSPLUS, $1);}
-      |              postfix_expression MINUSMINUS                      {$$ = create_unary(UNARY_OP, MINUSMINUS, $1);}
+      |              postfix_expression PLUSPLUS                        {$$ = create_unary(UNARY_OP, PLUSPLUS, $1, NULL);}
+      |              postfix_expression MINUSMINUS                      {$$ = create_unary(UNARY_OP, MINUSMINUS, $1, NULL);}
       
       /* |              '(' type_name ')' '{' initializer_list '}'
       |              '(' type_name ')' '{' initializer_list ',' '}' */
@@ -169,7 +143,7 @@ postfix_expression:  primary_expression
 
 function_call:       postfix_expression '(' function_arguments ')'      {$$ = create_fn_node($1 , $3);}
 
-function_arguments:  /*EMPTY*/                                            
+function_arguments:  /*EMPTY*/                                          {$$ = create_ll_node(NULL);}
       |              assignment_expression                              {$$ = create_ll_node($1);}//make linked list, return head
       |              function_arguments ',' assignment_expression       {push_ll($1, $3); $$ = $1;}//add to linked list in front, return head                 
 
@@ -182,7 +156,7 @@ unary_expression:    postfix_expression
                                                                               one->num.integer = 1;
 
                                                                               // Set up binary node for ++expr
-                                                                              $$ = create_binary(ASSIGNMENT_COMPOUND, PLUSEQ, $2, one);
+                                                                              $$ = create_binary(ASSIGNMENT_COMPOUND, PLUSEQ, $2, one, NULL);
                                                                         }
       |              MINUSMINUS unary_expression                        {
                                                                               // Set up unary node for --expr
@@ -192,22 +166,22 @@ unary_expression:    postfix_expression
                                                                               one->num.type = I; 
                                                                               one->num.integer = 1;
 
-                                                                              $$ = create_binary(ASSIGNMENT_COMPOUND, MINUSEQ, $2, one); 
+                                                                              $$ = create_binary(ASSIGNMENT_COMPOUND, MINUSEQ, $2, one, NULL); 
                                                                         }
 
       |              unary_operator cast_expression                     {
                                                                               struct astnode *un_op;
                                                                               //Special Case For Deref
                                                                               if ($1 == '*')
-                                                                                    un_op = create_unary(DEREF, $1, $2);
+                                                                                    un_op = create_unary(DEREF, $1, $2, NULL);
                                                                               else
-                                                                                    un_op = create_unary(UNARY_OP, $1, $2);
+                                                                                    un_op = create_unary(UNARY_OP, $1, $2, NULL);
 
                                                                               $$ = un_op;            
 
                                                                         }    
-      |              SIZEOF '(' unary_expression ')'                    {$$= create_unary(SIZEOF_OP, SIZEOF, $3);}
-      |              SIZEOF '(' type_name ')'                           
+      |              SIZEOF '(' unary_expression ')'                    {$$ = create_unary(SIZEOF_OP, SIZEOF, $3, NULL);}
+      |              SIZEOF '(' type_name ')'                           {$$ = create_unary(SIZEOF_OP, SIZEOF, NULL, $3->top);}
 ;
 
 unary_operator:      '&'            {$$ = '&';}
@@ -220,65 +194,65 @@ unary_operator:      '&'            {$$ = '&';}
 
 // 6.5.4
 cast_expression:  unary_expression
-      |           '(' type_name ')' cast_expression
+      |           '(' type_name ')' cast_expression                     {$$ = create_binary(CAST_OP, '(', NULL, $4, $2->top);}
 ;
 
 // 6.5.5
 multiplicative_expression: cast_expression
-      |              multiplicative_expression '*' cast_expression                              {$$ = create_binary(BINOP, '*', $1, $3);}
-      |              multiplicative_expression '/' cast_expression                              {$$ = create_binary(BINOP, '/', $1, $3);}
-      |              multiplicative_expression '%' cast_expression                              {$$ = create_binary(BINOP, '%', $1, $3);}
+      |              multiplicative_expression '*' cast_expression                              {$$ = create_binary(BINOP, '*', $1, $3, NULL);}
+      |              multiplicative_expression '/' cast_expression                              {$$ = create_binary(BINOP, '/', $1, $3, NULL);}
+      |              multiplicative_expression '%' cast_expression                              {$$ = create_binary(BINOP, '%', $1, $3, NULL);}
 ;                       
 
 // 6.5.6                      
 additive_expression: multiplicative_expression                    
-      |              additive_expression '+' multiplicative_expression                          {$$ = create_binary(BINOP, '+', $1, $3);}    
-      |              additive_expression '-' multiplicative_expression                          {$$ = create_binary(BINOP, '-', $1, $3);}
+      |              additive_expression '+' multiplicative_expression                          {$$ = create_binary(BINOP, '+', $1, $3, NULL);}    
+      |              additive_expression '-' multiplicative_expression                          {$$ = create_binary(BINOP, '-', $1, $3, NULL);}
 ;                       
 
 // 6.5.7                      
 shift_expression:    additive_expression                    
-      |              shift_expression SHL additive_expression                                   {$$ = create_binary(ASSIGNMENT_COMPOUND, SHL, $1, $3);}
-      |              shift_expression SHR additive_expression                                   {$$ = create_binary(ASSIGNMENT_COMPOUND, SHR, $1, $3);}
+      |              shift_expression SHL additive_expression                                   {$$ = create_binary(ASSIGNMENT_COMPOUND, SHL, $1, $3, NULL);}
+      |              shift_expression SHR additive_expression                                   {$$ = create_binary(ASSIGNMENT_COMPOUND, SHR, $1, $3, NULL);}
 ;                       
 
 // 6.5.8                      
 relational_expression: shift_expression                     
-      |              relational_expression '<' shift_expression                                 {$$ = create_binary(COMP_OP, '<', $1, $3);}
-      |              relational_expression '>' shift_expression                                 {$$ = create_binary(COMP_OP, '>', $1, $3);}
-      |              relational_expression LTEQ shift_expression                                {$$ = create_binary(COMP_OP, LTEQ, $1, $3);}
-      |              relational_expression GTEQ shift_expression                                {$$ = create_binary(COMP_OP, GTEQ, $1, $3);}
+      |              relational_expression '<' shift_expression                                 {$$ = create_binary(COMP_OP, '<', $1, $3, NULL);}
+      |              relational_expression '>' shift_expression                                 {$$ = create_binary(COMP_OP, '>', $1, $3, NULL);}
+      |              relational_expression LTEQ shift_expression                                {$$ = create_binary(COMP_OP, LTEQ, $1, $3, NULL);}
+      |              relational_expression GTEQ shift_expression                                {$$ = create_binary(COMP_OP, GTEQ, $1, $3, NULL);}
 ;                       
 
 // 6.5.9                      
 equality_expression: relational_expression                        
-      |              equality_expression EQEQ relational_expression                             {$$ = create_binary(COMP_OP, EQEQ, $1, $3);}
-      |              equality_expression NOTEQ relational_expression                            {$$ = create_binary(COMP_OP, NOTEQ, $1, $3);}   
+      |              equality_expression EQEQ relational_expression                             {$$ = create_binary(COMP_OP, EQEQ, $1, $3, NULL);}
+      |              equality_expression NOTEQ relational_expression                            {$$ = create_binary(COMP_OP, NOTEQ, $1, $3, NULL);}   
 ;
 
 // 6.5.10
 AND_expression:      equality_expression
-      |              AND_expression '&' equality_expression                                     {$$ = create_binary(LOGICAL_OP, '&', $1, $3);}
+      |              AND_expression '&' equality_expression                                     {$$ = create_binary(LOGICAL_OP, '&', $1, $3, NULL);}
 ;
 
 // 6.5.11
 exclusive_OR_expression: AND_expression
-      |              exclusive_OR_expression '^' AND_expression                                 {$$ = create_binary(LOGICAL_OP, '^', $1, $3);}
+      |              exclusive_OR_expression '^' AND_expression                                 {$$ = create_binary(LOGICAL_OP, '^', $1, $3, NULL);}
 ;
 
 // 6.5.12
 inclusive_OR_expression: exclusive_OR_expression
-      |              inclusive_OR_expression '|' exclusive_OR_expression                        {$$ = create_binary(LOGICAL_OP, '|', $1, $3);}
+      |              inclusive_OR_expression '|' exclusive_OR_expression                        {$$ = create_binary(LOGICAL_OP, '|', $1, $3, NULL);}
 ;
 
 // 6.5.13
 logical_AND_expression: inclusive_OR_expression
-      |              logical_AND_expression LOGAND inclusive_OR_expression                      {$$ = create_binary(LOGICAL_OP, LOGAND, $1, $3);}
+      |              logical_AND_expression LOGAND inclusive_OR_expression                      {$$ = create_binary(LOGICAL_OP, LOGAND, $1, $3, NULL);}
 ;
 
 // 6.5.14
 logical_OR_expression:  logical_AND_expression
-      |              logical_OR_expression LOGOR logical_AND_expression                         {$$ = create_binary(LOGICAL_OP, LOGOR, $1, $3);}
+      |              logical_OR_expression LOGOR logical_AND_expression                         {$$ = create_binary(LOGICAL_OP, LOGOR, $1, $3, NULL);}
 ;
 
 // 6.5.15
@@ -290,9 +264,9 @@ conditional_expression: logical_OR_expression
 assignment_expression:  conditional_expression 
       |              unary_expression assignment_operator assignment_expression                 {
                                                                                                       if ($2 == '=')
-                                                                                                            $$ = create_binary(ASSIGNMENT, '=', $1, $3);
+                                                                                                            $$ = create_binary(ASSIGNMENT, '=', $1, $3, NULL);
                                                                                                       else
-                                                                                                            $$ = create_binary(ASSIGNMENT_COMPOUND, $2, $1, $3);
+                                                                                                            $$ = create_binary(ASSIGNMENT_COMPOUND, $2, $1, $3, NULL);
 
                                                                                                 }
 ;
@@ -313,7 +287,7 @@ assignment_operator: '='             {$$ = '=';}
 
 // 6.5.17
 expression:          assignment_expression                              
-      |              expression ',' assignment_expression                                 {$$ = create_binary(BINOP, ',', $1, $3);}
+      |              expression ',' assignment_expression                                 {$$ = create_binary(BINOP, ',', $1, $3, NULL);}
 ;
 
 
@@ -326,15 +300,20 @@ constant_expression: conditional_expression
 
 
 // Declarations 6.7
-declaration:            declaration_specifiers init_declarator_list ';'                   {new_declaration($1, $2, 0);}
+declaration:            declaration_specifiers init_declarator_list ';'                   {
+                                                                                                struct decl_list * tmp = $2; 
+                                                                                                while(tmp != NULL){
+                                                                                                      new_declaration($1, tmp->item, 0);
+                                                                                                      tmp = tmp->next_decl; 
+                                                                                                }
+                                                                                          }
       |                 declaration_specifiers  ';'                                       {
                                                                                                 if ($1->top->type == STRUCT_UNION_TYPE)
-                                                                                                      add_symbol_entry($1->top->stu_node.ident, $1->top, TAG_S, NON_VAR, DECL);
+                                                                                                      add_symbol_entry($1->top->stu_node.ident, $1->top, TAG_S, NA, DECL);
                                                                                                 else{
                                                                                                       yyerror("INVALID DECLARATION");
                                                                                                       exit(2);
                                                                                                 }
-                                                                                                
                                                                                           }              
 ;
 
@@ -363,9 +342,12 @@ declaration_specifiers: storage_class_specifier declaration_specifiers          
       |                 function_specifier
 ;
 
-// for now require declarations to be on separate lines...
-init_declarator_list:   init_declarator                                                   //{printf("name: %s, node type: %d\n", $1->ident, $1->type);}
-      /* |                 init_declarator_list ',' init_declarator                          //{printf("name: %s, node type: %d\n", $1->ident, $1->type);} */
+init_declarator_list:   init_declarator                                                   {$$ = make_decl_list_node($1);}
+      |                 init_declarator_list ',' init_declarator                          {
+                                                                                                struct decl_list * tmp = make_decl_list_node($3);
+                                                                                                tmp->next_decl = $1;
+                                                                                                $$ = tmp;
+                                                                                          }
 ;
 
 init_declarator:        declarator
@@ -402,13 +384,17 @@ struct_or_union_specifier:    struct_or_union IDENT '{'                         
                                                                                           if (curr_scope->s_type == PROTOTYPE_SCOPE || curr_scope->s_type == FUNC_SCOPE ||
                                                                                           curr_scope->s_type == BLOCK_SCOPE)
                                                                                                       $1->top->ident.s_class = AUTO_S;
-                                                                                          add_symbol_entry($2, $1->top, TAG_S, NON_VAR, DEF);
+                                                                                          
+                                                                                          add_symbol_entry($2, $1->top, TAG_S, NA, DEF);
                                                                                           $1->top->stu_node.refers_to = curr_scope->head; 
+
                                                                                           create_new_scope(MEMBER_S);
                                                                                     } 
                               struct_declaration_list '}'                           {
                                                                                           // Mark the struct ndoeo as complete (get just installed symbol from symbol table)
                                                                                           struct astnode_symbol * just_installed; 
+
+                                                                                          // Install as complete
                                                                                           $1->top->stu_node.complete = COMPLETE;
                                                                                           $1->top->stu_node.ident = $2;
                                                                                           
@@ -418,19 +404,22 @@ struct_or_union_specifier:    struct_or_union IDENT '{'                         
                                                                                           just_installed->type->stu_node.complete = COMPLETE;
                                                                                           just_installed->type->stu_node.mini_head = curr_scope->head; 
                                                                                           close_outer_scope();
+                                                                                          $$ = $1;
+
                                                                                           // print_symbol(just_installed, curr_scope);
                                                                                           // print_symbol_table();
-                                                                                          $$ = $1;
-                                                                                    }// Install as complete
+                                                                                    }
       |                       struct_or_union IDENT                                 {
                                                                                           $1->top->stu_node.ident = $2;
                                                                                           $1->top->stu_node.complete = INCOMPLETE;
                                                                                           $$ = $1;
+
                                                                                           struct astnode_symbol * found; 
                                                                                           int in_table = search_all_tabs($2, TAG_S, curr_scope, &found);
+                                                                                          
                                                                                           // If not in table...
                                                                                           if (in_table != 1)
-                                                                                                add_symbol_entry($2, $1->top, TAG_S, NON_VAR, DECL);
+                                                                                                add_symbol_entry($2, $1->top, TAG_S, NA, DECL);
                                                                                           else
                                                                                                 $1->top->stu_node.refers_to = found;            // If it is, point the struct 
                                                                                     } 
@@ -490,26 +479,7 @@ declarator:             pointer direct_declarator                               
 
 // Assume array declarations are either empty or constant
 // Assume function declarations take unknown args
-direct_declarator:      IDENT                                                       {
-                                                                                          // Identifier node
-                                                                                          struct type_node * node = make_type_node(IDENT_TYPE);
-                                                                                          node->ident.name = $1;
-
-                                                                                          // Save namespace + s_class (change later if applicable)
-                                                                                          node->ident.n_space = VAR_S;
-
-                                                                                          // Default to EXTERN - edit later 
-                                                                                          node->ident.s_class = EXTERN_S;
-
-                                                                                          if (curr_scope->s_type == FUNC_SCOPE || curr_scope->s_type == PROTOTYPE_SCOPE)
-                                                                                                node->ident.s_class = AUTO_S;
-
-                                                                                          // Set top and tail nodes
-                                                                                          struct top_tail * tt = make_tt_node(); 
-                                                                                          tt->top = node; 
-                                                                                          tt->tail = node; 
-                                                                                          $$ = tt;
-                                                                                    }           
+direct_declarator:      IDENT                                                       {$$ = create_ident_type($1);}           
       |                 '(' declarator ')'                                          {$$ = $2;}
       |                 direct_declarator '['  ']'                                  {
                                                                                           // Add array type node
@@ -581,26 +551,17 @@ parameter_declaration:  declaration_specifiers declarator                       
                                                                                           new_declaration($1, $2, 1);
                                                                                     }
       |                 declaration_specifiers abstract_declarator                  {
-                                                                                          // Create dummy ident node
-                                                                                          struct top_tail * node = init_tt_node(IDENT_TYPE);
-                                                                                          node->top->ident.name = "1UNDEF";
-                                                                                          node->top->ident.s_class = AUTO_S;
-                                                                                          node->top->ident.n_space = VAR_S; 
-                                                                                          node->top->next_type = $2->top; 
-                                                                                          node->tail = $2->tail; 
-                                                                                          
-                                                                                          new_declaration($1, node, 1);
+                                                                                          // Create dummy ident node (use 1UNDEF since identifiers cannot start with a number)
+                                                                                          $$ = create_ident_type("1UNDEF");
+                                                                                          $$->top->next_type = $2->top; 
+                                                                                          $$->tail = $2->tail; 
+                                                                                          new_declaration($1, $$, 1);
 
                                                                                     }
       |                 declaration_specifiers                                      {
                                                                                           // Create dummy ident node
-                                                                                          struct top_tail * node = init_tt_node(IDENT_TYPE);
-                                                                                          node->top->ident.name = "1UNDEF";
-                                                                                          node->top->ident.s_class = AUTO_S;
-                                                                                          node->top->ident.n_space = VAR_S; 
-                                                                                          
-                                                                                          new_declaration($1, node, 1);
-                                                                                          
+                                                                                          $$ = create_ident_type("1UNDEF");
+                                                                                          new_declaration($1, $$, 1);
                                                                                     }
 ;
 
@@ -609,7 +570,7 @@ parameter_declaration:  declaration_specifiers declarator                       
 ; */
 
 // 6.7.6
-type_name:              specifier_qualifier_list abstract_declarator                            {$$ = $2;}
+type_name:              specifier_qualifier_list abstract_declarator                            {$$ = $2; $2->tail->next_type = $1->top; $2->tail = $1->tail;}
       |                 specifier_qualifier_list
 ;
 
@@ -657,6 +618,109 @@ direct_abstract_declarator:   '(' abstract_declarator ')'                       
 
 
 
+// 6.8
+statement:              compound_statement                                                      {$$ = $1; close_outer_scope();}                              
+      |                 expression_statement                                  //{print_ast($1, 0);}
+      |                 labeled_statement
+      |                 selection_statement
+      |                 iteration_statement
+      |                 jump_statement      
+;
 
+// 6.8.1
+labeled_statement:      IDENT ':'                                                               {struct type_node * tt = make_type_node(LABEL_TYPE); tt->complete = 1; add_symbol_entry($1, tt, LABEL_S, NA, DEF);}  
+                        statement                                                               {$$ = create_label_node($1, $4);}
+      |                 CASE constant_expression ':' statement                                  {$$ = create_case_node($2, $4, CASE_STMT);}
+      |                 DEFAULT ':' statement                                                   {$$ = create_case_node(NULL, $3, DEFAULT_STMT);}
+
+
+// 6.8.2
+compound_statement:     '{'   {create_new_scope();}   decl_or_stmt_list '}'                     {$$ = make_ast_node(COMPOUND); $$->ds_list = $3;} 
+      |                 '{'   {create_new_scope();}         '}'                                 {$$ = make_ast_node(COMPOUND); $$->ds_list = NULL;}
+;
+
+
+// 6.8.3
+expression_statement:   expression ';'
+      |                 ';'
+
+// 6.8.4
+selection_statement:    IF '(' expression ')' statement                       %prec IF            {$$ = create_if_stmt($5, $3, NULL, IF_NODE);}
+      |                 IF '(' expression ')' statement ELSE statement        %prec ELSE          {$$ = create_if_stmt($5, $3, $7, IF_NODE);}
+      |                 SWITCH '('  expression ')' statement                                      {$$ = create_if_stmt($5, $3, NULL, SWITCH_NODE);}
+
+
+// 6.8.5
+iteration_statement:    WHILE '(' expression ')' statement                                        {$$ = create_while_loop($5, $3, 0);}
+      |                 DO statement WHILE '(' expression ')' ';'                                 {$$ = create_while_loop($2, $5, 1);}
+      |                 FOR '(' expression ';' expression ';' expression ')' statement            {$$ = create_for_loop($3, $5, $9, $7);}
+      |                 FOR '(' ';' expression ';' expression ')' statement                       {$$ = create_for_loop(NULL, $4, $8, $6);}
+      |                 FOR '(' ';' ';' expression ')' statement                                  {$$ = create_for_loop(NULL, NULL, $7, $5);}
+      |                 FOR '(' ';' ';' ')' statement                                             {$$ = create_for_loop(NULL, NULL, $6, NULL);}
+      |                 FOR '(' expression ';' ';' expression ')' statement                       {$$ = create_for_loop($3, NULL, $8, $6);}
+      |                 FOR '(' expression ';' ';' ')' statement                                  {$$ = create_for_loop($3, NULL, $7, NULL);}
+      |                 FOR '(' expression ';' expression ';' ')' statement                       {$$ = create_for_loop($3, $5, $8, NULL);}
+      /* |                 FOR '(' declaration expression ';' expression ')' statement */
+
+
+// 6.8.6
+jump_statement:         GOTO IDENT ';'                                                            {
+                                                                                                      // Create jump node, save identifier info
+                                                                                                      $$ = make_ast_node(JUMP_NODE);
+                                                                                                      $$->jump.jump_type = GOTO_JUMP;
+                                                                                                      $$->jump.ident.name = $2; 
+                                                                                                      resolve_identifier($2, LABEL_S, &$$->jump.ident.sym);
+
+                                                                                                      // Forward decl of label
+                                                                                                      if (!$$->jump.ident.sym){
+                                                                                                            struct type_node * tt = make_type_node(LABEL_TYPE);
+                                                                                                            tt->complete = 0;
+                                                                                                            add_symbol_entry($2, tt, LABEL_S, NA, DECL);
+                                                                                                            resolve_identifier($2, LABEL_S, &$$->jump.ident.sym);
+                                                                                                      }
+                                                                                                  }
+      |                 CONTINUE ';'                                                              {$$ = make_ast_node(JUMP_NODE); $$->jump.jump_type = CONTINUE_JUMP;}
+      |                 BREAK ';'                                                                 {$$ = make_ast_node(JUMP_NODE); $$->jump.jump_type = BREAK_JUMP;}
+      |                 RETURN expression ';'                                                     {
+                                                                                                      // Create return node, save expression
+                                                                                                      $$ = make_ast_node(JUMP_NODE);
+                                                                                                      $$->jump.jump_type = RETURN_JUMP;
+                                                                                                      $$->jump.expr = $2;
+                                                                                                  }
+      |                 RETURN ';'                                                                {$$ = make_ast_node(JUMP_NODE); $$->jump.jump_type = RETURN_JUMP;}
+
+
+// Top Level (From Hak)
+declaration_or_fndef_list:    declaration_or_fndef                                        //{print_symbol_table();}
+      |                       declaration_or_fndef_list declaration_or_fndef              //{print_symbol_table();}             // For debugging printing symbol table at top level
+
+declaration_or_fndef:         declaration                                                 
+      |                       function_definition
+;
+
+// Declaration Specifier int, extern int
+// Declarator is the ident and any pointers/array info
+// Compound statement is everything in the brackets
+function_definition:    declaration_specifiers declarator                     {
+                                                                                    if ($2->top == NULL || $2->top->next_type == NULL || $2->top->next_type->type != FUNCTION_TYPE) {
+                                                                                          yyerror("INVALID FUNCTION DEFINITION");
+                                                                                          exit(2);
+                                                                                    };
+                                                                                    new_function_defs($1, $2);
+                                                                              }
+                        compound_statement                                    {
+                                                                                    // print_symbol_table(0);
+                                                                                    close_outer_scope(); 
+                                                                                    dump_ast($4->ds_list, 0);
+                                                                              }// Dump ast list
+;                 
+
+decl_or_stmt_list:      decl_or_stmt                                          {$$ = create_ll_node($1);}
+      |                 decl_or_stmt_list decl_or_stmt                        {$$ = $1; push_ll($1, $2);}
+;
+
+decl_or_stmt:     declaration                                                  {$$ = make_ast_node(DECLARATION);} // Dummy astnode for declarations
+      |           statement
+;
 
 %%

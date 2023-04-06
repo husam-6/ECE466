@@ -67,6 +67,12 @@ void print_type(struct type_node * head, int depth){
 
             break; 
         }
+        case LABEL_TYPE:{
+            n_tabs(depth);
+            printf("LABEL TYPE NODE\n");
+            print_type(head->next_type, depth+1);
+            break;
+        }
         default: {
             fprintf(stderr, "Unknown type node encountered...%d\n", head->type);
             exit(2);
@@ -128,6 +134,25 @@ struct top_tail * create_stu_node(enum stu_type type){
     return tt; 
 }
 
+// Allocate memory for a identifier type node
+struct top_tail * create_ident_type(char * name){
+    // Set top and tail nodes
+    struct top_tail * tt = init_tt_node(IDENT_TYPE); 
+
+    tt->top->ident.name = name;
+
+    // Save namespace + s_class (change later if applicable)
+    tt->top->ident.n_space = VAR_S;
+
+    // Default to EXTERN - edit later 
+    tt->top->ident.s_class = EXTERN_S;
+
+    if (curr_scope->s_type == FUNC_SCOPE || curr_scope->s_type == PROTOTYPE_SCOPE)
+        tt->top->ident.s_class = AUTO_S;
+
+    return tt; 
+}
+
 // Helper to allocate memory and initialize a function node
 struct top_tail * create_function_node(struct top_tail * direct_declarator){
     // Could be definition 
@@ -170,6 +195,12 @@ struct type_node * push_next_type(enum Type type, struct type_node * prev, struc
     prev->next_type = node;
 
     return node;
+}
+
+struct decl_list * make_decl_list_node(struct top_tail * item){
+    struct decl_list *list = (struct decl_list *)malloc(sizeof(struct decl_list));
+    list->item = item;
+    return list;
 }
 
 
@@ -336,7 +367,7 @@ void struct_union_decl(struct top_tail * specifiers, struct top_tail * declarato
 
     // Not in table, so declare a an incomplete struct type here
     if (in_table == 2 || in_table == 0){
-        add_symbol_entry(specifiers->top->stu_node.ident, specifiers->top, TAG_S, NON_VAR, declarator->top->ident.s_class, DECL);
+        add_symbol_entry(specifiers->top->stu_node.ident, specifiers->top, TAG_S, NA, declarator->top->ident.s_class, DECL);
         specifiers->top->stu_node.refers_to = curr_scope->head; 
         // yyerror("INVALID STRUCT DECLARATION");
         // exit(2);
@@ -405,9 +436,9 @@ void new_declaration(struct top_tail * specifiers, struct top_tail * declarator,
 
     // Check if type is valid
     int r = check_type_specifier(specifiers->top);
-    if (!r && declarator->top->ident.n_space != NON_VAR){
-            yyerror("INVALID TYPE SPECIFIER");
-            exit(2);
+    if (!r && declarator->top->ident.n_space != NA){
+        yyerror("INVALID TYPE SPECIFIER");
+        exit(2);
     }
 
     // Add to symbol table

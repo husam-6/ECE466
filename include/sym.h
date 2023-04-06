@@ -18,8 +18,10 @@ void add_symbol_entry();
 void create_scope();
 void print_symbol_table();
 void print_symbol();
+void print_scope_symbols();
 char * print_union_struct();
 char * print_scope();
+char * print_namespace();
 
 // For scopes
 struct scope * make_new_scope(enum scope_type s_type);
@@ -35,7 +37,7 @@ enum symbol_kind{
 
 enum namespace {
     VAR_S,
-    FUNC_S, 
+    FUNC_S,             // temp namespace...
     TAG_S,
     LABEL_S,
     MEMBER_S
@@ -46,7 +48,7 @@ enum storage_class{
     AUTO_S,
     REGISTER_S, 
     STATIC_S,
-    NON_VAR
+    NA
 };
 
 
@@ -72,8 +74,14 @@ extern struct scope * curr_scope;
 
 // Scope struct 
 struct scope {
+    // Scope type and symbol table head for given scope
     enum scope_type s_type; 
     struct astnode_symbol * head;
+
+    // Linked list of any scope seen inside of this scope (to save after popping from stack)
+    struct scope * next_child;
+
+    // Pointer to parent / outer scope
     struct scope * outer;
 };
 

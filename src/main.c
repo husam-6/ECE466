@@ -21,13 +21,6 @@ int main(){
       curr_scope->head = NULL; 
       curr_scope->outer = NULL;
 
-      /* struct astnode * tmp = make_ast_node(POINTER_TYPE);
-      struct astnode * tmp2 = make_ast_node(POINTER_TYPE);
-      struct astnode *node = make_ast_node(IDENT_NODE);
-      node->ident = "TMP";
-      tmp->t_node.next_type = tmp2; 
-      tmp2->t_node.next_type = node; 
-
-      print_ast(tmp, 0); */
       yyparse();
+      // print_symbol_table(1);
 }
