@@ -14,6 +14,8 @@ void yyerror(const char* msg) {
       fprintf(stderr, "ERROR IN FILE %s:%d: %s\n", file_name, line_num, msg);
 }
 
+// Function counter, block counter, register counter
+int func_counter, bb_counter, register_counter; 
 
 int main(){
       // Initialize global scope symbol table

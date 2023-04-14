@@ -495,9 +495,9 @@ void resolve_identifier(char * ident, enum namespace n_space, struct astnode_sym
 }
 
 
-void dump_ast(struct linked_list *asthead, int tabs){
+void dump_ast(struct linked_list *asthead, int tabs, char * name){
     if (tabs == 0)
-        printf("************ AST DUMP ************\nLIST { \n");
+        printf("************ AST DUMP: %s ************\nLIST { \n", name);
     int depth = 1; 
     while(asthead != NULL){
         print_ast(asthead->expr, depth);

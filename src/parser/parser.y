@@ -711,7 +711,7 @@ function_definition:    declaration_specifiers declarator                     {
                         compound_statement                                    {
                                                                                     // print_symbol_table(0);
                                                                                     close_outer_scope(); 
-                                                                                    dump_ast($4->ds_list, 0);
+                                                                                    dump_ast($4->ds_list, 0, $2->top->ident.name);
                                                                               }// Dump ast list
 ;                 
 

@@ -177,7 +177,7 @@ struct linked_list * create_ll_node(struct astnode *expr);
 void push_ll(struct linked_list *head, struct astnode *expr);
 
 // Print list of ast's 
-void dump_ast(struct linked_list *asthead, int tabs);
+void dump_ast(struct linked_list *asthead, int tabs, char * name);
 
 // Node struct
 struct astnode {
