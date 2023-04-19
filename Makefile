@@ -1,34 +1,30 @@
-vpath %.tab.h build
-vpath %.tab.c build
-vpath %.yy.c build
-vpath %.h include
-vpath %.c src
-vpath %.c src/parser
-vpath %.c src/lexer
-vpath %.y src/parser
-vpath %.l src/lexer
-FILE=ptest
-ASSIGNMENT=hw4
-CXXFLAGS=-I./include -I./build -Wall -Wextra -fsanitize=undefined
+# Parameters
+CXXFLAGS=-I./include -I./build -Wall -Wextra -fsanitize=undefined -ggdb
 BUILD = build
+VPATH = src/lexer/:src/parser/:src/quads/:src
 
+all: $(BUILD)/parser.tab.o $(BUILD)/lex.yy.o $(BUILD)/ast.o $(BUILD)/lex_help.o $(BUILD)/sym.o $(BUILD)/type.o $(BUILD)/main.o $(BUILD)/die-util.o
+	gcc $(CXXFLAGS) $^ -o $(BUILD)/a.out
 
-all: $(BUILD)/parser.tab.c $(BUILD)/lex.yy.c ast.c lex_help.c sym.c type.c main.c die-util.c
-	gcc $(CXXFLAGS) $^ -ll -o build/a.out
+# Specific rule for parser (bison)
+$(BUILD)/parser.tab.o: $(BUILD)/parser.tab.c
+	gcc -c $^ $(CXXFLAGS) -o $@
 
 $(BUILD)/parser.tab.c: parser.y
 	mkdir -p $(BUILD)
 	bison -d --report=all --file-prefix=$(BUILD)/parser $^
 
+# Specific rules for lexer (flex)
+$(BUILD)/lex.yy.o: $(BUILD)/lex.yy.c
+	gcc -c $^ $(CXXFLAGS) -o $@
+
 $(BUILD)/lex.yy.c: lexer.l $(BUILD)/parser.tab.c
 	mkdir -p $(BUILD)
 	flex --outfile=$(BUILD)/lex.yy.c $<
 
-test: all
-	gcc -E ptests/$(ASSIGNMENT)/$(FILE).c | ./$(BUILD)/a.out >ptests/$(ASSIGNMENT)/$(ASSIGNMENT)_output/$(FILE).out 2>ptests/$(ASSIGNMENT)/$(ASSIGNMENT)_output/$(FILE).err
-
-print: all
-	gcc -E ptests/$(ASSIGNMENT)/$(FILE).c | ./$(BUILD)/a.out
+# For any generic .c file
+$(BUILD)/%.o: %.c
+	gcc -c $< $(CXXFLAGS) -o $@
 
 clean: 
 	rm build/*

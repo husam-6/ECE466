@@ -1,0 +1,5 @@
+# Make executable
+make
+
+# Compile source file using gcc preprocessor, pipe into executable
+gcc -E $1 | ./build/a.out

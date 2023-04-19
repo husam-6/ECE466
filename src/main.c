@@ -14,6 +14,9 @@ void yyerror(const char* msg) {
       fprintf(stderr, "ERROR IN FILE %s:%d: %s\n", file_name, line_num, msg);
 }
 
+// Default filename to stdin
+char * file_name = "<stdin>";
+
 // Function counter, block counter, register counter
 int func_counter, bb_counter, register_counter; 
 

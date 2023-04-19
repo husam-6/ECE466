@@ -212,8 +212,8 @@ additive_expression: multiplicative_expression
 
 // 6.5.7                      
 shift_expression:    additive_expression                    
-      |              shift_expression SHL additive_expression                                   {$$ = create_binary(ASSIGNMENT_COMPOUND, SHL, $1, $3, NULL);}
-      |              shift_expression SHR additive_expression                                   {$$ = create_binary(ASSIGNMENT_COMPOUND, SHR, $1, $3, NULL);}
+      |              shift_expression SHL additive_expression                                   {$$ = create_binary(BINOP, SHL, $1, $3, NULL);}
+      |              shift_expression SHR additive_expression                                   {$$ = create_binary(BINOP, SHR, $1, $3, NULL);}
 ;                       
 
 // 6.5.8                      

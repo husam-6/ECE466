@@ -19,6 +19,10 @@ enum quad_opcode{
     BRGEQ,
     BRLEQ,
     STORE,
+    ADD,
+    SUB,
+    MUL,
+    DIV,
 };
 
 union generic_node{
@@ -48,6 +52,16 @@ struct basic_block{
 // Allocator functions
 struct quad * create_quad();
 struct basic_block * create_basic_block();
+
+// Print basic block
+void print_basic_block(struct basic_block * bb);
+void print_quad(struct quad * q);
+
+// Recurse through AST using DFS
+
+// Create new temporary
+
+// Emit new quad
 
 #endif /* QUADS_H */
 
