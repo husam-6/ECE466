@@ -2,9 +2,10 @@
 CXXFLAGS=-I./include -I./build -Wall -Wextra -fsanitize=undefined -ggdb
 BUILD = build
 VPATH = src/lexer/:src/parser/:src/quads/:src
+TARGET=a.out
 
-all: $(BUILD)/parser.tab.o $(BUILD)/lex.yy.o $(BUILD)/ast.o $(BUILD)/lex_help.o $(BUILD)/sym.o $(BUILD)/type.o $(BUILD)/main.o $(BUILD)/die-util.o
-	gcc $(CXXFLAGS) $^ -o $(BUILD)/a.out
+$(BUILD)/$(TARGET): $(BUILD)/parser.tab.o $(BUILD)/lex.yy.o $(BUILD)/ast.o $(BUILD)/lex_help.o $(BUILD)/sym.o $(BUILD)/type.o $(BUILD)/main.o $(BUILD)/die-util.o
+	gcc $(CXXFLAGS) $^ -o $@
 
 # Specific rule for parser (bison)
 $(BUILD)/parser.tab.o: $(BUILD)/parser.tab.c
