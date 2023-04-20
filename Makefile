@@ -4,7 +4,7 @@ BUILD = build
 VPATH = src/lexer/:src/parser/:src/quads/:src
 TARGET=a.out
 
-$(BUILD)/$(TARGET): $(BUILD)/parser.tab.o $(BUILD)/lex.yy.o $(BUILD)/ast.o $(BUILD)/lex_help.o $(BUILD)/sym.o $(BUILD)/type.o $(BUILD)/main.o $(BUILD)/die-util.o
+$(BUILD)/$(TARGET): $(BUILD)/parser.tab.o $(BUILD)/lex.yy.o $(BUILD)/ast.o $(BUILD)/lex_help.o $(BUILD)/sym.o $(BUILD)/type.o $(BUILD)/main.o $(BUILD)/die-util.o $(BUILD)/quads.o
 	gcc $(CXXFLAGS) $^ -o $@
 
 # Specific rule for parser (bison)

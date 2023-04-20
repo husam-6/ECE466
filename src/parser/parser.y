@@ -4,6 +4,7 @@
    #include "parser.h"
    #include "sym.h"
    #include "type.h"
+   #include "quads.h"
 
    // Function prototypes
    void yyerror(const char* msg);
@@ -712,6 +713,7 @@ function_definition:    declaration_specifiers declarator                     {
                                                                                     // print_symbol_table(0);
                                                                                     close_outer_scope(); 
                                                                                     dump_ast($4->ds_list, 0, $2->top->ident.name);
+                                                                                    gen_quads($4->ds_list);
                                                                               }// Dump ast list
 ;                 
 
