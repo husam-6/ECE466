@@ -47,7 +47,6 @@ enum quad_opcode get_opcode(int operator) {
         // case '!':           {printf("(!)\n"); break;}
         default:            {fprintf(stderr, "Unsupported (currently) operator...%d\n", operator); break;}
     }
-
 }
 
 // Generate r value of a given node
@@ -86,20 +85,24 @@ void emit(enum quad_opcode opcode, struct generic_node * src1, struct generic_no
     q->src2 = src2;
     q->result = dest;
 
-    // Append to linked list
-    q->next_quad = quad_head; 
-    quad_head = q;
-    print_quad(q);
+    // Append to end quad linked list
+    struct quad * tmp = block_head->head; 
+    if (!tmp) block_head->head = q; 
+    else{
+        while(tmp && tmp->next_quad)
+            tmp = tmp->next_quad;
+        tmp->next_quad = q; 
+    }
+    // block_head->head = q;
+    // print_quad(q);
 }
 
 // prints parameters of a quad
 void print_generic_node(struct generic_node * node){
     switch(node->type){
         case (CONSTANT):        {
-                                    if (node->num.type > 5)
-                                        printf("%Lg", node->num.frac);
-                                    else
-                                        printf("%lld", node->num.integer);
+                                    if (node->num.type > 5) printf("%Lg", node->num.frac);
+                                    else printf("%lld", node->num.integer);
                                     break;
                                 }
         case (VARIABLE):        {printf("%s", node->var.name); break;}
@@ -122,6 +125,8 @@ void print_op_code(enum quad_opcode opcode){
 
 // Helper to print any given quad
 void print_quad(struct quad * q){
+    printf("\t");
+    // If target is present
     if (q->result){
         print_generic_node(q->result);
         printf(" = ");
@@ -129,6 +134,8 @@ void print_quad(struct quad * q){
     print_op_code(q->opcode);
     printf(" ");
     print_generic_node(q->src1);
+
+    // If theres a second src
     if (q->src2){
         printf(", ");
         print_generic_node(q->src2);
@@ -141,14 +148,18 @@ struct generic_node * new_temporary(){
     struct generic_node * node = make_generic_node(TEMPORARY);
     node->temp.reg_num = register_counter++;
     char * tmp; 
-    sprintf(tmp, "%%T%06d", node->temp.reg_num);
+    asprintf(&tmp, "%%T%06d", node->temp.reg_num);
     node->temp.ident = tmp;
     return node;
 }
 
 // Allocator for quads
 struct quad * create_quad(){
-    return (struct quad *)malloc(sizeof(struct quad));
+    struct quad *q = (struct quad *)malloc(sizeof(struct quad));
+    q->src1 = NULL;
+    q->src2 = NULL;
+    q->result = NULL;
+    return q; 
 }
 
 // Helper to allocate memory for a generic node
@@ -158,12 +169,41 @@ struct generic_node * make_generic_node(enum generic_type type){
     return node;
 }
 
+// Allocate basic block
+struct basic_block * create_basic_block(){
+    struct basic_block * block = (struct basic_block *)malloc(sizeof(struct basic_block));
+    
+    // Initialize name and children
+    block->next_block = NULL;
+    block->head = NULL;
+
+    char * tmp; 
+    asprintf(&tmp, ".BB%d.%d", func_counter++, bb_counter++);
+    block->label = tmp;
+    // block->label = ".BB0.0";
+    return block;
+
+}
+
+// Print all the quads and information in a basic block
+void print_basic_block(struct basic_block * bb){
+    printf("%s\n", bb->label);
+    struct quad * tmp = bb->head;
+    while (tmp != NULL){
+        print_quad(tmp);
+        tmp = tmp->next_quad;
+    }
+}
+
 // Loop through list of ASTs and generate quads
-void gen_quads(struct linked_list * asthead){
-    printf("#####\t\t Generating Quads \t\t #####\n");
+void gen_quads(struct linked_list * asthead, char * func_name){
+    // printf("#####\t\t Generating Quads \t\t #####\n");
+    printf(".%s\n", func_name);
+    block_head = create_basic_block();
     while(asthead != NULL){
         gen_rvalue(asthead->expr, NULL);
         asthead = asthead->next;
     }
-    printf("#####\t\t End of Quads \t\t #####\n");
+    print_basic_block(block_head);
+    // printf("#####\t\t End of Quads \t\t #####\n");
 }

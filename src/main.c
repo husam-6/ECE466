@@ -31,7 +31,6 @@ int main(){
       curr_scope->outer = NULL;
 
       // Initalize quad and basic block head
-      quad_head = NULL;
       block_head = NULL;
 
       yyparse();

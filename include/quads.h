@@ -7,7 +7,6 @@
 #include "parser.h"
 
 extern int func_counter, bb_counter, register_counter;
-extern struct quad * quad_head;
 extern struct basic_block * block_head;  
 
 // Possible opcodes IR can emit
@@ -66,7 +65,7 @@ struct basic_block{
     char * label; 
 
     // Head of quad linked list
-    struct quad * head; 
+    struct quad * head;
     struct basic_block *next_block;
 };
 
@@ -78,10 +77,9 @@ struct basic_block * create_basic_block();
 void print_basic_block(struct basic_block * bb);
 void print_quad(struct quad * q);
 struct generic_node * make_generic_node(enum generic_type type);
-struct quad * create_quad();
 struct generic_node * new_temporary();
 void emit(enum quad_opcode opcode, struct generic_node * src1, struct generic_node * src2, struct generic_node * dest);
-void gen_quads(struct linked_list * asthead);
+void gen_quads(struct linked_list * asthead, char * func_name);
 
 // Recurse through AST using DFS
 
