@@ -1,4 +1,5 @@
 # Make executable
+# if (make > build/build.out 2>build/build.err)
 if (make)
 then
     # Compile source file using gcc preprocessor, pipe into executable

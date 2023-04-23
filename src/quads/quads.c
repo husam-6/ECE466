@@ -77,11 +77,14 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
         emit(get_opcode(node->binary.operator), left, right, target);
         return target;
     }
-    if (node->type==UNARY_NODE && node->unary.operator_type == DEREF && !node->unary.abstract){
-        struct generic_node * addr = gen_rvalue(node->unary.expr, NULL);
-        if (!target)
-            target = new_temporary();
-        emit(LOAD, addr, NULL, target);
+
+    if (node->type==UNARY_NODE && !node->unary.abstract){
+        if (node->unary.operator_type == DEREF){
+            struct generic_node * addr = gen_rvalue(node->unary.expr, NULL);
+            if (!target)
+                target = new_temporary();
+            emit(LOAD, addr, NULL, target);
+        }
     }
     return target; 
 }
@@ -95,13 +98,17 @@ struct generic_node * gen_lvalue(struct astnode * node, int * mode){
         return ident;
     }
     if (node->type==NUM) return NULL;
-    if (node->type == DEREF)  {
-        *mode=INDIRECT;
-        if (!node->unary.abstract)
-            return gen_rvalue(node->unary.expr, NULL);
+    if (node->type == UNARY_NODE){
+        // If dereference, save the mode as an indirect reference
+        if (node->unary.operator_type == DEREF){
+            *mode=INDIRECT;
+            if (!node->unary.abstract)
+                return gen_rvalue(node->unary.expr, NULL);
+        }
     }
 }
 
+// Generate assignment, pseudocode on page 12
 struct generic_node * gen_assign(struct astnode * node){
     int dstmode; 
     struct generic_node * dst = gen_lvalue(node->binary.left, &dstmode);
@@ -111,7 +118,7 @@ struct generic_node * gen_assign(struct astnode * node){
         gen_rvalue(node->binary.right, dst);
     else {
         struct generic_node *t1 = gen_rvalue(node->binary.right, NULL);
-        emit(STORE,t1,dst,NULL);
+        emit(STORE, t1, dst, NULL);
     }
 }
 
@@ -163,6 +170,7 @@ void print_op_code(enum quad_opcode opcode){
         case MUL:           {printf("MUL"); break;}
         case DIV:           {printf("DIV"); break;}
         case LOAD:          {printf("LOAD"); break;}
+        case STORE:         {printf("STORE"); break;}
         default:            {fprintf(stderr, "Unsupported op code %d\n", opcode);}
     }
 
