@@ -36,6 +36,11 @@ enum generic_type{
     STRING_LIT,
 };
 
+enum MODE{
+    DIRECT, 
+    INDIRECT,
+};
+
 // Generic node in a quad (basically all the terminals of an AST)
 struct generic_node{
     enum generic_type type;
@@ -66,6 +71,7 @@ struct basic_block{
 
     // Head of quad linked list
     struct quad * head;
+    struct quad * tail;
     struct basic_block *next_block;
 };
 
@@ -80,6 +86,7 @@ struct generic_node * make_generic_node(enum generic_type type);
 struct generic_node * new_temporary();
 void emit(enum quad_opcode opcode, struct generic_node * src1, struct generic_node * src2, struct generic_node * dest);
 void gen_quads(struct linked_list * asthead, char * func_name);
+struct generic_node * gen_assign(struct astnode * node);
 
 // Recurse through AST using DFS
 
