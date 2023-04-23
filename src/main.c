@@ -21,8 +21,8 @@ char * file_name = "<stdin>";
 int func_counter, bb_counter, register_counter; 
 
 // Quad and Basic Block linked list heads
-struct quad * quad_head;
 struct basic_block * block_head;  
+struct basic_block * curr_block;
 
 int main(){
       // Initialize global scope symbol table
@@ -32,6 +32,7 @@ int main(){
 
       // Initalize quad and basic block head
       block_head = NULL;
+      curr_block = NULL;
 
       yyparse();
       // print_symbol_table(1);

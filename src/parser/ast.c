@@ -346,9 +346,11 @@ void print_ast(struct astnode * head, int depth){
 
 // ast node helper function
 struct astnode * make_ast_node(int type) {
-      struct astnode *node = (struct astnode *)malloc(sizeof(struct astnode));
-      node->type = type;
-      return node;
+    struct astnode *node = (struct astnode *)malloc(sizeof(struct astnode));
+    node->type = type;
+    node->file_name = file_name;
+    node->line_num = line_num;
+    return node;
 }
 
 // Helper function to create unary node

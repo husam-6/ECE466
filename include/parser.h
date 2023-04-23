@@ -200,6 +200,8 @@ struct astnode {
             struct astnode_jump jump;
             struct linked_list * ds_list;
     };
+    char * file_name; 
+    int line_num; 
 };
 
 
