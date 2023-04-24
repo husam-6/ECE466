@@ -106,6 +106,7 @@ int size_of(struct type_node * type);
 int determine_if_pointer(struct type_node * tt);
 struct generic_node * make_tmp_type();
 void print_generic_node();
+struct type_node * get_type_from_generic(struct generic_node * node);
 
 // Recurse through AST using DFS
 

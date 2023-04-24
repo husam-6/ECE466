@@ -17,6 +17,59 @@ enum quad_opcode get_opcode(int operator) {
     }
 }
 
+// prints parameters of a quad
+void print_generic_node(struct generic_node * node){
+    switch(node->type){
+        case (CONSTANT):        {
+                                    if (node->num.type > 5) printf("%-9Lg", node->num.frac);
+                                    else printf("%-9lld", node->num.integer);
+                                    break;
+                                }
+        case (VARIABLE):        {printf("%-9s", node->var.name); break;}
+        case (TEMPORARY):       {printf("%-9s", node->temp.ident); break;}
+        case (STRING_LIT):      {printf("%-9s", node->str.content); break;}
+        default:                {fprintf(stderr, "Unrecognized generic node type %d...\n", node->type);}
+    }
+}
+
+void print_op_code(enum quad_opcode opcode){
+    switch(opcode){
+        case ADD:           {printf("%-9s", "ADD"); break;}
+        case SUB:           {printf("%-9s", "SUB"); break;}
+        case MUL:           {printf("%-9s", "MUL"); break;}
+        case DIV:           {printf("%-9s", "DIV"); break;}
+        case LOAD:          {printf("%-9s", "LOAD"); break;}
+        case STORE:         {printf("%-9s", "STORE"); break;}
+        case LEA:           {printf("%-9s", "LEA"); break;}
+        case MOV:           {printf("%-9s", "MOV"); break;}
+        default:            {fprintf(stderr, "Unsupported op code %d\n", opcode);}
+    }
+
+}
+
+// Helper to print any given quad
+void print_quad(struct quad * q){
+    printf("\t");
+    // If target is present
+    if (q->result){
+        print_generic_node(q->result);
+        printf("%-5s", "= ");
+    }
+    else{
+        printf("%-14s", " ");
+    }
+    print_op_code(q->opcode);
+    printf(" ");
+    print_generic_node(q->src1);
+
+    // If theres a second src
+    if (q->src2){
+        printf(", ");
+        print_generic_node(q->src2);
+    }
+    printf("\n");
+}
+
 // Generate r value of a given node
 // Code from hak lecture notes 5, starting page 10
 struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * target){
@@ -54,21 +107,18 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
         right->n_p = 0; 
 
         // Pointer arithmetic
-        if (left->type == VARIABLE)
-            left->n_p = determine_if_pointer(left->var.sym->type);
-        else if (left->type == TEMPORARY)
-            left->n_p = determine_if_pointer(left->temp.operation_type);
-        if (right->type == VARIABLE)
-            right->n_p = determine_if_pointer(right->var.sym->type);
-        else if (right->type == TEMPORARY)
-            right->n_p = determine_if_pointer(right->temp.operation_type);
+        struct type_node * left_type = get_type_from_generic(left);
+        struct type_node * right_type = get_type_from_generic(right);
+
+        left->n_p = determine_if_pointer(left_type);
+        right->n_p = determine_if_pointer(right_type);
 
 
         // Determine the overall operation
         struct type_node * tmp; 
         if (left->n_p == POINTER_VAR && right->n_p == POINTER_VAR){     // Pointer - pointer
             if (get_opcode(node->binary.operator) != SUB) {
-                fprintf(stderr, "Invalid operation on %s:%d. Can only subtract 2 pointers!\n", node->file_name, node->line_num);
+                fprintf(stderr, "ERROR: Invalid operation on %s:%d. Can only subtract 2 pointers!\n", node->file_name, node->line_num);
                 exit(2);
             }
 
@@ -77,32 +127,20 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
         }
         else if (left->n_p == NUM_VAR && right->n_p == POINTER_VAR){        // Num +- pointer
             if (get_opcode(node->binary.operator) != SUB && get_opcode(node->binary.operator) != ADD) {
-                fprintf(stderr, "Invalid operation on %s:%d. Can only add or subtract a pointer and a number!\n", node->file_name, node->line_num);
+                fprintf(stderr, "ERROR: Invalid operation on %s:%d. Can only add or subtract a pointer and a number!\n", node->file_name, node->line_num);
                 exit(2);
             }
-            if (right->type == TEMPORARY){
-                left = make_tmp_type(left, right->temp.operation_type, MUL);
-                tmp = right->temp.operation_type;
-            }
-            else{
-                left = make_tmp_type(left, right->var.sym->type, MUL);
-                tmp = right->var.sym->type;
-            }
+            left = make_tmp_type(left, right_type, MUL);
+            tmp = right_type; 
             
             
         }
         else if (left->n_p == POINTER_VAR && right->n_p == NUM_VAR){        // Pointer += num
             if (get_opcode(node->binary.operator) != SUB && get_opcode(node->binary.operator) != ADD) {
-                fprintf(stderr, "Invalid operation on %s:%d. Can only add or subtract a pointer and a number!\n", node->file_name, node->line_num);
+                fprintf(stderr, "ERROR: Invalid operation on %s:%d. Can only add or subtract a pointer and a number!\n", node->file_name, node->line_num);
             }
-            if (left->type == TEMPORARY){
-                right = make_tmp_type(right, left->temp.operation_type, MUL);
-                tmp = left->temp.operation_type;
-            }
-            else{
-                right = make_tmp_type(right, left->var.sym->type, MUL);
-                tmp = left->var.sym->type;
-            }
+            right = make_tmp_type(right, left_type, MUL);
+            tmp = left_type; 
         }
         else{
             // Assume everything is an int
@@ -127,13 +165,11 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
             struct generic_node * addr = gen_rvalue(node->unary.expr, NULL);
 
             // Check if the returned type is a pointer or not
-            if (addr->type == VARIABLE)
-                addr->n_p = determine_if_pointer(addr->var.sym->type);
-            else if (addr->type == TEMPORARY)
-                addr->n_p = determine_if_pointer(addr->temp.operation_type);
+            struct type_node * addr_type = get_type_from_generic(addr);
+            addr->n_p = determine_if_pointer(addr_type);
 
             if (addr->n_p != POINTER_VAR){
-                fprintf(stderr, "Error on %s:%d: Cannot dereference given type!\n", node->file_name, node->line_num);
+                fprintf(stderr, "ERROR: On %s:%d: Cannot dereference given type!\n", node->file_name, node->line_num);
                 exit(2);
             }
             
@@ -157,8 +193,44 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
             }
             emit(LOAD, addr, NULL, target);
         }
+        if (node->unary.operator_type == SIZEOF_OP){
+            struct generic_node * operand = gen_rvalue(node->unary.expr, NULL);
+            struct generic_node * constant = make_generic_node(CONSTANT);
+            struct type_node * tt;
+
+            if (operand->type != TEMPORARY && operand->type != VARIABLE)
+                fprintf(stderr, "ERROR: Invalid use of sizeof on %s:%d", node->file_name, node->line_num);
+
+            tt = get_type_from_generic(operand);
+            constant->num.integer = size_of(tt);
+            constant->num.type = I;
+
+            if (!target)
+                target = new_temporary(tt);
+
+            emit(MOV, constant, NULL, target);
+
+            return target; 
+        }
     }
     return target; 
+}
+
+
+// Return the type node of a given generic node used in a quad
+// Assumes generic node is either a variable or temporary register
+struct type_node * get_type_from_generic(struct generic_node * node){
+    struct type_node * tt; 
+    if (node->type == TEMPORARY)
+        tt = node->temp.operation_type; 
+    if (node->type == VARIABLE)
+        tt = node->var.sym->type;
+    else{
+        // Assume int otherwise
+        tt = make_type_node(SCALAR_TYPE); 
+        tt->scalar.arith_type = I;
+    }
+    return tt; 
 }
 
 // Intermediate quad for pointer arithmetic 
@@ -241,58 +313,6 @@ void emit(enum quad_opcode opcode, struct generic_node * src1, struct generic_no
     }
     // block_head->head = q;
     // print_quad(q);
-}
-
-// prints parameters of a quad
-void print_generic_node(struct generic_node * node){
-    switch(node->type){
-        case (CONSTANT):        {
-                                    if (node->num.type > 5) printf("%-9Lg", node->num.frac);
-                                    else printf("%-9lld", node->num.integer);
-                                    break;
-                                }
-        case (VARIABLE):        {printf("%-9s", node->var.name); break;}
-        case (TEMPORARY):       {printf("%-9s", node->temp.ident); break;}
-        case (STRING_LIT):      {printf("%-9s", node->str.content); break;}
-        default:                {fprintf(stderr, "Unrecognized generic node type %d...\n", node->type);}
-    }
-}
-
-void print_op_code(enum quad_opcode opcode){
-    switch(opcode){
-        case ADD:           {printf("%-9s", "ADD"); break;}
-        case SUB:           {printf("%-9s", "SUB"); break;}
-        case MUL:           {printf("%-9s", "MUL"); break;}
-        case DIV:           {printf("%-9s", "DIV"); break;}
-        case LOAD:          {printf("%-9s", "LOAD"); break;}
-        case STORE:         {printf("%-9s", "STORE"); break;}
-        case LEA:           {printf("%-9s", "LEA"); break;}
-        default:            {fprintf(stderr, "Unsupported op code %d\n", opcode);}
-    }
-
-}
-
-// Helper to print any given quad
-void print_quad(struct quad * q){
-    printf("\t");
-    // If target is present
-    if (q->result){
-        print_generic_node(q->result);
-        printf("%-5s", "= ");
-    }
-    else{
-        printf("%-14s", " ");
-    }
-    print_op_code(q->opcode);
-    printf(" ");
-    print_generic_node(q->src1);
-
-    // If theres a second src
-    if (q->src2){
-        printf(", ");
-        print_generic_node(q->src2);
-    }
-    printf("\n");
 }
 
 // Helper function to create a new temporary node / register
