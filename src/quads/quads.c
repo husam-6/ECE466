@@ -223,7 +223,7 @@ struct type_node * get_type_from_generic(struct generic_node * node){
     struct type_node * tt; 
     if (node->type == TEMPORARY)
         tt = node->temp.operation_type; 
-    if (node->type == VARIABLE)
+    else if (node->type == VARIABLE)
         tt = node->var.sym->type;
     else{
         // Assume int otherwise
