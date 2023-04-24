@@ -29,6 +29,7 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
             struct type_node * point =  make_type_node(POINTER_TYPE);
             point->next_type = node->ident.sym->type->next_type;
             struct generic_node * temp = new_temporary(point);
+            // struct generic_node * temp = new_temporary(node->ident.sym->type);
             // int d = size_of(node->ident.sym->type);
             // printf("SIZE OF ARRAY: %d\n", d);
             emit(LEA, ident, NULL, temp);
@@ -82,20 +83,29 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
                 fprintf(stderr, "Invalid operation on %s:%d. Can only add or subtract a pointer and a number!\n", node->file_name, node->line_num);
                 exit(2);
             }
-            if (right->type == TEMPORARY)
+            if (right->type == TEMPORARY){
                 left = make_tmp_type(left, right->temp.operation_type);
-            else
+                tmp = right->temp.operation_type;
+            }
+            else{
                 left = make_tmp_type(left, right->var.sym->type);
+                tmp = right->var.sym->type;
+            }
+            
             
         }
         else if (left->n_p == POINTER_VAR && right->n_p == NUM_VAR){        // Pointer += num
             if (get_opcode(node->binary.operator) != SUB && get_opcode(node->binary.operator) != ADD) {
                 fprintf(stderr, "Invalid operation on %s:%d. Can only add or subtract a pointer and a number!\n", node->file_name, node->line_num);
             }
-            if (left->type == TEMPORARY)
+            if (left->type == TEMPORARY){
                 right = make_tmp_type(right, left->temp.operation_type);
-            else
+                tmp = left->temp.operation_type;
+            }
+            else{
                 right = make_tmp_type(right, left->var.sym->type);
+                tmp = left->var.sym->type;
+            }
         }
         else{
             // Assume everything is an int
@@ -111,24 +121,39 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
 
     if (node->type==UNARY_NODE && !node->unary.abstract){
         if (node->unary.operator_type == DEREF){
-            if (node->unary.expr->ident.sym->type->type == ARRAY_TYPE)
+            if (node->unary.expr->ident.sym && node->unary.expr->ident.sym->type->type == ARRAY_TYPE)
                 return gen_rvalue(node->unary.expr, NULL);
             struct generic_node * addr = gen_rvalue(node->unary.expr, NULL);
 
             // Check if the returned type is a pointer or not
-            if (addr->type == VARIABLE)
+            if (addr->type == VARIABLE){
                 addr->n_p = determine_if_pointer(addr->var.sym->type);
-            else if (addr->type == TEMPORARY)
+            }
+            else if (addr->type == TEMPORARY){
                 addr->n_p = determine_if_pointer(addr->temp.operation_type);
+            }
 
-            if (addr->n_p != POINTER_VAR)
-                fprintf("Error on %s:%d: Cannot dereference given type!\n", node->file_name, node->line_num);
+            if (addr->n_p != POINTER_VAR){
+                fprintf(stderr, "Error on %s:%d: Cannot dereference given type!\n", node->file_name, node->line_num);
+                exit(2);
+            }
             
             if (!target){
-                if (addr->type == TEMPORARY)
-                    target = new_temporary(addr->temp.operation_type->next_type);       // 'Dereference' type - remove top level type
-                else if (addr->type == VARIABLE)
+                if (addr->type == TEMPORARY){
+                    // If the next type is also an array, cast that to a pointer as well!
+                    struct type_node * deref_type = addr->temp.operation_type->next_type; 
+                    if (deref_type->type == ARRAY_TYPE){
+                        struct type_node * point =  make_type_node(POINTER_TYPE);
+                        point->next_type = deref_type->next_type; 
+                        target = new_temporary(point);       // 'Dereference' type - remove top level type
+                    }
+                    else
+                        target = new_temporary(deref_type);       // 'Dereference' type - remove top level type
+                }
+                else if (addr->type == VARIABLE){
                     target = new_temporary(addr->var.sym->type->next_type);
+
+                }
             }
             emit(LOAD, addr, NULL, target);
         }
