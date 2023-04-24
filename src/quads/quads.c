@@ -24,14 +24,11 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
         struct generic_node * ident = make_generic_node(VARIABLE);
         ident->var = node->ident;
         if (node->ident.sym->type->type == ARRAY_TYPE){
-
             // Cast array to pointer
             struct type_node * point =  make_type_node(POINTER_TYPE);
             point->next_type = node->ident.sym->type->next_type;
             struct generic_node * temp = new_temporary(point);
-            // struct generic_node * temp = new_temporary(node->ident.sym->type);
-            // int d = size_of(node->ident.sym->type);
-            // printf("SIZE OF ARRAY: %d\n", d);
+
             emit(LEA, ident, NULL, temp);
             return temp; 
         }
@@ -150,13 +147,13 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
                         struct type_node * point =  make_type_node(POINTER_TYPE);
                         point->next_type = deref_type->next_type; 
                         target = new_temporary(point);       // 'Dereference' type - remove top level type
+                        return target; 
                     }
                     else
                         target = new_temporary(deref_type);       // 'Dereference' type - remove top level type
                 }
                 else if (addr->type == VARIABLE){
                     target = new_temporary(addr->var.sym->type->next_type);
-
                 }
             }
             emit(LOAD, addr, NULL, target);
