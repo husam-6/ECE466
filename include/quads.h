@@ -105,6 +105,7 @@ struct generic_node * gen_assign(struct astnode * node);
 int size_of(struct type_node * type);
 int determine_if_pointer(struct type_node * tt);
 struct generic_node * make_tmp_type();
+void print_generic_node();
 
 // Recurse through AST using DFS
 
