@@ -84,11 +84,11 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
                 exit(2);
             }
             if (right->type == TEMPORARY){
-                left = make_tmp_type(left, right->temp.operation_type);
+                left = make_tmp_type(left, right->temp.operation_type, MUL);
                 tmp = right->temp.operation_type;
             }
             else{
-                left = make_tmp_type(left, right->var.sym->type);
+                left = make_tmp_type(left, right->var.sym->type, MUL);
                 tmp = right->var.sym->type;
             }
             
@@ -99,11 +99,11 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
                 fprintf(stderr, "Invalid operation on %s:%d. Can only add or subtract a pointer and a number!\n", node->file_name, node->line_num);
             }
             if (left->type == TEMPORARY){
-                right = make_tmp_type(right, left->temp.operation_type);
+                right = make_tmp_type(right, left->temp.operation_type, MUL);
                 tmp = left->temp.operation_type;
             }
             else{
-                right = make_tmp_type(right, left->var.sym->type);
+                right = make_tmp_type(right, left->var.sym->type, MUL);
                 tmp = left->var.sym->type;
             }
         }
@@ -116,6 +116,10 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
         if (!target)
             target = new_temporary(tmp);
         emit(get_opcode(node->binary.operator), left, right, target);
+
+        if (left->n_p == POINTER_VAR && right->n_p == POINTER_VAR)
+            make_tmp_type(target, tmp, DIV);
+
         return target;
     }
 
@@ -162,7 +166,7 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
 }
 
 // Intermediate quad for pointer arithmetic 
-struct generic_node * make_tmp_type(struct generic_node * node, struct type_node * t){
+struct generic_node * make_tmp_type(struct generic_node * node, struct type_node * t, enum quad_opcode opcode){
 
     // Create a constant node and new target
     struct generic_node * constant = make_generic_node(CONSTANT);
@@ -172,7 +176,7 @@ struct generic_node * make_tmp_type(struct generic_node * node, struct type_node
     constant->num.type = I;
     target = new_temporary(t);
 
-    emit(MUL, node, constant, target);
+    emit(opcode, node, constant, target);
     return target;
 }
 
