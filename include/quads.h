@@ -34,7 +34,8 @@ enum generic_type{
     VARIABLE,
     TEMPORARY,
     CONSTANT,
-    STRING_LIT,
+    STRING_LITERAL,
+    CHAR_LITERAL
 };
 
 enum MODE{
@@ -66,6 +67,7 @@ struct generic_node{
         } temp;
         struct number num;
         struct string_literal str;
+        char char_lit; 
     };
     enum num_or_pointer n_p; 
 };

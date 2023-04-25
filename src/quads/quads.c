@@ -27,7 +27,8 @@ void print_generic_node(struct generic_node * node){
                                 }
         case (VARIABLE):        {printf("%-9s", node->var.name); break;}
         case (TEMPORARY):       {printf("%-9s", node->temp.ident); break;}
-        case (STRING_LIT):      {printf("%-9s", node->str.content); break;}
+        case (STRING_LITERAL):  {printf("\"%s\"", node->str.content); break;}
+        case (CHAR_LITERAL):    {printf("'%c'", node->char_lit); break;}
         default:                {fprintf(stderr, "Unrecognized generic node type %d...\n", node->type);}
     }
 }
@@ -91,6 +92,16 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
         struct generic_node * constant = make_generic_node(CONSTANT);
         constant->num = node->num;
         return constant;
+    }
+    if (node->type==CHAR_LIT){
+        struct generic_node * char_lit = make_generic_node(CHAR_LITERAL);
+        char_lit->char_lit = node->char_lit; 
+        return char_lit;
+    }
+    if (node->type==STR_LIT){
+        struct generic_node * str_lit = make_generic_node(STRING_LITERAL);
+        str_lit->str = node->str_lit;
+        return str_lit;  
     }
     if (node->type==BINARY_NODE && !node->binary.abstract){
         // Assignment binary op
@@ -264,7 +275,7 @@ struct generic_node * gen_lvalue(struct astnode * node, int * mode){
         ident->var = node->ident;
         return ident;
     }
-    if (node->type==NUM) return NULL;
+    if (node->type==NUM || node->type==STR_LIT || node->type == CHAR_LIT) return NULL;
     if (node->type == UNARY_NODE){
         // If dereference, save the mode as an indirect reference
         if (node->unary.operator_type == DEREF){
@@ -279,10 +290,15 @@ struct generic_node * gen_lvalue(struct astnode * node, int * mode){
 struct generic_node * gen_assign(struct astnode * node){
     int dstmode; 
     struct generic_node * dst = gen_lvalue(node->binary.left, &dstmode);
-    if (dst==NULL)
-        fprintf(stderr, "Error, invalid LHS of assignment on %s:%d\n", node->file_name, node->line_num); 
-    if (dstmode==DIRECT)
-        gen_rvalue(node->binary.right, dst);
+    if (dst==NULL){
+        fprintf(stderr, "ERROR: invalid LHS of assignment on %s:%d\n", node->file_name, node->line_num); 
+        exit(2);
+    }
+    if (dstmode==DIRECT){
+        struct generic_node * src = gen_rvalue(node->binary.right, dst);
+        if (src != dst)
+            emit(MOV, src, NULL, dst);
+    }
     else {
         struct generic_node *t1 = gen_rvalue(node->binary.right, NULL);
         emit(STORE, t1, dst, NULL);
