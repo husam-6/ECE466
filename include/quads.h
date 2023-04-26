@@ -28,6 +28,9 @@ enum quad_opcode{
     SUB,
     MUL,
     DIV,
+    ARG,
+    ARGBEGIN,
+    CALL,
 };
 
 enum generic_type{

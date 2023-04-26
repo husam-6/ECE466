@@ -18,31 +18,51 @@ enum quad_opcode get_opcode(int operator) {
 }
 
 // prints parameters of a quad
-void print_generic_node(struct generic_node * node){
-    switch(node->type){
-        case (CONSTANT):        {
-                                    if (node->num.type > 5) printf("%-9Lg", node->num.frac);
-                                    else printf("%-9lld", node->num.integer);
-                                    break;
-                                }
-        case (VARIABLE):        {printf("%-9s", node->var.name); break;}
-        case (TEMPORARY):       {printf("%-9s", node->temp.ident); break;}
-        case (STRING_LITERAL):  {printf("\"%s\"", node->str.content); break;}
-        case (CHAR_LITERAL):    {printf("'%c'", node->char_lit); break;}
-        default:                {fprintf(stderr, "Unrecognized generic node type %d...\n", node->type);}
+void print_generic_node(struct generic_node * node, int assign){
+    if (assign){
+        switch(node->type){
+            case (CONSTANT):        {
+                                        if (node->num.type > 5) printf("%-9Lg", node->num.frac);
+                                        else printf("%-9lld", node->num.integer);
+                                        break;
+                                    }
+            case (VARIABLE):        {printf("%-9s", node->var.name); break;}
+            case (TEMPORARY):       {printf("%-9s", node->temp.ident); break;}
+            case (STRING_LITERAL):  {printf("%s", node->str.content); break;}
+            case (CHAR_LITERAL):    {printf("'%c'", node->char_lit); break;}
+            default:                {fprintf(stderr, "Unrecognized generic node type %d...\n", node->type);}
+        }
+    }
+    else {
+        switch(node->type){
+            case (CONSTANT):        {
+                                        if (node->num.type > 5) printf("%Lg", node->num.frac);
+                                        else printf("%lld", node->num.integer);
+                                        break;
+                                    }
+            case (VARIABLE):        {printf("%s", node->var.name); break;}
+            case (TEMPORARY):       {printf("%s", node->temp.ident); break;}
+            case (STRING_LITERAL):  {printf("%s", node->str.content); break;}
+            case (CHAR_LITERAL):    {printf("'%c'", node->char_lit); break;}
+            default:                {fprintf(stderr, "Unrecognized generic node type %d...\n", node->type);}
+        }
     }
 }
 
 void print_op_code(enum quad_opcode opcode){
     switch(opcode){
-        case ADD:           {printf("%-9s", "ADD"); break;}
-        case SUB:           {printf("%-9s", "SUB"); break;}
-        case MUL:           {printf("%-9s", "MUL"); break;}
-        case DIV:           {printf("%-9s", "DIV"); break;}
-        case LOAD:          {printf("%-9s", "LOAD"); break;}
-        case STORE:         {printf("%-9s", "STORE"); break;}
-        case LEA:           {printf("%-9s", "LEA"); break;}
-        case MOV:           {printf("%-9s", "MOV"); break;}
+        case ADD:           {printf("%-11s", "ADD"); break;}
+        case SUB:           {printf("%-11s", "SUB"); break;}
+        case MUL:           {printf("%-11s", "MUL"); break;}
+        case DIV:           {printf("%-11s", "DIV"); break;}
+        case LOAD:          {printf("%-11s", "LOAD"); break;}
+        case STORE:         {printf("%-11s", "STORE"); break;}
+        case LEA:           {printf("%-11s", "LEA"); break;}
+        case MOV:           {printf("%-11s", "MOV"); break;}
+        case CALL:          {printf("%-11s", "CALL"); break;}
+        case ARG:           {printf("%-11s", "ARG"); break;}
+        case ARGBEGIN:      {printf("%-11s", "ARGBEGIN"); break;}
+        case BR:            {printf("%-11s", "BR"); break;}
         default:            {fprintf(stderr, "Unsupported op code %d\n", opcode);}
     }
 
@@ -53,7 +73,7 @@ void print_quad(struct quad * q){
     printf("\t");
     // If target is present
     if (q->result){
-        print_generic_node(q->result);
+        print_generic_node(q->result, 1);
         printf("%-5s", "= ");
     }
     else{
@@ -61,12 +81,12 @@ void print_quad(struct quad * q){
     }
     print_op_code(q->opcode);
     printf(" ");
-    print_generic_node(q->src1);
+    print_generic_node(q->src1, 0);
 
     // If theres a second src
     if (q->src2){
         printf(", ");
-        print_generic_node(q->src2);
+        print_generic_node(q->src2, 0);
     }
     printf("\n");
 }
@@ -224,6 +244,37 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
             return target; 
         }
     }
+    
+    if (node->type == FN_CALL){
+        // Start function call quads
+        struct generic_node * constant = make_generic_node(CONSTANT);
+        constant->num.integer = node->fncall.head->num_args;
+        emit(ARGBEGIN, constant, NULL, NULL);
+
+        // Generate quad for each argument
+        struct linked_list * tmp = node->fncall.head; 
+        int i = 1; 
+        while(tmp){
+            struct generic_node * arg = gen_rvalue(tmp->expr, NULL);
+            struct generic_node * arg_num = make_generic_node(CONSTANT);
+            arg_num->num.integer = i; 
+            emit(ARG, arg_num, arg, NULL);
+            i++; tmp = tmp->next; 
+        }
+        
+        struct generic_node * fn_ident = gen_rvalue(node->fncall.postfix, NULL);
+        struct type_node * tt = get_type_from_generic(fn_ident);
+
+        if (!target)
+            target = new_temporary(tt);
+
+        // Call quad
+        emit(CALL, fn_ident, NULL, target);
+
+        // End basic block
+        create_basic_block();
+        return target;
+    }
     return target; 
 }
 
@@ -284,6 +335,7 @@ struct generic_node * gen_lvalue(struct astnode * node, int * mode){
                 return gen_rvalue(node->unary.expr, NULL);
         }
     }
+    return NULL; 
 }
 
 // Generate assignment, pseudocode on page 12
@@ -303,6 +355,7 @@ struct generic_node * gen_assign(struct astnode * node){
         struct generic_node *t1 = gen_rvalue(node->binary.right, NULL);
         emit(STORE, t1, dst, NULL);
     }
+    return dst; 
 }
 
 
@@ -365,7 +418,21 @@ struct basic_block * create_basic_block(){
     block->head = NULL;
 
     asprintf(&block->label, ".BB%d.%d", func_counter++, bb_counter++);
-    curr_block = block; 
+
+    // Append to linked list of blocks, update current block
+    if (curr_block){
+        curr_block->next_block = block;
+
+        // End last basic block with a branch...
+        struct generic_node * branch_num = make_generic_node(STRING_LITERAL);
+        branch_num->str.content = block->label; 
+        emit(BR, branch_num, NULL, NULL);
+        curr_block = block;
+    }
+    else{
+        curr_block = block; 
+        block_head = block;
+    }
     return block;
 
 }
@@ -384,7 +451,7 @@ void print_basic_block(struct basic_block * bb){
 void gen_quads(struct linked_list * asthead, char * func_name){
     // printf("#####\t\t Generating Quads \t\t #####\n");
     printf(".%s\n", func_name);
-    block_head = create_basic_block();
+    create_basic_block();
     while(asthead != NULL){
         gen_rvalue(asthead->expr, NULL);
         asthead = asthead->next;
