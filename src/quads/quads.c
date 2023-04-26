@@ -243,6 +243,14 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
 
             return target; 
         }
+        if (node->unary.operator == '&'){
+            int mode; 
+            struct generic_node * addr = gen_lvalue(node->unary.expr, &mode);
+
+            if (!target)
+                target = new_temporary(get_type_from_generic(addr));
+            emit(LEA, addr, NULL, target);
+        }
     }
     
     if (node->type == FN_CALL){

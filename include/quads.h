@@ -112,6 +112,8 @@ int determine_if_pointer(struct type_node * tt);
 struct generic_node * make_tmp_type();
 void print_generic_node();
 struct type_node * get_type_from_generic(struct generic_node * node);
+struct generic_node * gen_lvalue(struct astnode * node, int * mode);
+struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * target);
 
 // Recurse through AST using DFS
 
