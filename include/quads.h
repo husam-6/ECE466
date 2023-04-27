@@ -31,6 +31,7 @@ enum quad_opcode{
     ARG,
     ARGBEGIN,
     CALL,
+    RETURN_QUAD,
 };
 
 enum generic_type{
@@ -102,18 +103,35 @@ struct basic_block * create_basic_block();
 // Print basic block
 void print_basic_block(struct basic_block * bb);
 void print_quad(struct quad * q);
+void print_generic_node();
+
+// Allocators
 struct generic_node * make_generic_node(enum generic_type type);
 struct generic_node * new_temporary();
+
+// Emit quads
 void emit(enum quad_opcode opcode, struct generic_node * src1, struct generic_node * src2, struct generic_node * dest);
-void gen_quads(struct linked_list * asthead, char * func_name);
+void gen_quads(struct astnode * asthead, char * func_name);
 struct generic_node * gen_assign(struct astnode * node);
+
+// Size of operator + helpers
 int size_of(struct type_node * type);
 int determine_if_pointer(struct type_node * tt);
 struct generic_node * make_tmp_type();
-void print_generic_node();
 struct type_node * get_type_from_generic(struct generic_node * node);
 struct generic_node * gen_lvalue(struct astnode * node, int * mode);
 struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * target);
+
+// Control flow
+void gen_if(struct astnode * if_node);
+void link_bb();
+void gen_condexpr();
+void gen_stmt();
+
+// Generate quads for a given operator type
+struct generic_node * gen_unary_node(struct astnode * node, struct generic_node * target);
+struct generic_node * gen_binary_node(struct astnode * node, struct generic_node * target);
+struct generic_node * gen_fn_call(struct astnode * node, struct generic_node * target);
 
 // Recurse through AST using DFS
 
