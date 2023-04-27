@@ -149,7 +149,7 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
         struct type_node * tmp; 
         if (left->n_p == POINTER_VAR && right->n_p == POINTER_VAR){     // Pointer - pointer
             if (get_opcode(node->binary.operator) != SUB) {
-                fprintf(stderr, "ERROR: Invalid operation on %s:%d. Can only subtract 2 pointers!\n", node->file_name, node->line_num);
+                fprintf(stderr, "%serror%s: Invalid operation on %s:%d. Can only subtract 2 pointers!\n", RED, RESET, node->file_name, node->line_num);
                 exit(2);
             }
 
@@ -158,7 +158,7 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
         }
         else if (left->n_p == NUM_VAR && right->n_p == POINTER_VAR){        // Num +- pointer
             if (get_opcode(node->binary.operator) != SUB && get_opcode(node->binary.operator) != ADD) {
-                fprintf(stderr, "ERROR: Invalid operation on %s:%d. Can only add or subtract a pointer and a number!\n", node->file_name, node->line_num);
+                fprintf(stderr, "%serror%s: Invalid operation on %s:%d. Can only add or subtract a pointer and a number!\n", RED, RESET, node->file_name, node->line_num);
                 exit(2);
             }
             left = make_tmp_type(left, right_type, MUL);
@@ -168,7 +168,8 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
         }
         else if (left->n_p == POINTER_VAR && right->n_p == NUM_VAR){        // Pointer += num
             if (get_opcode(node->binary.operator) != SUB && get_opcode(node->binary.operator) != ADD) {
-                fprintf(stderr, "ERROR: Invalid operation on %s:%d. Can only add or subtract a pointer and a number!\n", node->file_name, node->line_num);
+                fprintf(stderr, "%serror%s: Invalid operation on %s:%d. Can only add or subtract a pointer and a number!\n", RED, RESET, node->file_name, node->line_num);
+                exit(2);
             }
             right = make_tmp_type(right, left_type, MUL);
             tmp = left_type; 
@@ -200,7 +201,7 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
             addr->n_p = determine_if_pointer(addr_type);
 
             if (addr->n_p != POINTER_VAR){
-                fprintf(stderr, "ERROR: On %s:%d: Cannot dereference given type!\n", node->file_name, node->line_num);
+                fprintf(stderr, "%serror%s: On %s:%d: Cannot dereference given type!\n", RED, RESET, node->file_name, node->line_num);
                 exit(2);
             }
             
@@ -230,7 +231,7 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
             struct type_node * tt;
 
             if (operand->type != TEMPORARY && operand->type != VARIABLE)
-                fprintf(stderr, "ERROR: Invalid use of sizeof on %s:%d", node->file_name, node->line_num);
+                fprintf(stderr, "%serror%s: Invalid use of sizeof on %s:%d", RED, RESET, node->file_name, node->line_num);
 
             tt = get_type_from_generic(operand);
             constant->num.integer = size_of(tt);
@@ -246,9 +247,13 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
         if (node->unary.operator == '&'){
             int mode; 
             struct generic_node * addr = gen_lvalue(node->unary.expr, &mode);
-
+            
+            // Update type node -> now becomes pointer to prev type
+            struct type_node * t = get_type_from_generic(addr); 
+            struct type_node * pointer = make_type_node(POINTER_TYPE);
+            pointer->next_type = t; 
             if (!target)
-                target = new_temporary(get_type_from_generic(addr));
+                target = new_temporary(pointer);
             emit(LEA, addr, NULL, target);
         }
     }
@@ -259,18 +264,43 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
         constant->num.integer = node->fncall.head->num_args;
         emit(ARGBEGIN, constant, NULL, NULL);
 
+
         // Generate quad for each argument
+        // check for syntax errors, throw an error if types don't match 
         struct linked_list * tmp = node->fncall.head; 
-        int i = 1; 
+        struct generic_node * arg; 
+        struct generic_node * arg_num;
+        struct type_node * arg_type; 
+        int arg_idx = 1;
+        int defined_args = 0; 
+        
+        // Get function node
+        struct generic_node * fn_ident = gen_rvalue(node->fncall.postfix, NULL);
+        struct type_node * function_def = get_type_from_generic(fn_ident);
+        struct astnode_symbol * tmp_args = function_def->func_node.param_head; 
         while(tmp){
-            struct generic_node * arg = gen_rvalue(tmp->expr, NULL);
-            struct generic_node * arg_num = make_generic_node(CONSTANT);
-            arg_num->num.integer = i; 
+            arg = gen_rvalue(tmp->expr, NULL);
+            arg_num = make_generic_node(CONSTANT);
+            arg_type = get_type_from_generic(arg);
+            arg_num->num.integer = arg_idx; 
+            if (tmp_args && function_def->func_node.param_head && !check_types(tmp_args->type, arg_type)){
+                fprintf(stderr, "%serror%s: Type mismatch in %s:%d. Type of given in function call doesn't match the definition for argument %d\n", RED, RESET, node->file_name, node->line_num, arg_idx);
+                exit(2);
+            }
+
             emit(ARG, arg_num, arg, NULL);
-            i++; tmp = tmp->next; 
+            arg_idx++; tmp = tmp->next;
+
+            if (tmp_args){
+                tmp_args = tmp_args->next;
+                defined_args++; 
+            }
         }
         
-        struct generic_node * fn_ident = gen_rvalue(node->fncall.postfix, NULL);
+        if (defined_args != node->fncall.head->num_args && function_def->func_node.param_head){
+            fprintf(stderr, "%serror%s: Function call on %s:%d expected %d argument(s), received %d\n", RED, RESET, node->file_name, node->line_num, defined_args, node->fncall.head->num_args);
+            exit(2);
+        }
         struct type_node * tt = get_type_from_generic(fn_ident);
 
         if (!target)
@@ -351,7 +381,7 @@ struct generic_node * gen_assign(struct astnode * node){
     int dstmode; 
     struct generic_node * dst = gen_lvalue(node->binary.left, &dstmode);
     if (dst==NULL){
-        fprintf(stderr, "ERROR: invalid LHS of assignment on %s:%d\n", node->file_name, node->line_num); 
+        fprintf(stderr, "%serror%s: invalid LHS of assignment on %s:%d\n", RED, RESET, node->file_name, node->line_num); 
         exit(2);
     }
     if (dstmode==DIRECT){
@@ -457,7 +487,12 @@ void print_basic_block(struct basic_block * bb){
 
 // Loop through list of ASTs and generate quads
 void gen_quads(struct linked_list * asthead, char * func_name){
-    // printf("#####\t\t Generating Quads \t\t #####\n");
+    // Reset basic block counter and blocks
+    bb_counter = 0;
+    block_head = NULL; 
+    curr_block = NULL; 
+
+    // Print basic block 
     printf(".%s\n", func_name);
     create_basic_block();
     while(asthead != NULL){

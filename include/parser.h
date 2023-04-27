@@ -4,6 +4,8 @@
 #include "lexer.h"
 #include "type.h"
 #include "sym.h"
+#define RED "\033[0;31m"
+#define RESET "\033[0m"
 
 enum op_type{
     BINOP = 0,

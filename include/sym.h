@@ -22,6 +22,7 @@ void print_scope_symbols();
 char * print_union_struct();
 char * print_scope();
 char * print_namespace();
+int check_types();
 
 // For scopes
 struct scope * make_new_scope(enum scope_type s_type);
