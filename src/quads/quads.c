@@ -61,7 +61,9 @@ void print_op_code(enum quad_opcode opcode){
         case ARG:           {printf("%-11s", "ARG"); break;}
         case ARGBEGIN:      {printf("%-11s", "ARGBEGIN"); break;}
         case BR:            {printf("%-11s", "BR"); break;}
-        case RETURN_QUAD:        {printf("%-11s", "RETURN"); break;}
+        case RETURN_QUAD:   {printf("%-11s", "RETURN"); break;}
+        case POSTINC:       {printf("%-11s", "POSTINC"); break;}
+        case POSTDEC:       {printf("%-11s", "POSTDEC"); break;}
         default:            {fprintf(stderr, "Unsupported op code %d\n", opcode);}
     }
 
@@ -301,15 +303,18 @@ struct generic_node * gen_unary_node(struct astnode * node, struct generic_node 
             target = new_temporary(pointer);
         emit(LEA, addr, NULL, target);
     }
-    else if (node->unary.operator == PLUSPLUS || node->unary.operator == MINUSMINUS){
+    else if (node->unary.operator == PLUSPLUS || node->unary.operator == MINUSMINUS){       // if parsed correctly -> this is a preinc
         struct generic_node * src1 = gen_rvalue(node->unary.expr, NULL);
         struct generic_node * constant = make_generic_node(CONSTANT);
         constant->num.integer = 1; 
 
         enum quad_opcode tmp;
-        if (node->unary.operator == PLUSPLUS)   tmp = ADD; 
-        else                                    tmp = SUB;
-        emit(tmp, src1, constant, src1);
+        if (node->unary.operator == PLUSPLUS)   tmp = POSTINC; 
+        else                                    tmp = POSTDEC;
+
+        if (!target)
+            target = new_temporary(get_type_from_generic(src1));
+        emit(tmp, src1, NULL, target);
         return src1; 
     }
     return target; 
@@ -377,7 +382,7 @@ struct generic_node * gen_fn_call(struct astnode * node, struct generic_node * t
 // based off notes, page 25
 void gen_if(struct astnode * if_node){
     if (if_node->if_stmt.cond_type == SWITCH_NODE){
-        fprintf(stderr, "%serror%s: Use of switch statements in %s:%d unsupported", RED, RESET, if_node->file_name, if_node->line_num);
+        fprintf(stderr, "%serror%s: Use of switch statements in %s:%d unsupported\n", RED, RESET, if_node->file_name, if_node->line_num);
         exit(2);
     }
 

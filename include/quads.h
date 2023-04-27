@@ -32,6 +32,8 @@ enum quad_opcode{
     ARGBEGIN,
     CALL,
     RETURN_QUAD,
+    POSTINC,
+    POSTDEC
 };
 
 enum generic_type{
