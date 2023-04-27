@@ -352,7 +352,34 @@ init_declarator_list:   init_declarator                                         
 ;
 
 init_declarator:        declarator
+      |                 declarator '=' initializer                                  {yyerror("Initialized declarators not supported"); exit(2);}
 ;
+
+// 6.7.8 (just adding to grammar but not supporting)
+initializer:            assignment_expression
+      |                 '{' initializer_list '}'
+      |                 '{' initializer_list ',' '}'
+;
+
+initializer_list:
+      |                 designation initializer
+      |                 initializer
+      |                 initializer_list ',' designation initializer
+;
+
+designation:            designator_list '='
+;
+
+designator_list:        designator
+      |                 designator_list designator
+;
+
+designator:             '[' constant_expression ']'
+      |                 '.' IDENT
+;
+
+
+
 
 // 6.7.1
 storage_class_specifier:      //TYPEDEF
