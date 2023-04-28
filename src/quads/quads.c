@@ -60,7 +60,7 @@ void print_op_code(enum quad_opcode opcode){
         case CALL:          {printf("%-11s", "CALL"); break;}
         case ARG:           {printf("%-11s", "ARG"); break;}
         case ARGBEGIN:      {printf("%-11s", "ARGBEGIN"); break;}
-        case BR:            {printf("%-11s", "BR"); break;}
+        case CMP:           {printf("%-11s", "CMP"); break;}
         case RETURN_QUAD:   {printf("%-11s", "RETURN"); break;}
         case POSTINC:       {printf("%-11s", "POSTINC"); break;}
         case POSTDEC:       {printf("%-11s", "POSTDEC"); break;}
@@ -90,6 +90,31 @@ void print_quad(struct quad * q){
         print_generic_node(q->src2, 0);
     }
     printf("\n");
+}
+
+// Print all the quads and information in a basic block
+void print_basic_block(struct basic_block * bb){
+    printf("%s\n", bb->label);
+    struct quad * tmp = bb->head;
+    while (tmp != NULL){
+        print_quad(tmp);
+        tmp = tmp->next_quad;
+    }
+    
+    // Branch
+    if (bb->next_block){
+        printf("\t%-14s", " ");
+        switch(bb->branch){
+            case BR:        {printf("%-11s %s\n", "BR", bb->left->label); break;}
+            case BREQ:      {printf("%-11s %s, %s\n", "BREQ", bb->left->label, bb->right->label); break;}
+            case BRNEQ:     {printf("%-11s %s, %s\n", "BRNEQ", bb->left->label, bb->right->label); break;}
+            case BRGT:      {printf("%-11s %s, %s\n", "BRGT", bb->left->label, bb->right->label); break;}
+            case BRLT:      {printf("%-11s %s, %s\n", "BRLT", bb->left->label, bb->right->label); break;}
+            case BRGEQ:     {printf("%-11s %s, %s\n", "BRGEQ", bb->left->label, bb->right->label); break;}
+            case BRLEQ:     {printf("%-11s %s, %s\n", "BRLEQ", bb->left->label, bb->right->label); break;}
+            default:        {fprintf(stderr, "%serror%s: UNKNOWN BRANCH TYPE %d\n", RED, RESET, bb->branch); break;}
+        }
+    }
 }
 
 // Generate r value of a given node
@@ -150,7 +175,6 @@ struct generic_node * gen_binary_node(struct astnode * node, struct generic_node
         return target; 
     }
     else if (node->binary.operator_type == ASSIGNMENT_COMPOUND){
-        // TODO: this is actually the same as a++ and ++a right now... fix later
         // Create a temporary binary node with the compounded operation
         struct astnode * tmp_binary = make_ast_node(BINARY_NODE); 
         tmp_binary->binary.operator_type = BINOP;
@@ -401,15 +425,18 @@ void gen_if(struct astnode * if_node){
         Bn=Bf;
     
 
-    gen_condexpr(if_node, Bt, Bf); //creates branches to Bt,Bf cur_bb=Bt;
+    curr_block = start_block; 
+    gen_condexpr(if_node->if_stmt.cond, Bt, Bf); //creates branches to Bt,Bf cur_bb=Bt;
 
+    // Generate statements of true block
     curr_block = Bt; 
     gen_stmt(if_node->if_stmt.stmt);
-    link_bb(start_block, Bn);
+    link_bb(curr_block, BR, Bn, NULL);
+
     if (if_node->if_stmt.else_stmt){
         curr_block = Bf;
         gen_stmt(if_node->if_stmt.else_stmt);
-        link_bb(curr_block, Bn);
+        link_bb(curr_block, BR, Bn, NULL);
     }
     curr_block = Bn;
 }
@@ -428,12 +455,90 @@ void gen_stmt(struct astnode * asthead){
     }
 }
 
-void gen_condexpr(){
+// Routine for conditional expressions
+void gen_condexpr(struct astnode * node, struct basic_block * Bt, struct basic_block * Bf){
+    struct generic_node * constant = make_generic_node(CONSTANT);
+    constant->num.integer = 0;
+    if (node->type==IDENT_NODE){        // Compare to 0 
+        struct generic_node * ident = make_generic_node(VARIABLE);
+        ident->var = node->ident;
+        emit(CMP, ident, constant, NULL);
+        link_bb(curr_block, BRNEQ, Bt, Bf);
+        return;
+    }
+    else if (node->type==NUM){
+        struct generic_node * number = make_generic_node(CONSTANT);
+        number->num = node->num;
+
+        emit(CMP, number, constant, NULL);
+        link_bb(curr_block, BRNEQ, Bt, Bf);
+        return;
+    }
+    else if (node->type==CHAR_LIT){
+        struct generic_node * char_lit = make_generic_node(CHAR_LITERAL);
+        char_lit->char_lit = node->char_lit; 
+
+        emit(CMP, char_lit, constant, NULL);
+        link_bb(curr_block, BRNEQ, Bt, Bf);
+        return;
+    }
+    else if (node->type==STR_LIT){
+        struct generic_node * str_lit = make_generic_node(STRING_LITERAL);
+        str_lit->str = node->str_lit;
+
+        emit(CMP, str_lit, constant, NULL);
+        link_bb(curr_block, BRNEQ, Bt, Bf);
+        return;  
+    }
+    else if (node->type==BINARY_NODE && !node->binary.abstract){
+        // Compare assignment to 0
+        if (node->binary.operator_type == ASSIGNMENT){
+            struct generic_node * dst = gen_assign(node);
+            emit(CMP, dst, constant, NULL);
+            link_bb(curr_block, BRNEQ, Bt, Bf);
+            return; 
+        }
+
+        // Compare left and right otherwise
+        struct generic_node * left = gen_rvalue(node->binary.left, NULL);
+        struct generic_node * right = gen_rvalue(node->binary.right, NULL);
+
+        emit(CMP, left, right, NULL);
+
+        // Invert comparison
+        enum branch_type tmp; 
+        switch(node->binary.operator){
+            case '<':               {tmp = BRGEQ; break;}
+            case '>':               {tmp = BRLEQ; break;}
+            case EQEQ:              {tmp = BRNEQ; break;}
+            case NOTEQ:             {tmp = BREQ; break;}
+            case GTEQ:              {tmp = BRLT; break;}
+            case LTEQ:              {tmp = BRGT; break;}
+            default:                {fprintf(stderr, "%serror%s: Unknown operator in comparison in %s:%d\n", RED, RESET, node->file_name, node->line_num); exit(2);}
+        }
+        link_bb(curr_block, tmp, Bt, Bf);
+    }
+    else if (node->type==UNARY_NODE && !node->unary.abstract){
+        // Get rvalue
+        struct generic_node * unary = gen_rvalue(node->unary.expr, NULL);
+
+        // Compare to 0
+        emit(CMP, unary, constant, NULL);
+        link_bb(curr_block, BRNEQ, Bt, Bf);
+    }
+    else{
+        fprintf(stderr, "%serror%s: Invalid type in %s:%d. Type given: %d", RED, RESET, node->file_name, node->line_num, node->type);
+        die("Invalid Type?");
+    }
 
 }
 
-void link_bb(struct basic_block * block1, struct basic_block * block2){
+
+void link_bb(struct basic_block * og_block, enum branch_type branch, struct basic_block * block1, struct basic_block * block2){
     // Update the branch at the end of the basic block to be the next in sequence
+    og_block->branch= branch; 
+    og_block->left = block1; 
+    og_block->right = block2; 
     // block1->tail->src1->str.content = block2->label; 
 }
 
@@ -586,12 +691,10 @@ struct basic_block * create_basic_block(){
 
     // Append to linked list of blocks, update current block
     if (curr_block){
+        // Set up branch params
+        link_bb(curr_block, BR, block, NULL);
         curr_block->next_block = block;
 
-        // End last basic block with a branch...
-        struct generic_node * branch_num = make_generic_node(STRING_LITERAL);
-        branch_num->str.content = block->label; 
-        emit(BR, branch_num, NULL, NULL);
         curr_block = block;
     }
     else{
@@ -600,16 +703,6 @@ struct basic_block * create_basic_block(){
     }
     return block;
 
-}
-
-// Print all the quads and information in a basic block
-void print_basic_block(struct basic_block * bb){
-    printf("%s\n", bb->label);
-    struct quad * tmp = bb->head;
-    while (tmp != NULL){
-        print_quad(tmp);
-        tmp = tmp->next_quad;
-    }
 }
 
 // Loop through list of ASTs and generate quads

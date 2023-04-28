@@ -16,13 +16,6 @@ enum quad_opcode{
     LOAD,
     LEA,
     CMP,
-    BR,
-    BREQ,
-    BRGT,
-    BRLT,
-    BRNEQ,
-    BRGEQ,
-    BRLEQ,
     STORE,
     ADD,
     SUB,
@@ -34,6 +27,16 @@ enum quad_opcode{
     RETURN_QUAD,
     POSTINC,
     POSTDEC
+};
+
+enum branch_type{
+    BR,
+    BREQ,
+    BRGT,
+    BRLT,
+    BRNEQ,
+    BRGEQ,
+    BRLEQ,
 };
 
 enum generic_type{
@@ -96,6 +99,11 @@ struct basic_block{
     struct quad * head;
     struct quad * tail;
     struct basic_block *next_block;
+
+    // Left and right branches for CFG
+    struct basic_block *left;
+    struct basic_block *right;
+    enum branch_type branch; 
 };
 
 // Allocator functions
