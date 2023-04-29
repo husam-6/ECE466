@@ -21,7 +21,7 @@ char * file_name = "<stdin>";
 int func_counter, bb_counter, register_counter; 
 
 // Quad and Basic Block linked list heads
-struct basic_block * block_head;  
+struct basic_block * block_head, * block_tail;  
 struct basic_block * curr_block;
 
 int main(){

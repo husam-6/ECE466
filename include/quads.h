@@ -8,6 +8,7 @@
 
 extern int func_counter, bb_counter, register_counter;
 extern struct basic_block * block_head;  
+extern struct basic_block * block_tail;  
 extern struct basic_block * curr_block;  
 
 // Possible opcodes IR can emit
@@ -30,7 +31,7 @@ enum quad_opcode{
 };
 
 enum branch_type{
-    BR,
+    BR=1,
     BREQ,
     BRGT,
     BRLT,
@@ -135,7 +136,7 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
 // Control flow
 void gen_if(struct astnode * if_node);
 void link_bb();
-void gen_condexpr();
+struct generic_node * gen_condexpr();
 void gen_stmt();
 
 // Generate quads for a given operator type
