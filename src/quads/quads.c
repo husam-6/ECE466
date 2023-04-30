@@ -183,6 +183,9 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
     else if (node->type == FOR_LOOP){
         gen_for_loop(node);
     }
+    else if (node->type == WHILE_LOOP){
+        gen_while_loop(node);
+    }
     return target; 
 }
 
@@ -574,6 +577,40 @@ void gen_for_loop(struct astnode * node){
     Bbreak = create_basic_block();
     curr_block = Btmp;
     gen_condexpr(node->for_loop.cond, start_loop, Bbreak);
+    curr_block = Bbreak; 
+}
+
+void gen_while_loop(struct astnode * node){
+    struct basic_block *Bbody, *Bbreak, *Bstart;
+    Bstart = create_basic_block(); 
+    if (!node->while_loop.do_while){
+        // Create blocks for the loop and at the end of the iterations
+        Bbody = create_basic_block();
+        Bbreak = create_basic_block();
+
+        // Generate conditional statement
+        curr_block = Bstart;
+        gen_condexpr(node->while_loop.cond, Bbody, Bbreak);
+
+        // Body 
+        curr_block = Bbody;
+        gen_stmt(node->while_loop.stmt);
+        link_bb(Bbody, BR, Bstart, NULL);
+        curr_block = Bbreak; 
+        return; 
+    }
+
+    // Generate body first
+    curr_block = Bstart;
+    gen_stmt(node->while_loop.stmt);
+
+    // new block for comparisons and then after all iteratons
+    Bbody = create_basic_block();
+    Bbreak = create_basic_block();
+
+    // Conditional
+    curr_block = Bbody; 
+    gen_condexpr(node->while_loop.cond, Bstart, Bbreak);
     curr_block = Bbreak; 
 }
 

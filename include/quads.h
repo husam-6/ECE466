@@ -145,6 +145,7 @@ struct generic_node * gen_unary_node(struct astnode * node, struct generic_node 
 struct generic_node * gen_binary_node(struct astnode * node, struct generic_node * target);
 struct generic_node * gen_fn_call(struct astnode * node, struct generic_node * target);
 void gen_for_loop(struct astnode * node);
+void gen_while_loop(struct astnode * node);
 
 // Recurse through AST using DFS
 
