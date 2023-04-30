@@ -24,6 +24,9 @@ int func_counter, bb_counter, register_counter;
 struct basic_block * block_head, * block_tail;  
 struct basic_block * curr_block;
 
+// Break / Continue blocks 
+struct basic_block * break_block, * cont_block; 
+
 int main(){
       // Initialize global scope symbol table
       curr_scope = make_new_scope(GLOBAL_SCOPE);

@@ -118,7 +118,9 @@ void print_basic_block(struct basic_block * bb){
     }
     
     // Branch
-    if (bb && bb->branch && bb->tail && bb->tail->opcode != RETURN_QUAD){     // Don't branch if return (or do differently than other blocks)
+    if (bb && bb->branch){     
+        if (bb->tail && bb->tail->opcode == RETURN_QUAD) // Don't branch if return (or do differently than other blocks)
+            return; 
         printf("\t%-14s", " ");
         switch(bb->branch){
             case BR:        {printf("%-11s %s\n", "BR", bb->left->label); break;}
@@ -175,6 +177,24 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
         if (node->jump.jump_type == RETURN_JUMP){
             struct generic_node * ret_value = gen_rvalue(node->jump.expr, NULL);
             emit(RETURN_QUAD, ret_value, NULL, NULL);
+        }
+        else if (node->jump.jump_type == BREAK_JUMP){
+            if (!break_block){
+                fprintf(stderr, "%serror%s: Cannot use break keyword in this context in %s:%d\n", RED, RESET, node->file_name, node->line_num);
+                exit(2);
+            }
+            struct basic_block * tmp = curr_block; 
+            create_basic_block(); 
+            link_bb(tmp, BR, break_block, NULL);
+        }
+        else if (node->jump.jump_type == CONTINUE_JUMP){
+            if (!cont_block){
+                fprintf(stderr, "%serror%s: Cannot use continue keyword in this context in %s:%d\n", RED, RESET, node->file_name, node->line_num);
+                exit(2);
+            }
+            struct basic_block * tmp = curr_block; 
+            create_basic_block(); 
+            link_bb(tmp, BR, cont_block, NULL);
         }
     }
     else if (node->type == IF_STMT){
@@ -541,13 +561,13 @@ void gen_if(struct astnode * if_node){
     // Generate statements of true block
     curr_block = Bt;   
     gen_stmt(if_node->if_stmt.stmt);
-    curr_block = Bt;   
+    // curr_block = Bt;   
     link_bb(curr_block, BR, Bn, NULL);
 
     if (if_node->if_stmt.else_stmt){
         curr_block = Bf;
         gen_stmt(if_node->if_stmt.else_stmt);
-        curr_block = Bf;
+        // curr_block = Bf;
         link_bb(curr_block, BR, Bn, NULL);
     }
     curr_block = Bn;
@@ -556,33 +576,52 @@ void gen_if(struct astnode * if_node){
 
 void gen_for_loop(struct astnode * node){
     // Initialization
-    struct basic_block *start_loop, *init, *Bbreak, *Btmp; 
+    struct basic_block *init, *Binc, *Bbody, *Bbreak, *Bcond; 
     gen_stmt(node->for_loop.init);
     init = curr_block;
+    
+    // New block for comparison
+    Bcond = create_basic_block();
 
     // New block for body of for loop
-    curr_block = create_basic_block();
-    start_loop = curr_block;
-    gen_stmt(node->for_loop.body);
+    Bbody = create_basic_block();
 
     // New block for increment
-    curr_block = create_basic_block();
+    Binc = create_basic_block();
+    cont_block = Binc; 
+    
+    // break blocks / end of loop
+    Bbreak = create_basic_block();
+    break_block = Bbreak;
+
+    // Generate quads
+    curr_block = Bbody; 
+    gen_stmt(node->for_loop.body);
+    // print_basic_block(curr_block);
+    // Bbody = curr_block; 
+    // Link body to increment, then link increment to top of loop
+    link_bb(curr_block, BR, Binc, NULL);
+    link_bb(Binc, BR, Bcond, NULL);
+
+
+    curr_block = Binc; 
     gen_stmt(node->for_loop.inc);
 
-    // New block for comparison
-    curr_block = create_basic_block();
-    link_bb(init, BR, curr_block, NULL);
-    // dump_basic_blocks(block_head);
-    Btmp = curr_block;
-    Bbreak = create_basic_block();
-    curr_block = Btmp;
-    gen_condexpr(node->for_loop.cond, start_loop, Bbreak);
+    // Link initialization to cond block
+    link_bb(init, BR, Bcond, NULL);
+
+
+    // Conditional branches (save initial)
+    curr_block = Bcond;
+    gen_condexpr(node->for_loop.cond, Bbody, Bbreak);
     curr_block = Bbreak; 
 }
 
 void gen_while_loop(struct astnode * node){
-    struct basic_block *Bbody, *Bbreak, *Bstart;
-    Bstart = create_basic_block(); 
+    struct basic_block *Bbody, *Bbreak, *Bstart; 
+    Bstart = create_basic_block();
+
+    // While loops
     if (!node->while_loop.do_while){
         // Create blocks for the loop and at the end of the iterations
         Bbody = create_basic_block();
@@ -590,28 +629,42 @@ void gen_while_loop(struct astnode * node){
 
         // Generate conditional statement
         curr_block = Bstart;
+        cont_block = Bstart; 
         gen_condexpr(node->while_loop.cond, Bbody, Bbreak);
 
         // Body 
         curr_block = Bbody;
+        break_block = Bbreak; 
         gen_stmt(node->while_loop.stmt);
-        link_bb(Bbody, BR, Bstart, NULL);
+        link_bb(curr_block, BR, Bstart, NULL);
         curr_block = Bbreak; 
+
+        // Reset globals
+        break_block = NULL; 
+        cont_block = NULL;
         return; 
     }
-
-    // Generate body first
-    curr_block = Bstart;
-    gen_stmt(node->while_loop.stmt);
-
+    
+    // Do while loops
     // new block for comparisons and then after all iteratons
     Bbody = create_basic_block();
     Bbreak = create_basic_block();
+    break_block = Bbreak;
+    cont_block = Bbody; 
+    
+    // Generate body first
+    curr_block = Bstart;
+    gen_stmt(node->while_loop.stmt);
+    link_bb(curr_block, BR, Bbody, NULL);
 
     // Conditional
-    curr_block = Bbody; 
+    curr_block = Bbody;
     gen_condexpr(node->while_loop.cond, Bstart, Bbreak);
-    curr_block = Bbreak; 
+    curr_block = Bbreak;
+
+    // Reset globals
+    break_block = NULL; 
+    cont_block = NULL;
 }
 
 // Generate quads for a given statement / astnode
@@ -733,8 +786,8 @@ struct generic_node * gen_condexpr(struct astnode * node, struct basic_block * B
     else{
         fprintf(stderr, "%serror%s: Invalid type in %s:%d. Type given: %d", RED, RESET, node->file_name, node->line_num, node->type);
         die("Invalid Type?");
+        return NULL;
     }
-
 }
 
 
@@ -896,7 +949,7 @@ struct basic_block * create_basic_block(){
     // Append to linked list of blocks, update current block
     if (block_tail){
         // Set up branch params
-        if (block_tail->branch < 2 || block_tail->branch > 7)       // if we already have a branch command set up don't overwrite
+        if (block_tail->branch < 1 || block_tail->branch > 7)       // if we already have a branch command set up don't overwrite
             link_bb(block_tail, BR, block, NULL);
         block_tail->next_block = block;
         block_tail = block;

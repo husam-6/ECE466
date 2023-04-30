@@ -10,6 +10,8 @@ extern int func_counter, bb_counter, register_counter;
 extern struct basic_block * block_head;  
 extern struct basic_block * block_tail;  
 extern struct basic_block * curr_block;  
+extern struct basic_block * break_block;
+extern struct basic_block * cont_block; 
 
 // Possible opcodes IR can emit
 enum quad_opcode{
