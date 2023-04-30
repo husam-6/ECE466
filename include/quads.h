@@ -113,6 +113,7 @@ struct basic_block * create_basic_block();
 
 // Print basic block
 void print_basic_block(struct basic_block * bb);
+void dump_basic_blocks(struct basic_block * head);
 void print_quad(struct quad * q);
 void print_generic_node();
 

@@ -26,7 +26,7 @@ void print_generic_node(struct generic_node * node, int assign){
                                     }
             case (VARIABLE):        {printf("%-9s", node->var.name); break;}
             case (TEMPORARY):       {printf("%-9s", node->temp.ident); break;}
-            case (STRING_LITERAL):  {printf("%s", node->str.content); break;}
+            case (STRING_LITERAL):  {printf("\"%s\"", node->str.content); break;}
             case (CHAR_LITERAL):    {printf("'%c'", node->char_lit); break;}
             default:                {fprintf(stderr, "Unrecognized generic node type %d...\n", node->type);}
         }
@@ -102,7 +102,7 @@ void print_basic_block(struct basic_block * bb){
     }
     
     // Branch
-    if (bb->branch && bb->tail->opcode != RETURN_QUAD){     // Don't branch if return (or do differently than other blocks)
+    if (bb && bb->branch && bb->tail && bb->tail->opcode != RETURN_QUAD){     // Don't branch if return (or do differently than other blocks)
         printf("\t%-14s", " ");
         switch(bb->branch){
             case BR:        {printf("%-11s %s\n", "BR", bb->left->label); break;}
@@ -570,7 +570,7 @@ struct generic_node * gen_condexpr(struct astnode * node, struct basic_block * B
         }
         else if (node->binary.operator_type == LOGICAL_OP && (node->binary.operator == LOGAND || node->binary.operator == LOGOR)){
             // Extra basic block now (technically doing 2 separate comparisons)
-            struct basic_block * Btmp, *start_block;
+            struct basic_block *Btmp, *start_block;
             
             //save curr block, create tmp block for logical operation
             start_block = curr_block; 
@@ -579,36 +579,38 @@ struct generic_node * gen_condexpr(struct astnode * node, struct basic_block * B
             curr_block = start_block;
             
             struct generic_node * left = gen_rvalue(node->binary.left, NULL);
-            struct generic_node * right = gen_rvalue(node->binary.right, NULL);
+            struct generic_node * right;
             struct generic_node * constant = make_generic_node(CONSTANT);
             constant->num.integer = 0; 
 
             if (node->binary.operator == LOGAND){
                 // Both expressions must evaluate != 0 to be true
                 emit(CMP, left, constant, NULL);
+                start_block = curr_block; 
 
-                // go to tmp branch to test second expression
-                link_bb(curr_block, BRNEQ, Btmp, Bf);
 
                 // Evaluate second AND expr
-                curr_block = Btmp; 
+                curr_block = Btmp;
+                right = gen_rvalue(node->binary.right, NULL);
                 emit(CMP, right, constant, NULL);
+                
+                // Link blocks
                 link_bb(curr_block, BRNEQ, Bt, Bf);
+                link_bb(start_block, BRNEQ, Btmp, Bf);
             }
             else if (node->binary.operator == LOGOR){
                 // Only one expression must evaluate != 0 to be true
-
                 emit(CMP, left, constant, NULL);
-
-                // go straight to Bt if true
-                link_bb(curr_block, BRNEQ, Bt, Btmp);
-
-                // Evaluate second AND expr
+                start_block = curr_block;
+                
+                // Evaluate second OR expr
                 curr_block = Btmp; 
+                right = gen_rvalue(node->binary.right, NULL);
                 emit(CMP, right, constant, NULL);
+                
+                link_bb(start_block, BRNEQ, Bt, Btmp);
                 link_bb(curr_block, BRNEQ, Bt, Bf);
             }
-            
             struct generic_node * eval_true = make_generic_node(CONSTANT);
             eval_true->num.integer = 1; 
             
@@ -624,7 +626,6 @@ struct generic_node * gen_condexpr(struct astnode * node, struct basic_block * B
 
             link_bb(Bf, BR, Bn, NULL);
             curr_block = Bn;
-
             return target;
         }
 
@@ -854,14 +855,18 @@ void gen_quads(struct astnode * asthead, char * func_name){
     create_basic_block();
     gen_stmt(asthead);
 
+    dump_basic_blocks(block_head);
+    func_counter++;
+    // printf("#####\t\t End of Quads \t\t #####\n");
+}
+
+void dump_basic_blocks(struct basic_block * head){
     // Display all basic blocks + their quads...
-    struct basic_block * tmp = block_head;
+    struct basic_block * tmp = head;
     while(tmp){
         print_basic_block(tmp);
         tmp = tmp->next_block;
     }
-    func_counter++;
-    // printf("#####\t\t End of Quads \t\t #####\n");
 }
 
 // Returns the size of a given type (as an integer)
