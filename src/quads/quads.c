@@ -26,7 +26,15 @@ void print_generic_node(struct generic_node * node, int assign){
                                     }
             case (VARIABLE):        {printf("%-9s", node->var.name); break;}
             case (TEMPORARY):       {printf("%-9s", node->temp.ident); break;}
-            case (STRING_LITERAL):  {printf("\"%s\"", node->str.content); break;}
+            case (STRING_LITERAL):  {
+                                        printf("\"");
+                                        for (int i = 0; i < node->str.length; i++){
+                                            char * tmp = to_char(node->str.content[i]);
+                                            printf("%s", tmp);
+                                        }
+                                        printf("\"");
+                                        break;
+                                    }
             case (CHAR_LITERAL):    {printf("'%c'", node->char_lit); break;}
             default:                {fprintf(stderr, "Unrecognized generic node type %d...\n", node->type);}
         }
@@ -40,7 +48,15 @@ void print_generic_node(struct generic_node * node, int assign){
                                     }
             case (VARIABLE):        {printf("%s", node->var.name); break;}
             case (TEMPORARY):       {printf("%s", node->temp.ident); break;}
-            case (STRING_LITERAL):  {printf("%s", node->str.content); break;}
+            case (STRING_LITERAL):  {
+                                        printf("\"");
+                                        for (int i = 0; i < node->str.length; i++){
+                                            char * tmp = to_char(node->str.content[i]);
+                                            printf("%s", tmp);
+                                        }
+                                        printf("\"");
+                                        break;
+                                    }
             case (CHAR_LITERAL):    {printf("'%c'", node->char_lit); break;}
             default:                {fprintf(stderr, "Unrecognized generic node type %d...\n", node->type);}
         }
@@ -163,6 +179,9 @@ struct generic_node * gen_rvalue(struct astnode * node, struct generic_node * ta
     }
     else if (node->type == IF_STMT){
         gen_if(node);
+    }
+    else if (node->type == FOR_LOOP){
+        gen_for_loop(node);
     }
     return target; 
 }
@@ -434,7 +453,13 @@ struct generic_node * gen_fn_call(struct astnode * node, struct generic_node * t
     struct generic_node * fn_ident = gen_rvalue(node->fncall.postfix, NULL);
     struct type_node * function_def = get_type_from_generic(fn_ident);
     struct astnode_symbol * tmp_args = function_def->func_node.param_head; 
-    while(tmp){
+    while(tmp_args){
+        tmp_args = tmp_args->next;
+        defined_args++; 
+    }
+
+    tmp_args = function_def->func_node.param_head;
+    while(tmp && tmp->expr){
         arg = gen_rvalue(tmp->expr, NULL);
         arg_num = make_generic_node(CONSTANT);
         arg_type = get_type_from_generic(arg);
@@ -446,13 +471,11 @@ struct generic_node * gen_fn_call(struct astnode * node, struct generic_node * t
 
         emit(ARG, arg_num, arg, NULL);
         arg_idx++; tmp = tmp->next;
-
-        if (tmp_args){
+        
+        if (tmp_args)
             tmp_args = tmp_args->next;
-            defined_args++; 
-        }
     }
-    
+
     if (defined_args != node->fncall.head->num_args && function_def->func_node.param_head){
         fprintf(stderr, "%serror%s: Function call on %s:%d expected %d argument(s), received %d\n", RED, RESET, node->file_name, node->line_num, defined_args, node->fncall.head->num_args);
         exit(2);
@@ -509,6 +532,32 @@ void gen_if(struct astnode * if_node){
         link_bb(curr_block, BR, Bn, NULL);
     }
     curr_block = Bn;
+}
+
+
+void gen_for_loop(struct astnode * node){
+    // Initialization
+    struct basic_block *start_loop, *init, *Bbreak, *Btmp; 
+    gen_stmt(node->for_loop.init);
+    init = curr_block;
+
+    // New block for body of for loop
+    curr_block = create_basic_block();
+    start_loop = curr_block;
+    gen_stmt(node->for_loop.body);
+
+    // New block for increment
+    curr_block = create_basic_block();
+    gen_stmt(node->for_loop.inc);
+
+    // New block for comparison
+    curr_block = create_basic_block();
+    link_bb(init, BR, curr_block, NULL);
+    Btmp = curr_block;
+    Bbreak = create_basic_block();
+    curr_block = Btmp;
+    gen_condexpr(node->for_loop.cond, start_loop, Bbreak, NULL);
+    curr_block = Bbreak; 
 }
 
 // Generate quads for a given statement / astnode

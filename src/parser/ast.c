@@ -204,7 +204,14 @@ void print_ast(struct astnode * head, int depth){
         }
         case STR_LIT:{
             n_tabs(depth);
-            printf("STRING %s\n", head->str_lit.content);
+            printf("STRING \"", head->str_lit.content);
+            for (int i = 0; i < head->str_lit.length; i++){
+                // printf("%hhx", yylval.str.content[i]);
+                char * tmp = to_char(head->str_lit.content[i]);
+                printf("%s", tmp);
+            }
+            printf("\"");
+            printf("\n");
             break;
         }
         case FOR_LOOP: {
