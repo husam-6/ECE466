@@ -228,7 +228,7 @@ struct generic_node * gen_binary_node(struct astnode * node, struct generic_node
         Bn = create_basic_block();
         curr_block = start_block;
 
-        gen_condexpr(node, Bt, Bf, NULL); //creates branches to Bt,Bf cur_bb=Bt;
+        gen_condexpr(node, Bt, Bf); //creates branches to Bt,Bf cur_bb=Bt;
 
         struct type_node * int_type = create_scalar_node(I)->top;
         if (!target)
@@ -262,16 +262,30 @@ struct generic_node * gen_binary_node(struct astnode * node, struct generic_node
 
         curr_block = start_block; 
 
-        struct generic_node * src = gen_condexpr(node, Bt, Bf, Bn);
+        gen_condexpr(node, Bt, Bf);
         link_bb(Bt, BR, Bn, NULL);
         link_bb(Bf, BR, Bn, NULL);
-
+        
         struct type_node * t = create_scalar_node(I)->top;
         if (!target)
             target = new_temporary(t);
+
+        struct generic_node *true_eval, *false_eval; 
+        true_eval = make_generic_node(CONSTANT);
+        true_eval->num.integer = 1;
+        false_eval = make_generic_node(CONSTANT);
+        false_eval->num.integer = 0;
+
+        // 1 if true
+        curr_block = Bt;
+        emit(MOV, true_eval, NULL, target);
         
-        emit(MOV, src, NULL, target);
+        // 0 if false
+        curr_block = Bf;
+        emit(MOV, false_eval, NULL, target);
+
         curr_block = Bn;
+
         return target;
     }
 
@@ -489,7 +503,9 @@ struct generic_node * gen_fn_call(struct astnode * node, struct generic_node * t
     emit(CALL, fn_ident, NULL, target);
 
     // End basic block
+    struct basic_block *last = curr_block;
     create_basic_block();
+    link_bb(last, BR, curr_block, NULL);
     return target;
 }
 
@@ -517,7 +533,7 @@ void gen_if(struct astnode * if_node){
 
 
     curr_block = start_block; 
-    gen_condexpr(if_node->if_stmt.cond, Bt, Bf, NULL); //creates branches to Bt,Bf cur_bb=Bt;
+    gen_condexpr(if_node->if_stmt.cond, Bt, Bf); //creates branches to Bt,Bf cur_bb=Bt;
 
     // Generate statements of true block
     curr_block = Bt;   
@@ -553,10 +569,11 @@ void gen_for_loop(struct astnode * node){
     // New block for comparison
     curr_block = create_basic_block();
     link_bb(init, BR, curr_block, NULL);
+    // dump_basic_blocks(block_head);
     Btmp = curr_block;
     Bbreak = create_basic_block();
     curr_block = Btmp;
-    gen_condexpr(node->for_loop.cond, start_loop, Bbreak, NULL);
+    gen_condexpr(node->for_loop.cond, start_loop, Bbreak);
     curr_block = Bbreak; 
 }
 
@@ -575,7 +592,7 @@ void gen_stmt(struct astnode * asthead){
 }
 
 // Routine for conditional expressions
-struct generic_node * gen_condexpr(struct astnode * node, struct basic_block * Bt, struct basic_block * Bf, struct basic_block * Bn){
+struct generic_node * gen_condexpr(struct astnode * node, struct basic_block * Bt, struct basic_block * Bf){
     struct generic_node * constant = make_generic_node(CONSTANT);
     constant->num.integer = 0;
     if (node->type==IDENT_NODE){        // Compare to 0 
@@ -626,57 +643,22 @@ struct generic_node * gen_condexpr(struct astnode * node, struct basic_block * B
             Btmp = create_basic_block(); 
             // Bn = create_basic_block();
             curr_block = start_block;
-            
-            struct generic_node * left = gen_rvalue(node->binary.left, NULL);
-            struct generic_node * right;
-            struct generic_node * constant = make_generic_node(CONSTANT);
-            constant->num.integer = 0; 
 
             if (node->binary.operator == LOGAND){
                 // Both expressions must evaluate != 0 to be true
-                emit(CMP, left, constant, NULL);
-                start_block = curr_block; 
-
-
-                // Evaluate second AND expr
-                curr_block = Btmp;
-                right = gen_rvalue(node->binary.right, NULL);
-                emit(CMP, right, constant, NULL);
-                
-                // Link blocks
-                link_bb(curr_block, BRNEQ, Bt, Bf);
-                link_bb(start_block, BRNEQ, Btmp, Bf);
+                gen_condexpr(node->binary.left, Btmp, Bf);
+                curr_block = Btmp; 
+                gen_condexpr(node->binary.right, Bt, Bf);
             }
             else if (node->binary.operator == LOGOR){
-                // Only one expression must evaluate != 0 to be true
-                emit(CMP, left, constant, NULL);
-                start_block = curr_block;
-                
-                // Evaluate second OR expr
+                // Only one has to be true
+                gen_condexpr(node->binary.left, Bt, Btmp);
                 curr_block = Btmp; 
-                right = gen_rvalue(node->binary.right, NULL);
-                emit(CMP, right, constant, NULL);
-                
-                link_bb(start_block, BRNEQ, Bt, Btmp);
-                link_bb(curr_block, BRNEQ, Bt, Bf);
+                gen_condexpr(node->binary.right, Bt, Bf);
             }
-            struct generic_node * eval_true = make_generic_node(CONSTANT);
-            eval_true->num.integer = 1; 
-            
-            // Emit false and true quads
-            curr_block = Bt; 
-            struct type_node * scalar_int = create_scalar_node(I)->top;
-            struct generic_node * target = new_temporary(scalar_int);
-            emit(MOV, eval_true, NULL, target);
-            link_bb(Bt, BR, Bn, NULL);
-
-            curr_block = Bf; 
-            emit(MOV, constant, NULL, target);
-
-            link_bb(Bf, BR, Bn, NULL);
-            curr_block = Bn;
-            return target;
+            return NULL;
         }
+
 
         // Compare left and right otherwise
         struct generic_node * left = gen_rvalue(node->binary.left, NULL);
@@ -877,7 +859,8 @@ struct basic_block * create_basic_block(){
     // Append to linked list of blocks, update current block
     if (block_tail){
         // Set up branch params
-        link_bb(block_tail, BR, block, NULL);
+        if (block_tail->branch < 2 || block_tail->branch > 7)       // if we already have a branch command set up don't overwrite
+            link_bb(block_tail, BR, block, NULL);
         block_tail->next_block = block;
         block_tail = block;
         curr_block = block; 
