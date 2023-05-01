@@ -1,5 +1,6 @@
 # Parameters
-CXXFLAGS=-I./include -I./build -Wall -Wextra -fsanitize=undefined -ggdb
+# CXXFLAGS=-I./include -I./build -Wall -Wextra -fsanitize=undefined -ggdb
+CXXFLAGS=-I./include -I./build -Wall -Wextra -lm -std=c99 -D _GNU_SOURCE
 BUILD = build
 VPATH = src/lexer/:src/parser/:src/quads/:src
 TARGET=a.out

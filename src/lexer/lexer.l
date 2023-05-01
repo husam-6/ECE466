@@ -11,7 +11,7 @@ int line_num = 1;
 
 %}
 %%
-#[ \t][0-9]+[ \t]\"[a-zA-Z0-9\/\-<>. ]+\"[ \t]*[0-9]*\n      {file_start(yytext);}
+#[ \t][0-9]+[ \t]\"[a-zA-Z0-9\/\-<>._]+\"[ \t]*[0-9]*.*\n      {file_start(yytext);}
 
 auto                    {return AUTO;}
 break                   {return BREAK;}
