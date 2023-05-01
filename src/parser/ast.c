@@ -122,11 +122,8 @@ char * print_jump_type(enum jump_stmt jump_type){
 
 
 void print_ast(struct astnode * head, int depth){
-    
-    char * node_type;
     switch (head->type){
         case FN_CALL: {
-            node_type = "FNCALL";
             n_tabs(depth);
             printf("FNCALL, %d arguments\n", head->fncall.head->num_args);
             print_ast(head->fncall.postfix, depth + 1);
@@ -204,7 +201,7 @@ void print_ast(struct astnode * head, int depth){
         }
         case STR_LIT:{
             n_tabs(depth);
-            printf("STRING \"", head->str_lit.content);
+            printf("STRING \"");
             for (int i = 0; i < head->str_lit.length; i++){
                 // printf("%hhx", yylval.str.content[i]);
                 char * tmp = to_char(head->str_lit.content[i]);

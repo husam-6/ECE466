@@ -48,6 +48,7 @@ char * print_def_decl(enum symbol_kind k){
         case DECL: {return "DECLARATION";}
         case DEF:  {return "DEFINITION";}
     }
+    fprintf(stderr, "%serror%s: Unknown symbol kind given", RED, RESET);
 }
 
 char * print_union_struct(enum stu_type stu){
@@ -55,6 +56,8 @@ char * print_union_struct(enum stu_type stu){
         case STRUCT_TYPE: {return "STRUCT";}
         case UNION_TYPE:  {return "UNION";}
     }
+    fprintf(stderr, "%serror%s: Unknown struct type given", RED, RESET);
+
 }
 
 void print_scope_symbols(struct scope * curr_scope){
