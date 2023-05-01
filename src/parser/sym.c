@@ -158,6 +158,9 @@ int check_types(struct type_node * type_1, struct type_node * type_2){
         return check_types(type_1->next_type, type_2->next_type);
     }
 
+    if (type_1->type == FUNCTION_TYPE)
+        return check_types(type_1->func_node.return_type, type_2->func_node.return_type);
+
 
     return 0;
 }
