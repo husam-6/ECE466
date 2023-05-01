@@ -1,4 +1,4 @@
-int do_while_test(b){
+int do_while_test(int b){
     do{
         // continue;
         if (b == 10){
