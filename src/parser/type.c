@@ -408,7 +408,10 @@ void new_declaration(struct top_tail * specifiers, struct top_tail * declarator,
             }
 
             // Update storage class before removing if function
-            declarator->top->ident.s_class = specifiers->top->scalar.s_class;
+            if (specifiers->top->scalar.s_class == EXTERN_S)
+                declarator->top->ident.s_class = EXTERN_KEYWORD;
+            else
+                declarator->top->ident.s_class = specifiers->top->scalar.s_class;
             specifiers->top = specifiers->top->next_type;
     }
 

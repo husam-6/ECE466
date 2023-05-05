@@ -5,6 +5,7 @@
    #include "sym.h"
    #include "type.h"
    #include "quads.h"
+   #include "assemble.h"
 
    // Function prototypes
    void yyerror(const char* msg);
@@ -24,7 +25,8 @@
 %token INT LONG REGISTER RESTRICT RETURN SHORT SIGNED SIZEOF STATIC
 %token STRUCT SWITCH TYPEDEF UNION UNSIGNED VOID VOLATILE WHILE _BOOL
 %token _COMPLEX _IMAGINARY
-%start declaration_or_fndef_list
+/* %start declaration_or_fndef_list */
+%start translation_unit
 /* %start statement */
 
 
@@ -718,7 +720,10 @@ jump_statement:         GOTO IDENT ';'                                          
       |                 RETURN ';'                                                                {$$ = make_ast_node(JUMP_NODE); $$->jump.jump_type = RETURN_JUMP;}
 
 
-// Top Level (From Hak)
+// Top Level Translation Unit
+translation_unit: declaration_or_fndef_list                                   {gen_assembly();}
+
+
 declaration_or_fndef_list:    declaration_or_fndef                                        //{print_symbol_table();}
       |                       declaration_or_fndef_list declaration_or_fndef              //{print_symbol_table();}             // For debugging printing symbol table at top level
 
@@ -737,10 +742,10 @@ function_definition:    declaration_specifiers declarator                     {
                                                                                     new_function_defs($1, $2);
                                                                               }
                         compound_statement                                    {
-                                                                                    // print_symbol_table(0);
-                                                                                    close_outer_scope(); 
                                                                                     dump_ast($4->ds_list, 0, $2->top->ident.name);
                                                                                     gen_quads($4, $2->top->ident.name);
+                                                                                    // print_symbol_table(0);
+                                                                                    close_outer_scope(); 
                                                                               }// Dump ast list
 ;                 
 

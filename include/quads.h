@@ -97,6 +97,7 @@ struct quad {
 // Basic blocks
 struct basic_block{
     char * label; 
+    char * func_name; 
 
     // Head of quad linked list
     struct quad * head;

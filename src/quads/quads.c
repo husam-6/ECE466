@@ -452,7 +452,7 @@ struct generic_node * gen_unary_node(struct astnode * node, struct generic_node 
         if (!target)
             target = new_temporary(get_type_from_generic(src1));
         emit(tmp, src1, NULL, target);
-        return src1; 
+        return target; 
     }
     else if (node->unary.operator == '-'){
         struct generic_node * src1 = gen_rvalue(node->unary.expr, NULL);
@@ -975,6 +975,7 @@ struct basic_block * create_basic_block(){
 void gen_quads(struct astnode * asthead, char * func_name){
     // Reset basic block counter and blocks
     bb_counter = 0;
+    register_counter = 0; 
     block_head = NULL; 
     block_tail = NULL;
     curr_block = NULL; 
@@ -982,6 +983,13 @@ void gen_quads(struct astnode * asthead, char * func_name){
     // Print basic block 
     printf(".%s\n", func_name);
     create_basic_block();
+    block_head->func_name = func_name; 
+
+    // Point symbol for a function to the basic block head
+    struct astnode_symbol * function_symbol; 
+    search_all_tabs(func_name, VAR_S, curr_scope, &function_symbol);
+    function_symbol->b_block = block_head;
+
     gen_stmt(asthead);
 
     dump_basic_blocks(block_head);

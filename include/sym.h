@@ -1,6 +1,8 @@
 #ifndef SYM_H
 #define SYM_H
 
+#include "quads.h"
+
 extern enum storage_class tmp_s_class;
 
 enum scope_type{
@@ -49,7 +51,8 @@ enum storage_class{
     AUTO_S,
     REGISTER_S, 
     STATIC_S,
-    NA
+    NA,
+    EXTERN_KEYWORD
 };
 
 
@@ -62,7 +65,10 @@ struct astnode_symbol {
     enum storage_class s_class;     //Only for variable declarations (-1 if not)
     int line_num;
     char * file_name;
-    enum scope_type scope; 
+    enum scope_type scope;
+    
+    // Pointer to basic block
+    struct basic_block * b_block; 
 
     // Next item in symbol table
     struct astnode_symbol * next;

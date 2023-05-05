@@ -17,6 +17,7 @@ char * print_s_class(enum storage_class s_class){
         case (EXTERN_S):            {return "EXTERN";};
         case (STATIC_S):            {return "STATIC";};
         case (NA):                  {return "N/A";};
+        case (EXTERN_KEYWORD):                  {return "EXTERN FOR REAL";};
         default:                    {return "UNKNOWN";}
     } 
 }
