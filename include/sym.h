@@ -1,7 +1,6 @@
 #ifndef SYM_H
 #define SYM_H
 
-#include "quads.h"
 
 extern enum storage_class tmp_s_class;
 
