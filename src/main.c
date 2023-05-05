@@ -27,6 +27,9 @@ struct basic_block * curr_block;
 // Break / Continue blocks 
 struct basic_block * break_block, * cont_block; 
 
+// For code generation, temporary sections
+int section_counter = 0; 
+
 int main(){
       // Initialize global scope symbol table
       curr_scope = make_new_scope(GLOBAL_SCOPE);
