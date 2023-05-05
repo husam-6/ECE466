@@ -802,11 +802,18 @@ void link_bb(struct basic_block * og_block, enum branch_type branch, struct basi
 // Return the type node of a given generic node used in a quad
 // Assumes generic node is either a variable or temporary register
 struct type_node * get_type_from_generic(struct generic_node * node){
-    struct type_node * tt; 
+    struct type_node * tt;
     if (node->type == TEMPORARY)
         tt = node->temp.operation_type; 
     else if (node->type == VARIABLE)
         tt = node->var.sym->type;
+    else if (node->type == STRING_LITERAL){
+        // Make type a pointer to a char
+        tt = make_type_node(POINTER_TYPE);
+        struct type_node * tt2 = make_type_node(SCALAR_TYPE); 
+        tt2->scalar.arith_type = C;
+        tt->next_type = tt2;
+    }
     else{
         // Assume int otherwise
         tt = make_type_node(SCALAR_TYPE); 
