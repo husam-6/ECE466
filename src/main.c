@@ -31,6 +31,7 @@ struct basic_block * break_block, * cont_block;
 int section_counter = 0; 
 int string_counter = 0; 
 struct str_section * str_section_head; 
+FILE * fout; 
 
 int main(){
       // Initialize global scope symbol table

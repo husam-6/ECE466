@@ -5,11 +5,14 @@
 #include "sym.h"
 #include "type.h"
 #include "lexer.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 // Counter for dummy sections
 extern int section_counter; 
 extern int string_counter;
 extern struct str_section * str_section_head; 
+extern FILE * fout; 
 
 // Generate assembly
 void gen_assembly();

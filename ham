@@ -4,4 +4,15 @@ if (make)
 then
     # Compile source file using gcc preprocessor, pipe into executable
     gcc -E $1 | ./build/a.out
+
+    # Get output file name (same name just replace .c with .s)
+    # echo $1
+    suffix=".c"
+    string=$1
+    foo=${string%"$suffix"}
+    output="${foo}.s"
+    # echo ${output}
+
+    # Compile outputted assembly file
+    gcc -m32 ${output}
 fi

@@ -1,10 +1,19 @@
 #include "assemble.h"
+#include <string.h>
+
 
 void gen_assembly(){
     if (curr_scope->s_type != GLOBAL_SCOPE)
         die("Must be in global scope when generating target code");
 
     printf("//- - - - - \t\tGENERATING ASSEMBLY FROM QUADS\t\t - - - - -// \n");
+
+    // Open output file
+    char * outputfile; 
+    file_name[strlen(file_name)-2] = '\0';       // Remove .c
+    asprintf(&outputfile, "./%s.s", file_name);
+    // printf("FILENAME: %s\n", outputfile);
+    fout = fopen(outputfile, "w+");
 
     // Loop through global symbol table
     // if variable -> .comm var_name, 4, 4 (if int)
@@ -14,26 +23,26 @@ void gen_assembly(){
     while(tmp != NULL){
         // Don't do anything for functioin declaration...
         if (tmp->type->type == FUNCTION_TYPE && tmp->symbol_k == DECL){
-            printf("// FUNCTION DECLARATION, DO NOTHING\n");
+            fprintf(fout, "// FUNCTION DECLARATION, DO NOTHING\n");
 
             tmp = tmp->next; 
             continue; 
         }
         if (tmp->type->type == FUNCTION_TYPE){
             // Global directive for function def
-            printf(".globl %s\n", tmp->name);
+            fprintf(fout, ".globl %s\n", tmp->name);
 
             // Function def, standard x86 start
-            printf("%s:\n", tmp->name);
-            printf("\tpushl %%ebp\n");
-            printf("\tmovl %%esp, %%ebp\n");
+            fprintf(fout, "%s:\n", tmp->name);
+            fprintf(fout, "\tpushl %%ebp\n");
+            fprintf(fout, "\tmovl %%esp, %%ebp\n");
 
             // Loop through basic blocks associated with the function 
             struct basic_block * bb = tmp->b_block;
             int return_flag = 0; 
             while(bb){
                 // Print label
-                printf("%s: \n", bb->label);
+                fprintf(fout, "%s: \n", bb->label);
 
                 // Loop through all the quads in the given basic block 
                 struct quad * q = bb->head; 
@@ -48,22 +57,22 @@ void gen_assembly(){
 
             // Generate leave and ret at end of function
             if (!return_flag){
-                printf("\tleave\n");
-                printf("\tret\n");
+                fprintf(fout, "\tleave\n");
+                fprintf(fout, "\tret\n");
             }
 
             // Write relevant sections for strings
             while(str_section_head){
-                printf("%s:\n", str_section_head->label);
-                printf("\t.string \"");
+                fprintf(fout, "%s:\n", str_section_head->label);
+                fprintf(fout, "\t.string \"");
 
                 // parse bytes in string (can't just print the string straight up)
                 for (int i = 0; i < str_section_head->str.length; i++){
-                    // printf("%hhx", yylval.str.content[i]);
+                    // fprintf(fout, "%hhx", yylval.str.content[i]);
                     char * tmp = to_char(str_section_head->str.content[i]);
-                    printf("%s", tmp);
+                    fprintf(fout, "%s", tmp);
                 }
-                printf("\"\n");
+                fprintf(fout, "\"\n");
                 str_section_head = str_section_head->next;
             } 
 
@@ -77,38 +86,38 @@ void gen_assembly(){
         // print_symbol(tmp, 0);
         tmp = tmp->next; 
     }
-    // printf("\n");
+    // fprintf(fout, "\n");
 }
 
 
 // Helper bss variable (comm directive)
 void make_code_section(char * var){
-    printf("D%d:\n", section_counter);
+    fprintf(fout, "D%d:\n", section_counter);
     section_counter++;
 
     // Assuming everything is an int or a pointer
-    printf("\t.comm %s, 4, 4\n", var);
+    fprintf(fout, "\t.comm %s, 4, 4\n", var);
 }
 
 
 // Generate code for a given quad 
 void parse_quad(struct quad * q){
     switch(q->opcode){
-        case MOV:               {printf("\tmovl %s, %s", parse_operand(q->src1), parse_operand(q->result)); break;}
-        case ARG:               {printf("\tpushl %s", parse_operand(q->src2)); break;}
-        case CALL:              {printf("\tcall %s", parse_operand(q->src1)); break;}
+        case MOV:               {fprintf(fout, "\tmovl %s, %s", parse_operand(q->src1), parse_operand(q->result)); break;}
+        case ARG:               {fprintf(fout, "\tpushl %s", parse_operand(q->src2)); break;}
+        case CALL:              {fprintf(fout, "\tcall %s", parse_operand(q->src1)); break;}
         case RETURN_QUAD:       {
                                     // If theres a return value, move into eax and call ret
                                     if (q->src1)
-                                        printf("\tmovl %s, %%eax\n", parse_operand(q->src1));
-                                    printf("\tleave\n");
-                                    printf("\tret");
+                                        fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src1));
+                                    fprintf(fout, "\tleave\n");
+                                    fprintf(fout, "\tret");
                                     break;
                                 }
         case ARGBEGIN:          {return;}
-        default:                {printf("Unsupported quad opcode...");}
+        default:                {fprintf(fout, "Unsupported quad opcode...");}
     }
-    printf("\n");
+    fprintf(fout, "\n");
 }
 
 
