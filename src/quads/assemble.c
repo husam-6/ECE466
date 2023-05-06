@@ -34,16 +34,32 @@ void gen_assembly(){
                 // Loop through all the quads in the given basic block 
                 struct quad * q = bb->head; 
                 while(q){
-                    printf("\t");
                     parse_quad(q);
                     q = q->next_quad;
                 }
                 bb = bb->next_block;
             }
-            // print_basic_block(tmp->b_block);
+
+            // Write relevant sections for strings
+            while(str_section_head){
+                printf("%s:\n", str_section_head->label);
+                printf("\t.string \"");
+
+                // parse bytes in string (can't just print the string straight up)
+                for (int i = 0; i < str_section_head->str.length; i++){
+                    // printf("%hhx", yylval.str.content[i]);
+                    char * tmp = to_char(str_section_head->str.content[i]);
+                    printf("%s", tmp);
+                }
+                printf("\"");
+                printf("\t.string \"%s\"\n", str_section_head->str.content);
+                str_section_head = str_section_head->next;
+            } 
+
             tmp = tmp->next; 
             continue; 
         }
+
 
         make_code_section(tmp->name);
         // print_symbol(tmp, 0);
@@ -65,8 +81,11 @@ void make_code_section(char * var){
 // Generate code for a given quad 
 void parse_quad(struct quad * q){
     switch(q->opcode){
-        case MOV:       {printf("movl %s, %s", parse_operand(q->src1), parse_operand(q->result)); break;}
-        default:        {printf("Unsupported...");}
+        case MOV:       {printf("\tmovl %s, %s", parse_operand(q->src1), parse_operand(q->result)); break;}
+        case ARG:       {printf("\tpushl %s", parse_operand(q->src2)); break;}
+        case CALL:      {printf("\tcall %s \n\tleave", parse_operand(q->src1)); break;}
+        case ARGBEGIN:  {return;}
+        default:        {printf("Unsupported quad opcode...");}
     }
     printf("\n");
 }
@@ -75,16 +94,46 @@ void parse_quad(struct quad * q){
 char * parse_operand(struct generic_node * node){
     char * tmp; 
     switch(node->type){
-        case VARIABLE:  {return node->var.name;}
+        case VARIABLE:          {return node->var.name;}
         // case TEMPORARY:  {return node->var.name;}
-        // case STRING_LITERAL:  {return node->var.name;}
-        case CONSTANT:  {
-                            asprintf(&tmp, "$%lld", node->num.integer);           // Again everything is an int for now
-                            return tmp; 
-                        }
-        default:        {printf("Unsupported...\n");}
+        case STRING_LITERAL:    {
+                                    // Return $.section_name for string
+                                    asprintf(&tmp, "$.L%d", string_counter);
+                                    char * str_section; 
+
+                                    // Save name in list to create section later
+                                    asprintf(&str_section, ".L%d", string_counter);
+                                    string_counter++;
+
+                                    // Push onto list of strings
+                                    struct str_section * new_sec = create_str_section(); 
+                                    new_sec->label = str_section; 
+                                    new_sec->str = node->str;
+                                    if (str_section_head){
+                                        new_sec->next = str_section_head; 
+                                        str_section_head = new_sec; 
+                                    }
+                                    else
+                                        str_section_head = new_sec; 
+
+                                    return tmp;
+                                }
+        case CONSTANT:          {
+                                    asprintf(&tmp, "$%lld", node->num.integer);           // Again everything is an int for now
+                                    return tmp; 
+                                }
+        default:        {printf("Unsupported operand...\n");}
     }
 
+    return tmp; 
+
 }
+
+// For list of string literals 
+struct str_section * create_str_section(){
+    return (struct str_section *)malloc(sizeof(struct str_section));
+}
+
+
 
 void gen_list_strings();

@@ -29,6 +29,8 @@ struct basic_block * break_block, * cont_block;
 
 // For code generation, temporary sections
 int section_counter = 0; 
+int string_counter = 0; 
+struct str_section * str_section_head; 
 
 int main(){
       // Initialize global scope symbol table

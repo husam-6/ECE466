@@ -473,8 +473,12 @@ struct generic_node * gen_unary_node(struct astnode * node, struct generic_node 
 struct generic_node * gen_fn_call(struct astnode * node, struct generic_node * target){
     // Start function call quads
     struct generic_node * constant = make_generic_node(CONSTANT);
+
     constant->num.integer = node->fncall.head->num_args;
     emit(ARGBEGIN, constant, NULL, NULL);
+    
+    // Reverse order (for when we push onto the stack)
+    node->fncall.head = reverse_ll(node->fncall.head);
 
 
     // Generate quad for each argument
@@ -1021,4 +1025,22 @@ int size_of(struct type_node * type){
         type = type->next_type;
     }
     return size; 
+}
+
+
+// Reverse linked list (for function call args)
+struct linked_list * reverse_ll(struct linked_list * head){
+    struct linked_list * current = head;
+    struct linked_list * prev = NULL;
+    struct linked_list * next = NULL;
+
+    while (current->next != NULL){
+        next = current->next; 
+        current->next = prev; 
+        prev = current; 
+        current = next; 
+    }
+    current->next = prev;
+
+    return current;
 }
