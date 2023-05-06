@@ -742,7 +742,7 @@ function_definition:    declaration_specifiers declarator                     {
                                                                                     new_function_defs($1, $2);
                                                                               }
                         compound_statement                                    {
-                                                                                    dump_ast($4->ds_list, 0, $2->top->ident.name);
+                                                                                    // dump_ast($4->ds_list, 0, $2->top->ident.name);
                                                                                     gen_quads($4, $2->top->ident.name);
                                                                                     // print_symbol_table(0);
                                                                                     close_outer_scope(); 

@@ -110,6 +110,8 @@ void print_quad(struct quad * q){
 
 // Print all the quads and information in a basic block
 void print_basic_block(struct basic_block * bb){
+    if (bb->func_name)
+        printf(".%s\n", bb->func_name);
     printf("%s\n", bb->label);
     struct quad * tmp = bb->head;
     while (tmp != NULL){
@@ -985,7 +987,7 @@ void gen_quads(struct astnode * asthead, char * func_name){
     curr_block = NULL; 
 
     // Print basic block 
-    printf(".%s\n", func_name);
+    // printf(".%s\n", func_name);
     create_basic_block();
     block_head->func_name = func_name; 
 
@@ -996,7 +998,7 @@ void gen_quads(struct astnode * asthead, char * func_name){
 
     gen_stmt(asthead);
 
-    dump_basic_blocks(block_head);
+    // dump_basic_blocks(block_head);
     func_counter++;
     // printf("#####\t\t End of Quads \t\t #####\n");
 }
