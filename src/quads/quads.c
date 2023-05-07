@@ -981,7 +981,7 @@ struct basic_block * create_basic_block(){
 void gen_quads(struct astnode * asthead, char * func_name){
     // Reset basic block counter and blocks
     bb_counter = 0;
-    register_counter = 0; 
+    register_counter = 1; 
     block_head = NULL; 
     block_tail = NULL;
     curr_block = NULL; 
@@ -997,8 +997,9 @@ void gen_quads(struct astnode * asthead, char * func_name){
     function_symbol->b_block = block_head;
 
     gen_stmt(asthead);
+    function_symbol->register_counter = register_counter;
 
-    dump_basic_blocks(block_head);
+    // dump_basic_blocks(block_head);
     func_counter++;
     // printf("#####\t\t End of Quads \t\t #####\n");
 }

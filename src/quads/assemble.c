@@ -1,12 +1,15 @@
 #include "assemble.h"
 #include <string.h>
 
+// Global for stack offset
 
+int stack_offset; 
 void gen_assembly(){
+    dump_basic_blocks(block_head);
     if (curr_scope->s_type != GLOBAL_SCOPE)
         die("Must be in global scope when generating target code");
 
-    printf("//- - - - - \t\tGENERATING ASSEMBLY FROM QUADS\t\t - - - - -// \n");
+    // printf("//- - - - - \t\tGENERATING ASSEMBLY FROM QUADS\t\t - - - - -// \n");
 
     // print_symbol_table(1);
 
@@ -31,10 +34,10 @@ void gen_assembly(){
             continue; 
         }
         if (tmp->type->type == FUNCTION_TYPE){
-            printf("GENERATING CODE FOR FUNCTION: %s\n", tmp->name);
+            fprintf(fout, "// GENERATING CODE FOR FUNCTION: %s\n", tmp->name);
             // Loop through all scope elements of inner scope
             struct scope * func_scope = tmp->inner_scope;
-            int stack_offset = 0; 
+            stack_offset = 0; 
             while(func_scope){
                 // Loop through scope elements
                 struct astnode_symbol * symbol = func_scope->head; 
@@ -62,7 +65,7 @@ void gen_assembly(){
             fprintf(fout, "\tmovl %%esp, %%ebp\n");
 
             // Reserve stack space for local and temp vars
-            fprintf(fout, "\tsubl $%d, %%esp\n", 4 * stack_offset);
+            fprintf(fout, "\tsubl $%d, %%esp\n", 4 * stack_offset + 4 * tmp->register_counter);
 
             // Loop through basic blocks associated with the function 
             struct basic_block * bb = tmp->b_block;
@@ -160,6 +163,13 @@ void parse_quad(struct quad * q){
                                     break;
                                 }
         case ARGBEGIN:          {return;}
+        case ADD:               {
+                                    if (q->result)
+                                        fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src1));
+                                    fprintf(fout, "\taddl %s, %%eax\n", parse_operand(q->src2));
+                                    fprintf(fout, "\tmovl %%eax, %s", parse_operand(q->result));
+                                    break;
+                                }
         case CMP:               {
                                     fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src1));
                                     fprintf(fout, "\tmovl %s, %%ebx\n", parse_operand(q->src2));
@@ -182,7 +192,12 @@ char * parse_operand(struct generic_node * node){
                                     }
                                     return node->var.name;
                                 }
-        // case TEMPORARY:  {return node->var.name;}
+        case TEMPORARY:         {
+                                    // Register number is the offset + stack offset 
+                                    // already determined from declarations in symbol table
+                                    asprintf(&tmp, "%d(%%esp)", 4 * stack_offset + 4 * node->temp.reg_num);
+                                    return tmp; 
+                                }
         case STRING_LITERAL:    {
                                     // Return $.section_name for string
                                     asprintf(&tmp, "$.L%d", string_counter);

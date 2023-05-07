@@ -75,8 +75,9 @@ struct astnode_symbol {
     // For functions / structs, save inner scope
     struct scope * inner_scope; 
 
-    // Stack offset for code gen
+    // Stack offset and reg counter for code gen
     int stack_offset; 
+    int register_counter; 
 };
 
 
