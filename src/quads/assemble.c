@@ -52,6 +52,19 @@ void gen_assembly(){
                         return_flag = 1; 
                     q = q->next_quad;
                 }
+
+                // Branch 
+                switch (bb->branch){
+                    case BR:        {fprintf(fout, "\tjmp %s\n", bb->left->label); break;}
+                    case BREQ:      {fprintf(fout, "\tje %s\n\tjmp %s\n", bb->left->label, bb->right->label);  break;}
+                    case BRGT:      {fprintf(fout, "\tjg %s\n\tjmp %s\n", bb->left->label, bb->right->label);  break;}
+                    case BRLT:      {fprintf(fout, "\tjl %s\n\tjmp %s\n", bb->left->label, bb->right->label);  break;}
+                    case BRNEQ:     {fprintf(fout, "\tjne %s\n\tjmp %s\n", bb->left->label, bb->right->label);  break;}
+                    case BRGEQ:     {fprintf(fout, "\tjge %s\n\tjmp %s\n", bb->left->label, bb->right->label);  break;}
+                    case BRLEQ:     {fprintf(fout, "\tjle %s\n\tjmp %s\n", bb->left->label, bb->right->label);  break;}
+                }
+                // printf("\t");
+
                 bb = bb->next_block;
             }
 
@@ -115,6 +128,12 @@ void parse_quad(struct quad * q){
                                     break;
                                 }
         case ARGBEGIN:          {return;}
+        case CMP:               {
+                                    fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src1));
+                                    fprintf(fout, "\tmovl %s, %%ebx\n", parse_operand(q->src2));
+                                    fprintf(fout, "\tcmpl %%eax, %%ebx");
+                                    break;
+                                }
         default:                {fprintf(fout, "Unsupported quad opcode...");}
     }
     fprintf(fout, "\n");

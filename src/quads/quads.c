@@ -998,7 +998,7 @@ void gen_quads(struct astnode * asthead, char * func_name){
 
     gen_stmt(asthead);
 
-    // dump_basic_blocks(block_head);
+    dump_basic_blocks(block_head);
     func_counter++;
     // printf("#####\t\t End of Quads \t\t #####\n");
 }
