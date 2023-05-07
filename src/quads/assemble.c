@@ -5,13 +5,10 @@
 
 int stack_offset; 
 void gen_assembly(){
-    dump_basic_blocks(block_head);
+    // dump_basic_blocks(block_head);
     if (curr_scope->s_type != GLOBAL_SCOPE)
         die("Must be in global scope when generating target code");
 
-    // printf("//- - - - - \t\tGENERATING ASSEMBLY FROM QUADS\t\t - - - - -// \n");
-
-    // print_symbol_table(1);
 
     // Open output file
     char * outputfile; 
@@ -35,7 +32,7 @@ void gen_assembly(){
         }
         if (tmp->type->type == FUNCTION_TYPE){
             fprintf(fout, "// GENERATING CODE FOR FUNCTION: %s\n", tmp->name);
-            printf("FOR FUNCTION: %s\n", tmp->name);
+            // printf("FOR FUNCTION: %s\n", tmp->name);
             // Loop through all scope elements of inner scope
             struct scope * func_scope = tmp->inner_scope;
 
@@ -48,7 +45,7 @@ void gen_assembly(){
                 while (symbol != NULL){
                     // print_symbol(symbol, 0);
                     // printf("STACKOFFSET %d\n", 4 *stack_offset);
-                    printf("Size of %s = %d\n", symbol->name, size_of(symbol->type));
+                    // printf("Size of %s = %d\n", symbol->name, size_of(symbol->type));
 
                     if (symbol->param){
                         symbol->stack_offset = param_offset;
@@ -138,7 +135,7 @@ void gen_assembly(){
         }
 
 
-        make_code_section(tmp->name);
+        make_code_section(tmp);
         // print_symbol(tmp, 0);
         tmp = tmp->next; 
     }
@@ -147,12 +144,13 @@ void gen_assembly(){
 
 
 // Helper bss variable (comm directive)
-void make_code_section(char * var){
+void make_code_section(struct astnode_symbol * sym){
     fprintf(fout, "D%d:\n", section_counter);
     section_counter++;
 
     // Assuming everything is an int or a pointer
-    fprintf(fout, "\t.comm %s, 4, 4\n", var);
+    int size = size_of(sym->type);
+    fprintf(fout, "\t.comm %s, %d, %d\n", sym->name, size, size);
 }
 
 

@@ -18,7 +18,7 @@ extern FILE * fout;
 void gen_assembly();
 
 // Helpers to create sections for strings and bss variables
-void make_code_section(char * var);
+void make_code_section(struct astnode_symbol * sym);
 void gen_list_strings();
 char * parse_operand(struct generic_node * node);
 void parse_quad(struct quad * q);
