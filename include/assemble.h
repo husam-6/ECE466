@@ -22,6 +22,7 @@ void make_code_section(char * var);
 void gen_list_strings();
 char * parse_operand(struct generic_node * node);
 void parse_quad(struct quad * q);
+void print_mov_op(struct quad * q);
 
 // Struct for list of strings 
 struct str_section {

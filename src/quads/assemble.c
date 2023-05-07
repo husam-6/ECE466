@@ -35,19 +35,28 @@ void gen_assembly(){
         }
         if (tmp->type->type == FUNCTION_TYPE){
             fprintf(fout, "// GENERATING CODE FOR FUNCTION: %s\n", tmp->name);
+            printf("FOR FUNCTION: %s\n", tmp->name);
             // Loop through all scope elements of inner scope
             struct scope * func_scope = tmp->inner_scope;
-            stack_offset = 0; 
+            stack_offset = 1; 
+            int param_offset = 2; 
             while(func_scope){
                 // Loop through scope elements
                 struct astnode_symbol * symbol = func_scope->head; 
                 while (symbol != NULL){
-                    // print_symbol(symbol, 0);
+                    print_symbol(symbol, 0);
                     // printf("STACKOFFSET %d\n", 4 *stack_offset);
-
-                    symbol->stack_offset = 4*stack_offset;
-                    stack_offset++;
+                    // printf("Size of %s = %d\n", symbol->name, size_of(symbol->type));
+                    if (symbol->param){
+                        symbol->stack_offset = 4*param_offset;
+                        param_offset++;
+                    }
+                    else{
+                        symbol->stack_offset = -4*stack_offset;
+                        stack_offset++;
+                    }
                     symbol = symbol->next; 
+
                 }
                 func_scope = func_scope->next_child;
 
@@ -147,13 +156,33 @@ void make_code_section(char * var){
 void parse_quad(struct quad * q){
     switch(q->opcode){
         case MOV:               {
-                                    fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->result)); 
-                                    fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src1)); 
-                                    fprintf(fout, "\tmovl %%eax, %s", parse_operand(q->result)); 
+                                    print_mov_op(q);
                                     break;
                                 }
-        case ARG:               {fprintf(fout, "\tpushl %s", parse_operand(q->src2)); break;}
-        case CALL:              {fprintf(fout, "\tcall %s", parse_operand(q->src1)); break;}
+        case ARG:               {
+                                    fprintf(fout, "\tpushl %s", parse_operand(q->src2));
+
+                                    // Arg should always be followed by either another arg or call 
+                                    if (!q->next_quad){
+                                        die("ARG quad cannot be the final quad!");
+                                    }
+                                    
+                                    break;
+                                }
+        case CALL:              {
+                                    // Call function
+                                    fprintf(fout, "\tcall %s\n", parse_operand(q->src1));
+                                    
+                                    // Restore stack pointer
+                                    // fprintf(fout, "\taddl $4, %%esp\n");
+
+                                    // Save result
+                                    if (q->result)
+                                        fprintf(fout, "\tmovl %%eax, %s", parse_operand(q->result));
+                                    
+                                    
+                                    break;
+                                }
         case RETURN_QUAD:       {
                                     // If theres a return value, move into eax and call ret
                                     if (q->src1)
@@ -162,17 +191,36 @@ void parse_quad(struct quad * q){
                                     fprintf(fout, "\tret");
                                     break;
                                 }
-        case ARGBEGIN:          {return;}
+        case ARGBEGIN:          {
+                                    // Save number of args in scratch reg
+                                    fprintf(fout, "\tmovl %s, %%edx", parse_operand(q->src1));
+                                    break;
+                                }
         case ADD:               {
+                                    fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src1));
+                                    fprintf(fout, "\tmovl %s, %%ebx\n", parse_operand(q->src2));
+                                    fprintf(fout, "\taddl %%ebx, %%eax\n");
                                     if (q->result)
+                                        fprintf(fout, "\tmovl %%eax, %s", parse_operand(q->result));
+                                    break;
+                                }
+        case POSTINC:           {
+                                    if (q->result){
                                         fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src1));
-                                    fprintf(fout, "\taddl %s, %%eax\n", parse_operand(q->src2));
-                                    fprintf(fout, "\tmovl %%eax, %s", parse_operand(q->result));
+                                        fprintf(fout, "\tmovl %%eax, %s\n", parse_operand(q->result));
+                                    }
+                                    
+                                    // Do add after assigning to result
+                                    fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src1));
+                                    fprintf(fout, "\tmovl $1, %%ebx\n");
+                                    fprintf(fout, "\taddl %%ebx, %%eax\n");
+                                    fprintf(fout, "\tmovl %%eax, %s\n", parse_operand(q->src1));
                                     break;
                                 }
         case CMP:               {
-                                    fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src1));
-                                    fprintf(fout, "\tmovl %s, %%ebx\n", parse_operand(q->src2));
+                                    // Swap compare operands for x86 32 bit
+                                    fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src2));
+                                    fprintf(fout, "\tmovl %s, %%ebx\n", parse_operand(q->src1));
                                     fprintf(fout, "\tcmpl %%eax, %%ebx");
                                     break;
                                 }
@@ -181,13 +229,20 @@ void parse_quad(struct quad * q){
     fprintf(fout, "\n");
 }
 
+// Helper for any mov operation
+void print_mov_op(struct quad * q){
+    // fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->result)); 
+    fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src1)); 
+    fprintf(fout, "\tmovl %%eax, %s\n", parse_operand(q->result));
+}
+
 
 char * parse_operand(struct generic_node * node){
     char * tmp; 
     switch(node->type){
         case VARIABLE:          {
                                     if (node->var.sym->stack_offset != -1){
-                                        asprintf(&tmp, "%d(%%esp)", node->var.sym->stack_offset);
+                                        asprintf(&tmp, "%d(%%ebp)", node->var.sym->stack_offset);
                                         return tmp; 
                                     }
                                     return node->var.name;
@@ -195,7 +250,7 @@ char * parse_operand(struct generic_node * node){
         case TEMPORARY:         {
                                     // Register number is the offset + stack offset 
                                     // already determined from declarations in symbol table
-                                    asprintf(&tmp, "%d(%%esp)", 4 * stack_offset + 4 * node->temp.reg_num);
+                                    asprintf(&tmp, "%d(%%ebp)", -4 * stack_offset - 4 * node->temp.reg_num);
                                     return tmp; 
                                 }
         case STRING_LITERAL:    {

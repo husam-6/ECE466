@@ -78,6 +78,9 @@ struct astnode_symbol {
     // Stack offset and reg counter for code gen
     int stack_offset; 
     int register_counter; 
+
+    // Parameter flag
+    int param; 
 };
 
 
