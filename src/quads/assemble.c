@@ -38,22 +38,26 @@ void gen_assembly(){
             printf("FOR FUNCTION: %s\n", tmp->name);
             // Loop through all scope elements of inner scope
             struct scope * func_scope = tmp->inner_scope;
-            stack_offset = 1; 
-            int param_offset = 2; 
+
+            // Param offset should be off by 2 spaces (for ebp)
+            stack_offset = 0; 
+            int param_offset = 8; 
             while(func_scope){
                 // Loop through scope elements
                 struct astnode_symbol * symbol = func_scope->head; 
                 while (symbol != NULL){
-                    print_symbol(symbol, 0);
+                    // print_symbol(symbol, 0);
                     // printf("STACKOFFSET %d\n", 4 *stack_offset);
-                    // printf("Size of %s = %d\n", symbol->name, size_of(symbol->type));
+                    printf("Size of %s = %d\n", symbol->name, size_of(symbol->type));
+
                     if (symbol->param){
-                        symbol->stack_offset = 4*param_offset;
-                        param_offset++;
+                        symbol->stack_offset = param_offset;
+                        param_offset += size_of(symbol->type);
                     }
                     else{
-                        symbol->stack_offset = -4*stack_offset;
-                        stack_offset++;
+                        stack_offset += -1*size_of(symbol->type);
+                        symbol->stack_offset = stack_offset;
+                        // printf("Offset: %d\n", stack_offset);
                     }
                     symbol = symbol->next; 
 
@@ -74,7 +78,7 @@ void gen_assembly(){
             fprintf(fout, "\tmovl %%esp, %%ebp\n");
 
             // Reserve stack space for local and temp vars
-            fprintf(fout, "\tsubl $%d, %%esp\n", 4 * stack_offset + 4 * tmp->register_counter);
+            fprintf(fout, "\tsubl $%d, %%esp\n", -1 * stack_offset + 4 * tmp->register_counter);
 
             // Loop through basic blocks associated with the function 
             struct basic_block * bb = tmp->b_block;
@@ -224,6 +228,34 @@ void parse_quad(struct quad * q){
                                     fprintf(fout, "\tcmpl %%eax, %%ebx");
                                     break;
                                 }
+        case LEA:               {
+                                    fprintf(fout, "\tlea %s, %%eax\n", parse_operand(q->src1));
+                                    fprintf(fout, "\tmovl %%eax, %s\n", parse_operand(q->result));
+                                    break;
+                                }
+        case MUL:               {
+                                    fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src1));
+                                    fprintf(fout, "\timul %s, %%eax\n", parse_operand(q->src2));
+                                    fprintf(fout, "\tmovl %%eax, %s\n", parse_operand(q->result));
+                                    break;
+                                }
+        case STORE:             {
+                                    // Move operands into temp reg
+                                    fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src1));
+                                    fprintf(fout, "\tmovl %s, %%ebx\n", parse_operand(q->src2));
+                                    fprintf(fout, "\tmovl %%eax, (%%ebx)\n");
+                                    break;
+                                }
+        case LOAD:              {
+                                    // Put both operands into temporary registers
+                                    fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src1));
+                                    fprintf(fout, "\tmovl %s, %%ebx\n", parse_operand(q->result));
+                                    fprintf(fout, "\tmovl (%%eax), %%ebx\n");
+
+                                    // move result into true result
+                                    fprintf(fout, "\tmovl %%ebx, %s\n", parse_operand(q->result));
+                                    break;
+                                }
         default:                {fprintf(fout, "Unsupported quad opcode...");}
     }
     fprintf(fout, "\n");
@@ -250,7 +282,7 @@ char * parse_operand(struct generic_node * node){
         case TEMPORARY:         {
                                     // Register number is the offset + stack offset 
                                     // already determined from declarations in symbol table
-                                    asprintf(&tmp, "%d(%%ebp)", -4 * stack_offset - 4 * node->temp.reg_num);
+                                    asprintf(&tmp, "%d(%%ebp)", stack_offset - 4 * node->temp.reg_num);
                                     return tmp; 
                                 }
         case STRING_LITERAL:    {
