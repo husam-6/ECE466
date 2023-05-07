@@ -8,6 +8,8 @@ void gen_assembly(){
 
     printf("//- - - - - \t\tGENERATING ASSEMBLY FROM QUADS\t\t - - - - -// \n");
 
+    // print_symbol_table(1);
+
     // Open output file
     char * outputfile; 
     file_name[strlen(file_name)-2] = '\0';       // Remove .c
@@ -29,6 +31,28 @@ void gen_assembly(){
             continue; 
         }
         if (tmp->type->type == FUNCTION_TYPE){
+            printf("GENERATING CODE FOR FUNCTION: %s\n", tmp->name);
+            // Loop through all scope elements of inner scope
+            struct scope * func_scope = tmp->inner_scope;
+            int stack_offset = 0; 
+            while(func_scope){
+                // Loop through scope elements
+                struct astnode_symbol * symbol = func_scope->head; 
+                while (symbol != NULL){
+                    // print_symbol(symbol, 0);
+                    // printf("STACKOFFSET %d\n", 4 *stack_offset);
+
+                    symbol->stack_offset = 4*stack_offset;
+                    stack_offset++;
+                    symbol = symbol->next; 
+                }
+                func_scope = func_scope->next_child;
+
+                // Stop before seeing other scopes
+                if (func_scope && func_scope->s_type == FUNC_SCOPE)
+                    break;
+            }
+
             // Global directive for function def
             fprintf(fout, ".globl %s\n", tmp->name);
 
@@ -36,6 +60,9 @@ void gen_assembly(){
             fprintf(fout, "%s:\n", tmp->name);
             fprintf(fout, "\tpushl %%ebp\n");
             fprintf(fout, "\tmovl %%esp, %%ebp\n");
+
+            // Reserve stack space for local and temp vars
+            fprintf(fout, "\tsubl $%d, %%esp\n", 4 * stack_offset);
 
             // Loop through basic blocks associated with the function 
             struct basic_block * bb = tmp->b_block;
@@ -116,7 +143,12 @@ void make_code_section(char * var){
 // Generate code for a given quad 
 void parse_quad(struct quad * q){
     switch(q->opcode){
-        case MOV:               {fprintf(fout, "\tmovl %s, %s", parse_operand(q->src1), parse_operand(q->result)); break;}
+        case MOV:               {
+                                    fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->result)); 
+                                    fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src1)); 
+                                    fprintf(fout, "\tmovl %%eax, %s", parse_operand(q->result)); 
+                                    break;
+                                }
         case ARG:               {fprintf(fout, "\tpushl %s", parse_operand(q->src2)); break;}
         case CALL:              {fprintf(fout, "\tcall %s", parse_operand(q->src1)); break;}
         case RETURN_QUAD:       {
@@ -143,7 +175,13 @@ void parse_quad(struct quad * q){
 char * parse_operand(struct generic_node * node){
     char * tmp; 
     switch(node->type){
-        case VARIABLE:          {return node->var.name;}
+        case VARIABLE:          {
+                                    if (node->var.sym->stack_offset != -1){
+                                        asprintf(&tmp, "%d(%%esp)", node->var.sym->stack_offset);
+                                        return tmp; 
+                                    }
+                                    return node->var.name;
+                                }
         // case TEMPORARY:  {return node->var.name;}
         case STRING_LITERAL:    {
                                     // Return $.section_name for string

@@ -6,6 +6,7 @@
 
 struct astnode_symbol * make_symbol_node() {
     struct astnode_symbol *node = (struct astnode_symbol *)malloc(sizeof(struct astnode_symbol));
+    node->stack_offset = -1; 
     return node;
 }
 
