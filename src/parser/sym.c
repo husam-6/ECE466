@@ -6,6 +6,8 @@
 
 struct astnode_symbol * make_symbol_node() {
     struct astnode_symbol *node = (struct astnode_symbol *)malloc(sizeof(struct astnode_symbol));
+    node->stack_offset = -1; 
+    node->param = 0; 
     return node;
 }
 
@@ -389,6 +391,7 @@ void create_new_scope(enum scope_type s_type){
             struct astnode_symbol * tmp = curr_scope->head; 
             while (tmp){
                 tmp->scope = FUNC_SCOPE; 
+                tmp->param = 1;
                 tmp = tmp->next;
             }
             return;

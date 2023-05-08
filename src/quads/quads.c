@@ -110,6 +110,8 @@ void print_quad(struct quad * q){
 
 // Print all the quads and information in a basic block
 void print_basic_block(struct basic_block * bb){
+    if (bb->func_name)
+        printf(".%s\n", bb->func_name);
     printf("%s\n", bb->label);
     struct quad * tmp = bb->head;
     while (tmp != NULL){
@@ -473,8 +475,12 @@ struct generic_node * gen_unary_node(struct astnode * node, struct generic_node 
 struct generic_node * gen_fn_call(struct astnode * node, struct generic_node * target){
     // Start function call quads
     struct generic_node * constant = make_generic_node(CONSTANT);
+
     constant->num.integer = node->fncall.head->num_args;
     emit(ARGBEGIN, constant, NULL, NULL);
+    
+    // Reverse order (for when we push onto the stack)
+    node->fncall.head = reverse_ll(node->fncall.head);
 
 
     // Generate quad for each argument
@@ -975,13 +981,13 @@ struct basic_block * create_basic_block(){
 void gen_quads(struct astnode * asthead, char * func_name){
     // Reset basic block counter and blocks
     bb_counter = 0;
-    register_counter = 0; 
+    register_counter = 1; 
     block_head = NULL; 
     block_tail = NULL;
     curr_block = NULL; 
 
     // Print basic block 
-    printf(".%s\n", func_name);
+    // printf(".%s\n", func_name);
     create_basic_block();
     block_head->func_name = func_name; 
 
@@ -991,8 +997,9 @@ void gen_quads(struct astnode * asthead, char * func_name){
     function_symbol->b_block = block_head;
 
     gen_stmt(asthead);
+    function_symbol->register_counter = register_counter;
 
-    dump_basic_blocks(block_head);
+    // dump_basic_blocks(block_head);
     func_counter++;
     // printf("#####\t\t End of Quads \t\t #####\n");
 }
@@ -1021,4 +1028,22 @@ int size_of(struct type_node * type){
         type = type->next_type;
     }
     return size; 
+}
+
+
+// Reverse linked list (for function call args)
+struct linked_list * reverse_ll(struct linked_list * head){
+    struct linked_list * current = head;
+    struct linked_list * prev = NULL;
+    struct linked_list * next = NULL;
+
+    while (current->next != NULL){
+        next = current->next; 
+        current->next = prev; 
+        prev = current; 
+        current = next; 
+    }
+    current->next = prev;
+
+    return current;
 }

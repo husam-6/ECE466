@@ -71,6 +71,16 @@ struct astnode_symbol {
 
     // Next item in symbol table
     struct astnode_symbol * next;
+
+    // For functions / structs, save inner scope
+    struct scope * inner_scope; 
+
+    // Stack offset and reg counter for code gen
+    int stack_offset; 
+    int register_counter; 
+
+    // Parameter flag
+    int param; 
 };
 
 

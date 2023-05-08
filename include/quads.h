@@ -149,7 +149,7 @@ struct generic_node * gen_binary_node(struct astnode * node, struct generic_node
 struct generic_node * gen_fn_call(struct astnode * node, struct generic_node * target);
 void gen_for_loop(struct astnode * node);
 void gen_while_loop(struct astnode * node);
-
+struct linked_list * reverse_ll(struct linked_list * head);
 // Recurse through AST using DFS
 
 // Create new temporary

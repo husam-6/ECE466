@@ -742,9 +742,17 @@ function_definition:    declaration_specifiers declarator                     {
                                                                                     new_function_defs($1, $2);
                                                                               }
                         compound_statement                                    {
-                                                                                    dump_ast($4->ds_list, 0, $2->top->ident.name);
+                                                                                    // dump_ast($4->ds_list, 0, $2->top->ident.name);
                                                                                     gen_quads($4, $2->top->ident.name);
                                                                                     // print_symbol_table(0);
+
+                                                                                    // Get symbol for function to save scope 
+                                                                                    struct astnode_symbol * func; 
+                                                                                    // print_type($2->top, 0);
+                                                                                    // printf("SEARCHING FOR \n");//, $1->top->ident.name);
+                                                                                    search_all_tabs($2->top->ident.name, VAR_S, curr_scope->outer, &func);
+                                                                                    func->inner_scope = curr_scope; 
+
                                                                                     close_outer_scope(); 
                                                                               }// Dump ast list
 ;                 
