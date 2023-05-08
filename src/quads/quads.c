@@ -625,6 +625,9 @@ void gen_for_loop(struct astnode * node){
 
 void gen_while_loop(struct astnode * node){
     struct basic_block *Bbody, *Bbreak, *Bstart; 
+    // Reset globals
+    break_block = NULL; 
+    cont_block = NULL;
     Bstart = create_basic_block();
 
     // While loops
@@ -636,6 +639,7 @@ void gen_while_loop(struct astnode * node){
         // Generate conditional statement
         curr_block = Bstart;
         cont_block = Bstart; 
+        break_block = Bbreak; 
         gen_condexpr(node->while_loop.cond, Bbody, Bbreak);
 
         // Body 
@@ -645,9 +649,6 @@ void gen_while_loop(struct astnode * node){
         link_bb(curr_block, BR, Bstart, NULL);
         curr_block = Bbreak; 
 
-        // Reset globals
-        break_block = NULL; 
-        cont_block = NULL;
         return; 
     }
     
@@ -665,12 +666,10 @@ void gen_while_loop(struct astnode * node){
 
     // Conditional
     curr_block = Bbody;
+    break_block = Bbreak;
     gen_condexpr(node->while_loop.cond, Bstart, Bbreak);
     curr_block = Bbreak;
 
-    // Reset globals
-    break_block = NULL; 
-    cont_block = NULL;
 }
 
 // Generate quads for a given statement / astnode
@@ -997,6 +996,12 @@ void gen_quads(struct astnode * asthead, char * func_name){
     function_symbol->b_block = block_head;
 
     gen_stmt(asthead);
+    // insert return if it isnt there 
+    if (!curr_block->tail || curr_block->tail->opcode != RETURN_QUAD){
+        struct generic_node * constant = make_generic_node(CONSTANT);
+        constant->num.integer = 0;
+        emit(RETURN_QUAD, constant, NULL, NULL);
+    }
     function_symbol->register_counter = register_counter;
 
     // dump_basic_blocks(block_head);
