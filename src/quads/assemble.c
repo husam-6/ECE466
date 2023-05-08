@@ -206,6 +206,14 @@ void parse_quad(struct quad * q){
                                         fprintf(fout, "\tmovl %%eax, %s", parse_operand(q->result));
                                     break;
                                 }
+        case SUB:               {
+                                    fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src1));
+                                    fprintf(fout, "\tmovl %s, %%ebx\n", parse_operand(q->src2));
+                                    fprintf(fout, "\tsubl %%ebx, %%eax\n");
+                                    if (q->result)
+                                        fprintf(fout, "\tmovl %%eax, %s", parse_operand(q->result));
+                                    break;
+                                }
         case POSTINC:           {
                                     if (q->result){
                                         fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src1));
@@ -216,6 +224,19 @@ void parse_quad(struct quad * q){
                                     fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src1));
                                     fprintf(fout, "\tmovl $1, %%ebx\n");
                                     fprintf(fout, "\taddl %%ebx, %%eax\n");
+                                    fprintf(fout, "\tmovl %%eax, %s\n", parse_operand(q->src1));
+                                    break;
+                                }
+        case POSTDEC:           {
+                                    if (q->result){
+                                        fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src1));
+                                        fprintf(fout, "\tmovl %%eax, %s\n", parse_operand(q->result));
+                                    }
+                                    
+                                    // Do subtract after assigning to result
+                                    fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src1));
+                                    fprintf(fout, "\tmovl $1, %%ebx\n");
+                                    fprintf(fout, "\tsubl %%ebx, %%eax\n");
                                     fprintf(fout, "\tmovl %%eax, %s\n", parse_operand(q->src1));
                                     break;
                                 }
@@ -234,6 +255,15 @@ void parse_quad(struct quad * q){
         case MUL:               {
                                     fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src1));
                                     fprintf(fout, "\timul %s, %%eax\n", parse_operand(q->src2));
+                                    fprintf(fout, "\tmovl %%eax, %s\n", parse_operand(q->result));
+                                    break;
+                                }
+        case DIV:               {
+                                    fprintf(fout, "\tmovl %s, %%eax\n", parse_operand(q->src1));
+                                    fprintf(fout, "\txor %%edx, %%edx\n");
+                                    fprintf(fout, "\tcltd\n");
+                                    fprintf(fout, "\tmovl %s, %%ecx\n", parse_operand(q->src2));
+                                    fprintf(fout, "\tidiv %%ecx\n");
                                     fprintf(fout, "\tmovl %%eax, %s\n", parse_operand(q->result));
                                     break;
                                 }
