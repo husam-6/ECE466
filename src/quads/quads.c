@@ -477,6 +477,7 @@ struct generic_node * gen_fn_call(struct astnode * node, struct generic_node * t
     struct generic_node * constant = make_generic_node(CONSTANT);
 
     constant->num.integer = node->fncall.head->num_args;
+    int num_args = node->fncall.head->num_args; 
     emit(ARGBEGIN, constant, NULL, NULL);
     
     // Reverse order (for when we push onto the stack)
@@ -519,8 +520,8 @@ struct generic_node * gen_fn_call(struct astnode * node, struct generic_node * t
             tmp_args = tmp_args->next;
     }
 
-    if (defined_args != node->fncall.head->num_args && function_def->func_node.param_head){
-        fprintf(stderr, "%serror%s: Function call on %s:%d expected %d argument(s), received %d\n", RED, RESET, node->file_name, node->line_num, defined_args, node->fncall.head->num_args);
+    if (defined_args != num_args && function_def->func_node.param_head){
+        fprintf(stderr, "%serror%s: Function call on %s:%d expected %d argument(s), received %d\n", RED, RESET, node->file_name, node->line_num, defined_args, num_args);
         exit(2);
     }
     struct type_node * tt = get_type_from_generic(fn_ident);
